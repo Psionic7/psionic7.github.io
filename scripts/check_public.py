@@ -43,6 +43,11 @@ def check(root=ROOT, secrets_file=None):
         if not folder.exists():
             continue
         manifest = json.loads((folder / 'manifest.json').read_text(encoding='utf-8'))
+        favorites = manifest.get('favorite_region_ids', [])
+        known_ids = {region['region_id'] for region in manifest['regions']}
+        if (not isinstance(favorites, list) or any(not isinstance(value, str) or value not in known_ids for value in favorites)
+                or len(set(favorites)) != len(favorites) or {'suji', 'gwanggyo', 'bundang'} & set(favorites)):
+            raise ValueError('공개 즐겨찾기 목록이 올바르지 않습니다.')
         allowed = {'manifest.json', 'public.sqlite3'} | {item['file'] for item in manifest['districts'].values()}
         if any(path.name not in allowed for path in folder.iterdir()):
             raise ValueError('공개 데이터 폴더에 허용되지 않은 파일이 있습니다.')

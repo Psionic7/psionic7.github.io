@@ -129,9 +129,13 @@ export function buildCatalog(regions) {
       region_code: region.region_code, region_name: region.region_name, dongs: [],
     });
   });
-  return [...regions.filter(region => !region.region_id.startsWith('dong_')),
+  return [...regions.filter(region => !region.region_id.startsWith('dong_') && !['suji', 'gwanggyo', 'bundang'].includes(region.region_id)),
     ...[...districts.values()].sort((a, b) => a.label.localeCompare(b.label, 'ko')),
     ...regions.filter(region => region.region_id.startsWith('dong_'))];
+}
+export function favoriteRegions(manifest, catalog = buildCatalog(manifest.regions)) {
+  const byId = new Map(catalog.map(region => [region.region_id, region]));
+  return [...new Set(manifest.favorite_region_ids || [])].map(id => byId.get(id)).filter(Boolean);
 }
 export function stableSample(rows, maximum = 3000) {
   if (rows.length <= maximum) return rows;

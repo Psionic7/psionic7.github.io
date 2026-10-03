@@ -8,9 +8,37 @@ import Dashboard from '../src/Dashboard.jsx';
 const region={region_id:'suji',label:'용인 수지구',region_name:'경기도 용인시 수지구',region_code:'41465',dongs:[]};
 const rows=Array.from({length:115},(_,i)=>({id:i+1,region_code:'41465',deal_month:'202601',deal_date:'2026-01-05',apartment:i===0?'첫 아파트':'두번째',dong:'풍덕천동',jibun:'1',price_man:100000,area_m2:85,cancelled:0,raw:{aptNm:i===0?'첫 아파트':'두번째',umdNm:'풍덕천동',dealAmount:i===0?'100,000':'50,000',floor:'4',cdealType:''}}));
 const manifest={regions:[region,{region_id:'dong_11110101',label:'서울특별시 종로구 청운동',region_name:'서울특별시 종로구',region_code:'11110',dongs:['청운동']}],districts:{'41465':{file:'fake.json',count:115,months:['202601']}},months:['202601'],published_at:'2026-10-02T00:00:00+00:00',count:115,boundary_catalog_date:'2023-07-29'};
-beforeEach(()=>window.history.replaceState(null,'','/?region=suji&tab=raw'));
+beforeEach(()=>window.history.replaceState(null,'','/?region=area_41465&tab=raw'));
 afterEach(()=>{cleanup();vi.restoreAllMocks();vi.unstubAllGlobals();});
 describe('React transaction explorer',()=>{
+  it('starts with no region and no data request when favorites are empty',async()=>{
+    window.history.replaceState(null,'','/');
+    const loader=vi.fn(()=>Promise.resolve(rows));
+    render(<App initialManifest={{...manifest,favorite_region_ids:[]}} districtLoader={loader}/>);
+    expect(screen.getByText('등록된 즐겨찾기 지역이 없습니다.')).toBeTruthy();
+    expect(screen.getByText('조회할 지역을 선택해 주세요.')).toBeTruthy();
+    expect(screen.getByRole('combobox',{name:'조회 지역'}).value).toBe('');
+    expect(loader).not.toHaveBeenCalled();
+    expect(screen.queryByRole('button',{name:'용인 수지구'})).toBeNull();
+    expect(screen.queryByRole('option',{name:'용인 수지구'})).toBeNull();
+    expect(window.location.search).not.toContain('region=');
+  });
+  it('shows saved dong favorites and opens only the chosen region without a preset',async()=>{
+    window.history.replaceState(null,'','/?tab=raw');
+    const user=userEvent.setup();
+    const favorite={region_id:'dong_41465101',label:'경기도 용인시 수지구 풍덕천동',region_name:'경기도 용인시 수지구',region_code:'41465',dongs:['풍덕천동']};
+    const loader=vi.fn(()=>Promise.resolve(rows));
+    render(<App initialManifest={{...manifest,regions:[...manifest.regions,favorite],favorite_region_ids:[favorite.region_id]}} districtLoader={loader}/>);
+    expect(loader).not.toHaveBeenCalled();
+    const section=screen.getByRole('region',{name:'즐겨찾기 지역'});
+    await user.click(within(section).getByRole('button',{name:/풍덕천동/}));
+    await screen.findByText('첫 아파트');
+    expect(loader).toHaveBeenCalledWith(expect.anything(),'41465');
+    expect(window.location.search).toContain(favorite.region_id);
+    await user.click(screen.getByRole('button',{name:'조회 선택 해제'}));
+    expect(screen.getByText('조회할 지역을 선택해 주세요.')).toBeTruthy();
+    expect(window.location.search).not.toContain('region=');
+  });
   it('renders real charts and excludes cancelled transactions from dashboard statistics',async()=>{
     vi.stubGlobal('ResizeObserver',class {
       constructor(callback){this.callback=callback;}
@@ -20,12 +48,19 @@ describe('React transaction explorer',()=>{
     });
     vi.spyOn(HTMLElement.prototype,'getBoundingClientRect').mockReturnValue({width:800,height:300,top:0,left:0,right:800,bottom:300,x:0,y:0,toJSON(){}});
     const sample=[rows[0],{...rows[1],cancelled:1,price_man:900000}];
-    render(<Dashboard rows={sample} region={region} manifest={manifest} start="202601" end="202601" districtLoader={()=>Promise.resolve(sample)}/>);
+    const favorites=[{...region,region_id:'dong_41465101',label:'즐겨찾기 풍덕천동',dongs:['풍덕천동']},
+      {...region,region_id:'dong_41465102',label:'즐겨찾기 죽전동',dongs:['죽전동']}];
+    const loader=vi.fn(()=>Promise.resolve(sample));
+    render(<Dashboard rows={sample} region={region} manifest={manifest} favorites={favorites} start="202601" end="202601" districtLoader={loader}/>);
     await screen.findByText('1건의 해제 거래 제외');
     const metric=screen.getByText('유효 거래',{selector:'.metric-label'}).closest('section');
     expect(metric.querySelector('.metric-value').textContent).toBe('1건');
     expect(screen.getByText('거래금액 중앙값').closest('section').querySelector('.metric-value').textContent).toBe('10.00억 원');
     await waitFor(()=>expect(document.querySelectorAll('.recharts-surface').length).toBeGreaterThanOrEqual(3));
+    await waitFor(()=>expect(screen.getByText('즐겨찾기 풍덕천동').closest('div').querySelector('p').textContent).toContain('1건'));
+    expect(screen.getByText('즐겨찾기 죽전동').closest('div').querySelector('p').textContent).toContain('0건');
+    expect(loader).toHaveBeenCalledTimes(1);
+    expect(loader).toHaveBeenCalledWith(manifest,'41465');
   });
   it('filters by an individual column, resets pagination, and keeps raw strings',async()=>{
     const user=userEvent.setup();

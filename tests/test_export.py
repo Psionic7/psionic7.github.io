@@ -26,6 +26,7 @@ class ExportTests(unittest.TestCase):
             conn.execute('INSERT INTO trades VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)',
                          (1, '41465', '202601', '2026-01-02', '원문', '풍덕천동', '1', 100000, 85, 3, 2000, 0, json.dumps(self.raw, ensure_ascii=False)))
             conn.execute('INSERT INTO regions VALUES (?,?,?,?,?,?,?)', ('suji', '용인 수지구', '41465', '경기도 용인시 수지구', '[]', 37.32, 127.09))
+            conn.execute('INSERT INTO regions VALUES (?,?,?,?,?,?,?)', ('dong_41465101', '경기도 용인시 수지구 풍덕천동', '41465', '경기도 용인시 수지구', '["풍덕천동"]', 37.32, 127.09))
             conn.execute('INSERT INTO api_pages VALUES (?)', (self.secret,))
             conn.execute('INSERT INTO metadata VALUES (?,?)', ('private_key', self.secret))
             conn.commit()
@@ -59,6 +60,36 @@ class ExportTests(unittest.TestCase):
         manifest = exporter.export(self.source, self.target, self.env)
         self.assertEqual(manifest['count'], 0)
         self.assertEqual(manifest['districts'], {})
+
+    def test_no_file_or_empty_favorites_never_seeds_default_regions(self):
+        self.assertEqual(exporter.export(self.source, self.target, self.env)['favorite_region_ids'], [])
+        favorites=self.root/'selection.json'
+        favorites.write_text(json.dumps({'version':1,'regions':[]}),encoding='utf-8')
+        self.assertEqual(exporter.export(self.source,self.target,self.env,favorites)['favorite_region_ids'], [])
+
+    def test_favorites_only_export_allowlisted_ids_without_private_metadata(self):
+        favorites=self.root/'selection.json'
+        favorites.write_text(json.dumps({'version':1,'updated_at':'private timestamp', 'regions':[
+            {'region_id':'dong_41465101','private_note':self.secret}]}),encoding='utf-8')
+        manifest=exporter.export(self.source,self.target,self.env,favorites)
+        self.assertEqual(manifest['favorite_region_ids'],['dong_41465101'])
+        self.assertNotIn('private timestamp',json.dumps(manifest))
+        self.assertNotIn(self.secret,json.dumps(manifest))
+
+    def test_invalid_favorites_preserve_the_existing_manifest(self):
+        exporter.export(self.source,self.target,self.env)
+        before=(self.target/'manifest.json').read_bytes()
+        favorites=self.root/'selection.json'
+        favorites.write_text(json.dumps({'version':1,'regions':[{'region_id':'not-registered'}]}),encoding='utf-8')
+        with self.assertRaises(ValueError):
+            exporter.export(self.source,self.target,self.env,favorites)
+        self.assertEqual((self.target/'manifest.json').read_bytes(),before)
+
+    def test_legacy_group_is_expanded_to_actual_dongs_instead_of_preset(self):
+        favorites=self.root/'selection.json'
+        favorites.write_text(json.dumps({'version':1,'regions':[{'region_id':'suji'}]}),encoding='utf-8')
+        manifest=exporter.export(self.source,self.target,self.env,favorites)
+        self.assertEqual(manifest['favorite_region_ids'],['dong_41465101'])
 
 
 if __name__ == '__main__':

@@ -1,15 +1,15 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { ChartNoAxesCombined, Building2, ArrowDownUp, Ruler, ListFilter } from 'lucide-react';
 import { ResponsiveContainer, ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip, ScatterChart, Scatter, BarChart, Legend } from 'recharts';
-import { areaSummary, apartmentSummary, formatNumber, monthly, priceEok, scopeRows, stableSample, stats, validRows } from './domain.mjs';
+import { areaSummary, apartmentSummary, favoriteRegions, formatNumber, monthly, priceEok, scopeRows, stableSample, stats, validRows } from './domain.mjs';
 import { Empty } from './App.jsx';
 const color = '#178779';
 const tooltipStyle = {border:'1px solid #dce5e5',borderRadius:12,fontSize:12};
 
-export default function Dashboard({rows, region, manifest, start, end, districtLoader}) {
+export default function Dashboard({rows, region, manifest, favorites, start, end, districtLoader}) {
   const [minArea,setMinArea] = useState(0), [maxArea,setMaxArea] = useState(() => Math.max(300, Math.ceil(Math.max(0,...rows.map(row=>row.area_m2))))), [dongs,setDongs] = useState([]);
   const [comparisons,setComparisons] = useState({}), [compareError,setCompareError] = useState('');
-  const compareRegions = useMemo(() => manifest.regions.filter(item=>['suji','gwanggyo','bundang'].includes(item.region_id)),[manifest]);
+  const compareRegions = useMemo(() => favorites || favoriteRegions(manifest), [favorites, manifest]);
   useEffect(()=> {
     let active=true;
     setCompareError('');
@@ -25,7 +25,7 @@ export default function Dashboard({rows, region, manifest, start, end, districtL
   const areas=useMemo(()=>areaSummary(valid),[valid]);
   const points=useMemo(()=>stableSample(valid).map(row=>({...row,price:priceEok(row)})),[valid]);
   const allDongs=useMemo(()=>[...new Set(rows.map(row=>row.dong))].sort((a,b)=>a.localeCompare(b,'ko')),[rows]);
-  const comparable=compareRegions.map(item=>({label:item.label,
+  const comparable=compareRegions.map(item=>({region_id:item.region_id,label:item.label,
     ...(comparisons[item.region_code] ? stats(validRows(scopeRows(comparisons[item.region_code],item,start,end),minArea,maxArea)) : {count:null,median:null,pyeong:null,apartments:null})}));
   const cards=[['유효 거래',summary.count,'건',ChartNoAxesCombined,`${formatNumber(rows.filter(row=>row.cancelled).length)}건의 해제 거래 제외`],
     ['거래금액 중앙값',summary.median,'억 원',ArrowDownUp,'선택 기간 전체 유효 거래 기준'],
@@ -40,7 +40,7 @@ export default function Dashboard({rows, region, manifest, start, end, districtL
       <div className="chart-grid"><section className="panel"><div className="section-title"><div><h2>면적과 가격의 관계</h2><p>전용면적별 개별 거래가격</p></div></div><div className="chart-container"><ResponsiveContainer width="100%" height={285}><ScatterChart margin={{top:12,right:15,left:0,bottom:12}}><CartesianGrid stroke="#edf1f2"/><XAxis dataKey="area_m2" name="전용면적" type="number" unit="㎡" tick={{fontSize:11}} tickLine={false} axisLine={false}/><YAxis dataKey="price" name="거래가격" type="number" unit="억" tick={{fontSize:11}} tickLine={false} axisLine={false} width={45}/><Tooltip content={<PointTooltip/>}/><Scatter data={points} fill={color} fillOpacity={0.4} isAnimationActive={false}/></ScatterChart></ResponsiveContainer></div><p className="small-note">{valid.length>3000?`전체 ${formatNumber(valid.length)}건 중 ${formatNumber(points.length)}건을 고르게 추려 표시합니다. 통계는 전체 거래로 계산합니다.`:`유효 거래 ${formatNumber(valid.length)}건을 표시합니다.`}</p></section>
       <section className="panel"><div className="section-title"><div><h2>면적대별 실거래</h2><p>전용면적 구간별 금액 중앙값</p></div></div><div className="chart-container"><ResponsiveContainer width="100%" height={235}><BarChart data={areas} margin={{top:12,right:8,left:0,bottom:0}}><CartesianGrid vertical={false} stroke="#edf1f2"/><XAxis dataKey="label" tick={{fontSize:10}} axisLine={false} tickLine={false}/><YAxis unit="억" tick={{fontSize:11}} width={45} axisLine={false} tickLine={false}/><Tooltip contentStyle={tooltipStyle} formatter={value=>[`${formatNumber(value,2)}억 원`,'중앙값']}/><Bar dataKey="median" fill={color} radius={[5,5,0,0]} maxBarSize={45} isAnimationActive={false}/></BarChart></ResponsiveContainer></div><div className="area-counts">{areas.map(item=><span key={item.label}>{item.label}<strong>{formatNumber(item.count)}건</strong></span>)}</div></section></div>
     </>}
-    <section className="panel"><div className="section-title"><div><h2>관심 지역 비교</h2><p>같은 계약월 · 면적 조건 기준 · 세부 법정동 선택은 적용하지 않습니다.</p></div></div>{compareError?<p className="notice error">{compareError}</p>:<div className="comparison-grid">{comparable.map(item=><div className={item.label===region.label?'current':''} key={item.label}><span>{item.label}</span><strong>{formatNumber(item.median,2)}<small>억 원</small></strong><p>{formatNumber(item.count)}건 · 전용평당 {formatNumber(item.pyeong)}만 원</p></div>)}</div>}</section>
+    {compareRegions.length > 0 && <section className="panel"><div className="section-title"><div><h2>즐겨찾기 지역 비교</h2><p>저장한 즐겨찾기 {compareRegions.length}곳 · 같은 계약월·면적 기준 · 세부 법정동 선택은 적용하지 않습니다.</p></div></div>{compareError?<p className="notice error">{compareError}</p>:<div className="comparison-grid favorite-comparisons">{comparable.map(item=><div className={item.region_id===region.region_id?'current':''} key={item.region_id}><span>{item.label}</span><strong>{formatNumber(item.median,2)}<small>억 원</small></strong><p>{formatNumber(item.count)}건 · 전용평당 {formatNumber(item.pyeong)}만 원</p></div>)}</div>}</section>}
     {apartments.length>0 && <section className="panel"><div className="section-title"><div><h2>거래가 활발한 아파트</h2><p>유효 거래 건수 순 · 상위 {apartments.length}곳 · 동일 이름이라도 법정동과 지번이 다르면 별도 집계합니다.</p></div></div><div className="table-scroll summary-scroll"><table className="summary-table"><thead><tr>{['아파트','법정동 / 지번','거래 건수','금액 중앙값','최저 — 최고','평균 전용면적','최근 계약'].map(value=><th key={value}>{value}</th>)}</tr></thead><tbody>{apartments.map(item=><tr key={item.key}><td><strong>{item.apartment}</strong></td><td>{item.dong}<small>{item.jibun}</small></td><td>{formatNumber(item.count)}건</td><td>{formatNumber(item.median,2)}억</td><td>{formatNumber(item.min,2)} — {formatNumber(item.max,2)}억</td><td>{formatNumber(item.area,1)}㎡</td><td>{item.latest}</td></tr>)}</tbody></table></div></section>}
   </div>;
 }

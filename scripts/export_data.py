@@ -1,6 +1,7 @@
 """Export an allowlisted public SQLite snapshot into static, browser-readable files.
 
-No API access, credentials, collector history, or saved collection targets are exported.
+No API access, credentials, collector history, or private settings document is exported.
+Only explicitly selected favorite region IDs may be included in the public manifest.
 Run after generating public.sqlite3 with the private, loopback-only collector.
 """
 import argparse
@@ -70,7 +71,33 @@ def atomic_write(path, value):
             Path(temporary).unlink()
 
 
-def export(source, target=ROOT / 'public' / 'data', secrets_file=None):
+def favorite_ids(path, catalog):
+    if not path or not Path(path).exists():
+        return []
+    try:
+        document = json.loads(Path(path).read_text(encoding='utf-8-sig'))
+        if not isinstance(document, dict) or document.get('version') != 1 or not isinstance(document.get('regions'), list):
+            raise ValueError
+        by_id = {region['region_id']: region for region in catalog}
+        result = []
+        for item in document['regions']:
+            if not isinstance(item, dict) or item.get('region_id') not in by_id:
+                raise ValueError
+            region = by_id[item['region_id']]
+            if region['region_id'] in {'suji', 'gwanggyo', 'bundang'}:
+                # Historical group selections become their actual legal-dong favorites.
+                ids = [candidate['region_id'] for candidate in catalog
+                       if candidate['region_id'].startswith('dong_') and candidate['region_code'] == region['region_code']
+                       and (not region['dongs'] or any(dong in region['dongs'] for dong in candidate['dongs']))]
+            else:
+                ids = [region['region_id']]
+            result.extend(value for value in ids if value not in result)
+        return result
+    except (ValueError, KeyError, TypeError):
+        raise ValueError('즐겨찾기 목록이 올바르지 않거나 공개 지역 목록에 없는 지역이 있습니다. 저장된 지역 목록을 확인하세요.') from None
+
+
+def export(source, target=ROOT / 'public' / 'data', secrets_file=None, favorites_file=None):
     source, target = Path(source).resolve(), Path(target).resolve()
     if not source.is_file():
         raise ValueError('공개 SQLite 파일을 먼저 생성해 주세요.')
@@ -112,9 +139,10 @@ def export(source, target=ROOT / 'public' / 'data', secrets_file=None):
         months = sorted({row['deal_month'] for row in rows})
         districts[code] = {'file': filename, 'count': len(rows), 'months': months,
                            'sha256': digest, 'dongs': sorted({row['dong'] for row in rows})}
-    manifest = {'version': 1, 'published_at': published_at,
+    manifest = {'version': 2, 'published_at': published_at,
                 'exported_at': datetime.now(timezone.utc).isoformat(), 'count': len(trades),
                 'regions': catalog, 'districts': districts,
+                'favorite_region_ids': favorite_ids(favorites_file, catalog),
                 'months': sorted({row['deal_month'] for row in trades}),
                 'source': '국토교통부 아파트 매매 실거래가', 'boundary_catalog_date': '2023-07-29'}
     manifest_content = checked_bytes(json_bytes(manifest), secrets)
@@ -154,9 +182,10 @@ if __name__ == '__main__':
     parser.add_argument('--source', required=True, type=Path)
     parser.add_argument('--target', type=Path, default=ROOT / 'public' / 'data')
     parser.add_argument('--secrets-file', type=Path)
+    parser.add_argument('--favorites-file', type=Path, help='로컬에서 업데이트한 수집 지역 목록; 공개 파일에는 지역 ID만 반영')
     args = parser.parse_args()
     try:
-        result = export(args.source, args.target, args.secrets_file)
+        result = export(args.source, args.target, args.secrets_file, args.favorites_file)
         print(f"공개 데이터 내보내기 완료: {result['count']:,}건, {len(result['districts'])}개 API 지역")
     except (ValueError, OSError, sqlite3.Error) as exc:
         parser.exit(1, f'내보내기 실패: {exc}\n')
