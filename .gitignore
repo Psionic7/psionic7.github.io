@@ -12,3 +12,5 @@ __pycache__/
 /data/
 collection_regions.json
 my_real_estate.sqlite3
+/local/
+/admin-dist/
