@@ -11,6 +11,36 @@ const manifest={regions:[region,{region_id:'dong_11110101',label:'서울특별�
 beforeEach(()=>window.history.replaceState(null,'','/?region=area_41465&tab=dashboard'));
 afterEach(()=>{cleanup();vi.restoreAllMocks();vi.unstubAllGlobals();});
 describe('React transaction explorer',()=>{
+  it('keeps apartment detail in its own tab and opens summary links there with the same region and period',async()=>{
+    const user=userEvent.setup();
+    render(<App initialManifest={manifest} districtLoader={()=>Promise.resolve(rows)}/>);
+    const dashboard=screen.getByRole('tabpanel',{name:'대시보드'});
+    await within(dashboard).findByText('유효 거래',{selector:'.metric-label'});
+    expect(within(dashboard).queryByRole('searchbox',{name:'아파트 검색'})).toBeNull();
+    expect(within(dashboard).queryByRole('region',{name:'선택 아파트 실거래 내역'})).toBeNull();
+    await user.click(within(dashboard).getByRole('button',{name:'첫 아파트 풍덕천동 1 실거래 보기'}));
+    const apartments=screen.getByRole('tabpanel',{name:'아파트별 실거래가'});
+    await within(apartments).findByRole('heading',{name:'첫 아파트'});
+    expect(within(apartments).getByRole('combobox',{name:'조회 지역'}).value).toBe('area_41465');
+    expect(within(apartments).getByRole('combobox',{name:'시작 계약월'}).value).toBe('202601');
+    expect(within(apartments).getByRole('region',{name:'선택 아파트 실거래 내역'})).toBeTruthy();
+    expect(within(apartments).queryByText('거래의 흐름')).toBeNull();
+    expect(window.location.search).toContain('tab=apartments');
+    await user.click(screen.getByRole('button',{name:'대시보드',exact:true}));
+    await screen.findByText('유효 거래',{selector:'.metric-label'});
+    expect(screen.queryByRole('searchbox',{name:'아파트 검색'})).toBeNull();
+    await user.click(screen.getByRole('button',{name:'아파트별 실거래가',exact:true}));
+    await screen.findByRole('heading',{name:'첫 아파트'});
+  });
+  it('loads the apartment tab directly from its public URL without dashboard detail',async()=>{
+    window.history.replaceState(null,'','/?region=area_41465&tab=apartments');
+    render(<App initialManifest={manifest} districtLoader={()=>Promise.resolve(rows)}/>);
+    const apartments=screen.getByRole('tabpanel',{name:'아파트별 실거래가'});
+    await within(apartments).findByRole('searchbox',{name:'아파트 검색'});
+    expect(within(apartments).getByRole('combobox',{name:'조회 아파트'}).value).toBe('');
+    expect(screen.queryByText('유효 거래',{selector:'.metric-label'})).toBeNull();
+    expect(screen.queryByRole('button',{name:'원천 데이터',exact:true})).toBeNull();
+  });
   it('an old raw-data URL resolves to the public dashboard without exposing a table',async()=>{
     window.history.replaceState(null,'','/?region=area_41465&tab=raw');
     render(<App initialManifest={manifest} districtLoader={()=>Promise.resolve(rows)}/>);

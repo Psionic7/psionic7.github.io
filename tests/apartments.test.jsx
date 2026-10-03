@@ -1,19 +1,22 @@
-import React from 'react';
+import React, {useState} from 'react';
 import {afterEach, describe, expect, it, vi} from 'vitest';
 import {cleanup, render, screen, within} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import Dashboard from '../src/Dashboard.jsx';
+import ApartmentPage from '../src/ApartmentPage.jsx';
 
 const region={region_id:'area_41465',label:'경기도 용인시 수지구 전체',region_name:'경기도 용인시 수지구',region_code:'41465',dongs:[]};
-const manifest={regions:[region],favorite_region_ids:[]};
 const makeRow=(overrides={})=>({id:1,region_code:'41465',deal_month:'202601',deal_date:'2026-01-05',apartment:'동일아파트',dong:'풍덕천동',jibun:'1',price_man:100000,area_m2:85,floor:10,build_year:2000,cancelled:0,raw:{dealingGbn:'중개거래'},...overrides});
-const renderDashboard=rows=>render(<Dashboard rows={rows} region={region} manifest={manifest} favorites={[]} start="202601" end="202604" districtLoader={()=>Promise.resolve([])}/>);
+function ApartmentHarness({rows}) {
+  const [selectedKey,onSelect]=useState('');
+  return <ApartmentPage rows={rows} region={region} start="202601" end="202604" selectedKey={selectedKey} onSelect={onSelect}/>;
+}
+const renderApartments=rows=>render(<ApartmentHarness rows={rows}/>);
 afterEach(()=>{cleanup();vi.restoreAllMocks();});
 
 describe('Apartment transaction detail',()=>{
-  it('opens an apartment from the summary, isolates the lot, excludes cancellations and retains an exact area through unit changes',async()=>{
+  it('isolates the chosen lot, excludes cancellations and retains an exact area through unit changes',async()=>{
     const user=userEvent.setup();
-    renderDashboard([
+    renderApartments([
       makeRow(),
       makeRow({id:2,deal_month:'202603',deal_date:'2026-03-10',price_man:120000,floor:15}),
       makeRow({id:3,deal_month:'202602',deal_date:'2026-02-10',price_man:90000,area_m2:60,floor:5}),
@@ -21,7 +24,7 @@ describe('Apartment transaction detail',()=>{
       makeRow({id:5,deal_month:'202604',deal_date:'2026-04-01',price_man:800000,cancelled:1}),
       makeRow({id:6,dong:'죽전동',price_man:700000}),
     ]);
-    await user.click(screen.getByRole('button',{name:'동일아파트 풍덕천동 1 실거래 보기',exact:true}));
+    await user.selectOptions(screen.getByRole('combobox',{name:'조회 아파트'}),JSON.stringify(['풍덕천동','1','동일아파트']));
     const detail=screen.getByRole('region',{name:'아파트별 실거래가'});
     const metrics=within(detail).getByLabelText('선택 아파트 통계');
     expect(within(metrics).getByText('3')).toBeTruthy();
@@ -44,11 +47,11 @@ describe('Apartment transaction detail',()=>{
     expect(within(table).getAllByRole('cell',{name:'25.71평',exact:true})).toHaveLength(2);
     expect(screen.queryByRole('button',{name:'CSV 다운로드'})).toBeNull();
   });
-  it('searches every apartment rather than only the top thirty, and offers no implicit initial choice',async()=>{
+  it('searches every apartment and offers no implicit initial choice',async()=>{
     const user=userEvent.setup();
     const rows=Array.from({length:30},(_,i)=>[makeRow({id:i*2+1,apartment:`일반단지${i}`}),makeRow({id:i*2+2,apartment:`일반단지${i}`})]).flat();
     rows.push(makeRow({id:100,apartment:'희소단지',price_man:110000}));
-    renderDashboard(rows);
+    renderApartments(rows);
     const select=screen.getByRole('combobox',{name:'조회 아파트'});
     expect(select.value).toBe('');
     expect(screen.queryByRole('button',{name:'희소단지 풍덕천동 1 실거래 보기'})).toBeNull();
@@ -64,7 +67,7 @@ describe('Apartment transaction detail',()=>{
   });
   it('paginates large histories and returns to the first page when the exact area changes',async()=>{
     const user=userEvent.setup();
-    renderDashboard(Array.from({length:52},(_,i)=>makeRow({id:i+1,area_m2:i===0?60:85,price_man:i===0?77000:100000})));
+    renderApartments(Array.from({length:52},(_,i)=>makeRow({id:i+1,area_m2:i===0?60:85,price_man:i===0?77000:100000})));
     await user.selectOptions(screen.getByRole('combobox',{name:'조회 아파트'}),JSON.stringify(['풍덕천동','1','동일아파트']));
     const detail=screen.getByRole('region',{name:'아파트별 실거래가'});
     let table=within(detail).getByRole('region',{name:'선택 아파트 실거래 내역'});

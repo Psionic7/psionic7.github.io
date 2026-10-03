@@ -1,10 +1,11 @@
 import React, { lazy, Suspense, useEffect, useMemo, useState } from 'react';
-import { House, ChartNoAxesCombined, Info, Search, ArrowUpRight, Copy, Database, SlidersHorizontal, Star } from 'lucide-react';
+import { House, ChartNoAxesCombined, Building2, Info, Search, ArrowUpRight, Copy, Database, SlidersHorizontal, Star } from 'lucide-react';
 import { buildCatalog, favoriteRegions, formatNumber, hierarchy, monthLabel, scopeRows } from './domain.mjs';
 import { fetchJson, loadDistrict } from './data.js';
 import {Empty,Loading} from './ViewState.jsx';
 const Dashboard = lazy(() => import('./Dashboard.jsx'));
-const tabs = [['dashboard', '대시보드', ChartNoAxesCombined], ['about', '데이터 안내', Info]];
+const ApartmentPage = lazy(() => import('./ApartmentPage.jsx'));
+const tabs = [['dashboard', '대시보드', ChartNoAxesCombined], ['apartments', '아파트별 실거래가', Building2], ['about', '데이터 안내', Info]];
 const unique = values => [...new Set(values)].sort((a, b) => a.localeCompare(b, 'ko'));
 const timestamp = value => new Date(value).toLocaleString('ko-KR', {timeZone: 'Asia/Seoul', dateStyle: 'medium', timeStyle: 'short'});
 
@@ -36,6 +37,7 @@ function Explorer({ manifest, districtLoader }) {
   const [start, setStart] = useState(available.includes(initial.get('start')) && initial.get('start') <= initialEnd ? initial.get('start') : (available.filter(value => value <= initialEnd).slice(-12)[0] || ''));
   const [end, setEnd] = useState(available.includes(initial.get('end')) ? initial.get('end') : (available.at(-1) || ''));
   const [tab, setTab] = useState(tabs.some(([value]) => value === initial.get('tab')) ? initial.get('tab') : 'dashboard');
+  const [selectedApartment, setSelectedApartment] = useState('');
   const [province, setProvince] = useState(''), [city, setCity] = useState(''), [district, setDistrict] = useState('');
   const [search, setSearch] = useState(''), [rows, setRows] = useState([]), [busy, setBusy] = useState(true);
   const [error, setError] = useState(''), [retry, setRetry] = useState(0), [copied, setCopied] = useState(false);
@@ -64,6 +66,7 @@ function Explorer({ manifest, districtLoader }) {
   const chooseRegion = id => {
     const next = catalog.find(item => item.region_id === id);
     setRegionId(id);
+    setSelectedApartment('');
     const months = manifest.districts[next.region_code]?.months || manifest.months;
     if (!months.includes(start) || !months.includes(end)) {
       setStart(months[Math.max(0, months.length - 12)] || ''); setEnd(months.at(-1) || '');
@@ -98,13 +101,16 @@ function Explorer({ manifest, districtLoader }) {
       <span className="filter-heading">계약월 범위</span>
       <div className="two-fields"><label>시작 계약월<select disabled={!region} value={start} onChange={event => { setStart(event.target.value); if (event.target.value > end) setEnd(event.target.value); }}>{available.map(value => <option key={value} value={value}>{monthLabel(value)}</option>)}</select></label><label>종료 계약월<select disabled={!region} value={end} onChange={event => {setEnd(event.target.value); if (event.target.value < start) setStart(event.target.value);}}>{available.map(value => <option key={value} value={value}>{monthLabel(value)}</option>)}</select></label></div>
       {region && <div className="scope-card"><span className="status-dot" /><div><strong>{region.region_name}</strong><small>시군구 코드 {region.region_code}</small>{region.dongs.length > 0 && <small>{region.dongs.join(' · ')}</small>}</div></div>}
-      <p className="small-note">선택한 지역·기간은 이 대시보드에 적용됩니다.</p>
+      <p className="small-note">선택한 지역·기간은 대시보드와 아파트별 실거래가에 적용됩니다.</p>
       </div>
       </section>
       <div className="context-line"><strong>{region?.label || '조회할 지역을 선택해 주세요'}</strong>{region && <><span>{monthLabel(start)} — {monthLabel(end)}</span><span>{formatNumber(data.length)}건의 원천 자료</span></>}</div>
       </>}
       {tab === 'about' ? <About manifest={manifest} /> : !region ? <section className="panel"><Empty title="조회할 지역을 선택해 주세요.">{favorites.length ? '위의 즐겨찾기에서 지역을 고르거나 시·구·동으로 검색하세요.' : '위의 시·구·동 필터에서 조회할 지역을 고르세요.'}</Empty></section> : busy ? <Loading /> : error ? <div className="notice error" role="alert">{error}<button onClick={() => setRetry(value => value + 1)}>다시 불러오기</button></div> :
-        <Suspense fallback={<Loading text="대시보드를 준비하고 있습니다." />}><Dashboard key={region.region_id} rows={data} region={region} manifest={manifest} favorites={favorites} start={start} end={end} districtLoader={districtLoader} /></Suspense>}
+        <Suspense fallback={<Loading text="조회 화면을 준비하고 있습니다." />}>
+          {tab === 'apartments' ? <ApartmentPage key={region.region_id} rows={data} region={region} start={start} end={end} selectedKey={selectedApartment} onSelect={setSelectedApartment} />
+            : <Dashboard key={region.region_id} rows={data} region={region} manifest={manifest} favorites={favorites} start={start} end={end} districtLoader={districtLoader} onOpenApartment={key=>{setSelectedApartment(key);setTab('apartments');document.querySelector('.tabs')?.scrollIntoView?.({block:'start'});}} />}
+        </Suspense>}
       </section>
       <footer className="page-footer">자료: 국토교통부 아파트 매매 실거래가 · 신고 자료의 정정과 해제에 따라 값이 달라질 수 있습니다.</footer>
     </main>
