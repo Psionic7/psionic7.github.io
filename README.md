@@ -89,7 +89,9 @@ pnpm check:publish
 |---|---|
 | `manifest.json` | 지역 목록, 저장한 즐겨찾기 ID, 지역별 건수·월·해시 |
 | `trades-<시군구>-<해시>.json` | 정규화 값 + 모든 원천 필드 `raw` |
-| `public.sqlite3` | `trades`·`regions`·`metadata` 세 테이블 |
+| `public.sqlite3` 또는 `public.sqlite3.gz` | `trades`·`regions`·`metadata` 세 테이블. 95 MiB를 넘으면 전체 DB를 gzip 압축해 배포 |
+
+SQLite 다운로드는 데이터 안내 화면의 링크를 사용합니다. `.gz` 파일이면 gzip 압축을 풀어 `public.sqlite3`로 사용하세요. manifest의 `database` 항목에 파일명·형식·압축 전후 크기와 SHA256을 기록하며, 게시 검사는 압축을 해제해 전체 건수·무결성·허용 테이블·인증 값 미포함 여부까지 확인합니다.
 
 **공개 저장소의 소스와 공개 데이터는 누구나 내려받을 수 있습니다.** `.env`, API 키, 로컬 작업 DB, 수집 이력·XML, `collection_regions.json`, 관리자 빌드는 Git에서 제외하고 게시 검사에서도 차단합니다. 즐겨찾기 **지역 ID만** 관리자가 공개하도록 선택한 목록으로 manifest에 포함합니다. Git 인덱스와 현재 게시 파일을 실제 로컬 비밀 값과 대조합니다.
 

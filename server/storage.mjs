@@ -28,10 +28,10 @@ export function secretValues(filename=paths.env) {
   const values=Object.entries({...localEnv(filename),...process.env}).filter(([k,v])=>/(SERVICE_KEY|API_KEY|TOKEN|SECRET|PASSWORD)$/i.test(k)&&v?.length>=12).map(([,v])=>v);
   return [...new Set(values.flatMap(v=>{let decoded=v;try{decoded=decodeURIComponent(v);}catch{}return [v,decoded,encodeURIComponent(decoded)];}))];
 }
-export function checkedBytes(value,secrets=secretValues()) {
+export function checkedBytes(value,secrets=secretValues(),{maxBytes=95*1024*1024}={}) {
   const buffer=Buffer.isBuffer(value)?value:Buffer.from(value);
   if(secrets.some(v=>buffer.includes(Buffer.from(v))) || /(?:serviceKey|MOLIT_SERVICE_KEY)\s*[=:]\s*["']?[a-z0-9%]{16,}/i.test(buffer.toString('utf8'))) throw new Error('공개 파일에 인증 값이 포함되어 작업을 중단했습니다.');
-  if(buffer.length>95*1024*1024) throw new Error('공개 파일이 95 MB를 초과했습니다.');
+  if(buffer.length>maxBytes) throw new Error('공개 파일이 95 MB를 초과했습니다.');
   return buffer;
 }
 export function connect(filename=paths.db,readOnly=false) {return new DatabaseSync(filename,{readOnly,timeout:30000});}

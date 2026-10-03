@@ -107,6 +107,12 @@ describe('React transaction explorer',()=>{
     expect(screen.getByText('로컬 전용')).toBeTruthy();
     expect(screen.getByRole('link',{name:'공개 SQLite 다운로드'}).getAttribute('href')).toBe('/data/public.sqlite3');
   });
+  it('uses the manifest SQLite archive link and explains decompression for large datasets',()=>{
+    window.history.replaceState(null,'','/?tab=about');
+    render(<App initialManifest={{...manifest,database:{file:'public.sqlite3.gz',format:'sqlite3+gzip'}}}/>);
+    expect(screen.getByRole('link',{name:'공개 SQLite 다운로드 (.gz)'}).getAttribute('href')).toBe('/data/public.sqlite3.gz');
+    expect(screen.getByText(/다운로드 후 gzip 압축을 풀면/)).toBeTruthy();
+  });
   it('does not display a stale district when a slow previous request finishes',async()=>{
     const user=userEvent.setup();
     let resolveOld;

@@ -1,9 +1,16 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import {createHash,randomUUID} from 'node:crypto';
+import {gzipSync} from 'node:zlib';
 import {connect,PUBLIC_SCHEMA,TRADE_COLUMNS,REGION_COLUMNS,paths,ROOT,secretValues,checkedBytes,savedIds,atomicWrite} from './storage.mjs';
 export const sha256=data=>createHash('sha256').update(data).digest('hex');
-export function exportData({source=paths.db,target=path.join(ROOT,'public/data'),favorites=paths.favorites,secretsFile=paths.env}={}) {
+export function databasePayload(raw,secrets,compressAbove=95*1024*1024) {
+  checkedBytes(raw,secrets,{maxBytes:Infinity});
+  const compressed=raw.length>compressAbove;
+  const bytes=checkedBytes(compressed?gzipSync(raw,{level:6}):raw,secrets);
+  return {bytes,metadata:{file:compressed?'public.sqlite3.gz':'public.sqlite3',format:compressed?'sqlite3+gzip':'sqlite3',bytes:bytes.length,sha256:sha256(bytes),uncompressed_bytes:raw.length,uncompressed_sha256:sha256(raw)}};
+}
+export function exportData({source=paths.db,target=path.join(ROOT,'public/data'),favorites=paths.favorites,secretsFile=paths.env,compressAbove=95*1024*1024}={}) {
   source=path.resolve(source);target=path.resolve(target);
   if(!fs.existsSync(source)||source===path.join(target,'public.sqlite3')) throw new Error('원본 작업 DB와 내보내기 경로를 확인하세요.');
   const secrets=secretValues(secretsFile),db=connect(source,true);let trades,regionRows,published;
@@ -30,7 +37,6 @@ export function exportData({source=paths.db,target=path.join(ROOT,'public/data')
     districts[code]={file,count:rows.length,months:[...new Set(rows.map(r=>r.deal_month))].sort(),sha256:digest,dongs:[...new Set(rows.map(r=>r.dong))].sort()};
   }
   const manifest={version:2,published_at:published,exported_at:new Date().toISOString(),count:trades.length,regions:catalog,districts,favorite_region_ids:savedIds(favorites,catalog),months:[...new Set(trades.map(r=>r.deal_month))].sort(),source:'국토교통부 아파트 매매 실거래가',boundary_catalog_date:'2023-07-29'};
-  const manifestBytes=checkedBytes(JSON.stringify(manifest),secrets);
   fs.mkdirSync(target,{recursive:true});const temp=path.join(target,`.snapshot-${randomUUID()}.tmp`);
   try {
     const out=connect(temp);
@@ -44,11 +50,15 @@ export function exportData({source=paths.db,target=path.join(ROOT,'public/data')
       out.exec('COMMIT');
       if(Object.values(out.prepare('PRAGMA integrity_check').get())[0]!=='ok')throw new Error('공개 DB 무결성 확인 실패');
     }finally{out.close();}
-    const dbBytes=checkedBytes(fs.readFileSync(temp),secrets);
+    const payload=databasePayload(fs.readFileSync(temp),secrets,compressAbove);
+    manifest.database=payload.metadata;
+    const manifestBytes=checkedBytes(JSON.stringify(manifest),secrets);
     for(const [name,bytes] of payloads)atomicWrite(path.join(target,name),bytes);
-    atomicWrite(path.join(target,'public.sqlite3'),dbBytes);
+    atomicWrite(path.join(target,payload.metadata.file),payload.bytes);
     atomicWrite(path.join(target,'manifest.json'),manifestBytes);
     for(const name of fs.readdirSync(target))if(/^trades-\d{5}-[a-f0-9]{12}\.json$/.test(name)&&!payloads.has(name))fs.unlinkSync(path.join(target,name));
+    const obsolete=path.join(target,payload.metadata.file==='public.sqlite3'?'public.sqlite3.gz':'public.sqlite3');
+    if(fs.existsSync(obsolete))fs.unlinkSync(obsolete);
   } finally {if(fs.existsSync(temp))fs.unlinkSync(temp);}
   return manifest;
 }
