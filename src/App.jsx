@@ -1,11 +1,13 @@
 import React, { lazy, Suspense, useEffect, useMemo, useState } from 'react';
-import { House, ChartNoAxesCombined, Building2, Info, Search, ArrowUpRight, Copy, Database, SlidersHorizontal, Star } from 'lucide-react';
+import { House, ChartNoAxesCombined, Building2, CalendarDays, Info, Search, ArrowUpRight, Copy, Database, SlidersHorizontal, Star } from 'lucide-react';
 import { buildCatalog, favoriteRegions, formatNumber, hierarchy, monthLabel, scopeRows } from './domain.mjs';
 import { fetchJson, loadDistrict } from './data.js';
 import {Empty,Loading} from './ViewState.jsx';
+import {publishedDay,weekBounds} from './weekly.mjs';
 const Dashboard = lazy(() => import('./Dashboard.jsx'));
 const ApartmentPage = lazy(() => import('./ApartmentPage.jsx'));
-const tabs = [['dashboard', '대시보드', ChartNoAxesCombined], ['apartments', '아파트별 실거래가', Building2], ['about', '데이터 안내', Info]];
+const WeeklyPage = lazy(() => import('./WeeklyPage.jsx'));
+const tabs = [['dashboard', '대시보드', ChartNoAxesCombined], ['apartments', '아파트별 실거래가', Building2], ['weekly', '동별 주간 실거래가', CalendarDays], ['about', '데이터 안내', Info]];
 const unique = values => [...new Set(values)].sort((a, b) => a.localeCompare(b, 'ko'));
 const timestamp = value => new Date(value).toLocaleString('ko-KR', {timeZone: 'Asia/Seoul', dateStyle: 'medium', timeStyle: 'short'});
 
@@ -37,23 +39,28 @@ function Explorer({ manifest, districtLoader }) {
   const [start, setStart] = useState(available.includes(initial.get('start')) && initial.get('start') <= initialEnd ? initial.get('start') : (available.filter(value => value <= initialEnd).slice(-12)[0] || ''));
   const [end, setEnd] = useState(available.includes(initial.get('end')) ? initial.get('end') : (available.at(-1) || ''));
   const [tab, setTab] = useState(tabs.some(([value]) => value === initial.get('tab')) ? initial.get('tab') : 'dashboard');
+  const isWeekly = tab === 'weekly';
+  const [weeklyIds,setWeeklyIds] = useState(()=>[...new Set(initial.getAll('dong'))].filter(id=>catalog.some(item=>item.region_id===id&&item.dongs.length===1)));
+  const [weeklyDay,setWeeklyDay] = useState(()=>weekBounds(initial.get('week'))?.start||weekBounds(publishedDay(manifest.published_at))?.start||'');
   const [selectedApartment, setSelectedApartment] = useState('');
   const [province, setProvince] = useState(''), [city, setCity] = useState(''), [district, setDistrict] = useState('');
   const [search, setSearch] = useState(''), [rows, setRows] = useState([]), [busy, setBusy] = useState(true);
   const [error, setError] = useState(''), [retry, setRetry] = useState(0), [copied, setCopied] = useState(false);
   useEffect(() => {
     let active = true;
+    if (isWeekly) return;
     if (!regionCode) { setRows([]); setBusy(false); setError(''); return; }
     setBusy(true); setError('');
     districtLoader(manifest, regionCode).then(value => { if (active) { setRows(value); setBusy(false); } })
       .catch(reason => { if (active) { setError(reason.message); setBusy(false); } });
     return () => { active = false; };
-  }, [manifest, regionCode, districtLoader, retry]);
+  }, [manifest, regionCode, districtLoader, retry, isWeekly]);
   useEffect(() => {
     const params = new URLSearchParams({tab});
-    if (region) { params.set('region', region.region_id); params.set('start', start); params.set('end', end); }
+    if (isWeekly) { weeklyIds.forEach(id=>params.append('dong',id)); if(weeklyDay)params.set('week',weeklyDay); }
+    else if (region) { params.set('region', region.region_id); params.set('start', start); params.set('end', end); }
     window.history.replaceState(null, '', `?${params}`);
-  }, [regionId, start, end, tab]);
+  }, [regionId, start, end, tab, weeklyIds, weeklyDay]);
   const choices = catalog.filter(item => {
     const location = hierarchy(item);
     return (!province || location.province === province) && (!city || location.city === city) &&
@@ -83,7 +90,7 @@ function Explorer({ manifest, districtLoader }) {
       <header className="page-header"><div><p className="eyebrow">HOME RECORDS / REAL TRANSACTIONS</p><h1>실거래로 읽는 우리 동네</h1><p>지역과 기간을 골라 거래의 흐름을 살펴보세요.</p></div><button className="share-button" onClick={share}><Copy size={15} />{copied ? '주소 복사됨' : '조회 주소 복사'}</button></header>
       <nav className="tabs" aria-label="조회 화면">{tabs.map(([id, label, Icon]) => <button key={id} aria-current={tab === id ? 'page' : undefined} onClick={() => setTab(id)}><Icon size={17} />{label}</button>)}</nav>
       <section className="tab-content" role="tabpanel" aria-label={tabs.find(([id]) => id === tab)[1]}>
-      {tab !== 'about' && <>
+      {tab !== 'about' && !isWeekly && <>
       <section className="panel query-panel" aria-label="조회 조건">
       <div className="sidebar-heading"><SlidersHorizontal size={16} /><h2>조회 조건</h2></div>
       <section className="favorites-section" aria-label="즐겨찾기 지역"><div className="filter-heading"><span><Star size={14} /> 즐겨찾기</span><small>{favorites.length}곳</small></div>
@@ -106,7 +113,7 @@ function Explorer({ manifest, districtLoader }) {
       </section>
       <div className="context-line"><strong>{region?.label || '조회할 지역을 선택해 주세요'}</strong>{region && <><span>{monthLabel(start)} — {monthLabel(end)}</span><span>{formatNumber(data.length)}건의 원천 자료</span></>}</div>
       </>}
-      {tab === 'about' ? <About manifest={manifest} /> : !region ? <section className="panel"><Empty title="조회할 지역을 선택해 주세요.">{favorites.length ? '위의 즐겨찾기에서 지역을 고르거나 시·구·동으로 검색하세요.' : '위의 시·구·동 필터에서 조회할 지역을 고르세요.'}</Empty></section> : busy ? <Loading /> : error ? <div className="notice error" role="alert">{error}<button onClick={() => setRetry(value => value + 1)}>다시 불러오기</button></div> :
+      {isWeekly ? <Suspense fallback={<Loading text="주간 조회를 준비하고 있습니다." />}><WeeklyPage manifest={manifest} catalog={catalog} selectedIds={weeklyIds} onChange={setWeeklyIds} day={weeklyDay} onDayChange={value=>setWeeklyDay(weekBounds(value)?.start||'')} districtLoader={districtLoader}/></Suspense> : tab === 'about' ? <About manifest={manifest} /> : !region ? <section className="panel"><Empty title="조회할 지역을 선택해 주세요.">{favorites.length ? '위의 즐겨찾기에서 지역을 고르거나 시·구·동으로 검색하세요.' : '위의 시·구·동 필터에서 조회할 지역을 고르세요.'}</Empty></section> : busy ? <Loading /> : error ? <div className="notice error" role="alert">{error}<button onClick={() => setRetry(value => value + 1)}>다시 불러오기</button></div> :
         <Suspense fallback={<Loading text="조회 화면을 준비하고 있습니다." />}>
           {tab === 'apartments' ? <ApartmentPage key={region.region_id} rows={data} region={region} start={start} end={end} selectedKey={selectedApartment} onSelect={setSelectedApartment} />
             : <Dashboard key={region.region_id} rows={data} region={region} manifest={manifest} favorites={favorites} start={start} end={end} districtLoader={districtLoader} onOpenApartment={key=>{setSelectedApartment(key);setTab('apartments');document.querySelector('.tabs')?.scrollIntoView?.({block:'start'});}} />}
