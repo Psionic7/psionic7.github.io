@@ -1,0 +1,14 @@
+node_modules/
+.vite/
+coverage/
+.env
+.env.*
+.streamlit/
+.venv/
+__pycache__/
+*.pyc
+*.log
+*.tmp
+/data/
+collection_regions.json
+my_real_estate.sqlite3

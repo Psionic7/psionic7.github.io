@@ -1,0 +1,9 @@
+#!/bin/sh
+if [ -x "../my_real_estate/.venv/Scripts/python.exe" ]; then
+  task_python="../my_real_estate/.venv/Scripts/python.exe"
+elif command -v python3 >/dev/null 2>&1; then
+  task_python="python3"
+else
+  task_python="python"
+fi
+"$task_python" -X utf8 scripts/check_public.py --secrets-file ../my_real_estate/.env
