@@ -8,6 +8,7 @@ import {ROOT,paths,initialize,connect,regions,savedIds,saveFavorites,serviceKey}
 import {collectMonth,monthsBetween,collectionTasks,currentMonth} from './collector.mjs';
 import {exportData} from './export.mjs';
 import {checkPublic} from '../scripts/check-public.mjs';
+import {buildCatalog} from '../src/domain.mjs';
 
 export function createAdminServer({files=paths,staticRoot=path.join(ROOT,'admin-dist'),fetcher}={}) {
   const token=randomBytes(32).toString('hex');
@@ -37,6 +38,18 @@ export function createAdminServer({files=paths,staticRoot=path.join(ROOT,'admin-
         let body='';for await(const chunk of req){body+=chunk.toString('utf8');if(Buffer.byteLength(body)>1024*1024)return json(res,413,{error:'요청이 너무 큽니다.'});}
         let input;try{input=JSON.parse(body);if(!input||Array.isArray(input)||typeof input!=='object')throw new Error();}catch{return json(res,400,{error:'JSON 요청이 올바르지 않습니다.'});}
         if(pathname==='/api/cancel'){controller?.abort();return json(res,200,{ok:true});}
+        if(pathname==='/api/raw-data') {
+          const {region_id,start,end}=input;
+          if(typeof region_id!=='string'||!/^\d{6}$/.test(start||'')||!/^\d{6}$/.test(end||'')||start>end||[start,end].some(m=>Number(m.slice(4))<1||Number(m.slice(4))>12))throw new Error('원천 조회 지역과 계약월을 확인하세요.');
+          const rows=withDb(db=>{
+            const region=buildCatalog(regions(db)).find(r=>r.region_id===region_id);
+            if(!region)throw new Error('원천 조회 지역이 올바르지 않습니다.');
+            const dongClause=region.dongs.length?` AND dong IN (${region.dongs.map(()=>'?').join(',')})`:'';
+            return db.prepare(`SELECT * FROM trades WHERE region_code=? AND deal_month>=? AND deal_month<=?${dongClause} ORDER BY deal_date DESC,id DESC`)
+              .all(region.region_code,start,end,...region.dongs).map(({raw_json,...row})=>({...row,raw:JSON.parse(raw_json)}));
+          });
+          return json(res,200,{rows});
+        }
         if(busy())return json(res,409,{error:'현재 작업이 끝난 뒤 실행하세요.'});
         if(pathname==='/api/favorites') {
           const saved=withDb(db=>saveFavorites(input.ids,files.favorites,regions(db)));
@@ -97,7 +110,7 @@ export function createAdminServer({files=paths,staticRoot=path.join(ROOT,'admin-
       const ext=path.extname(filename),mime={'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.json':'application/json; charset=utf-8','.geojson':'application/geo+json','.png':'image/png','.svg':'image/svg+xml'}[ext]||'application/octet-stream';
       res.writeHead(200,{'Content-Type':mime,'Cache-Control':ext==='.html'?'no-store':'no-cache','X-Content-Type-Options':'nosniff'});
       if(req.method==='HEAD')res.end();else fs.createReadStream(filename).pipe(res);
-    }catch(e){json(res,400,{error:/^(저장한 수집|수집 지역|서울·경기|계약월|월 범위|한 번에|API 키|\.env에|지역 코드|원천 필드|공개 파일|원본 작업)/.test(e.message)?e.message:'요청 처리 실패. 로컬 파일 상태와 입력값을 확인하세요.'});}
+    }catch(e){json(res,400,{error:/^(원천 조회|저장한 수집|수집 지역|서울·경기|계약월|월 범위|한 번에|API 키|\.env에|지역 코드|원천 필드|공개 파일|원본 작업)/.test(e.message)?e.message:'요청 처리 실패. 로컬 파일 상태와 입력값을 확인하세요.'});}
   });
   server.on('close',()=>controller?.abort());
   return server;

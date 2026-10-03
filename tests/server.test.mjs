@@ -103,6 +103,25 @@ test('local API denies foreign origins, DNS rebinding, missing CSRF and private 
   assert.equal(document.status,200);
   assert.equal(document.headers.get('referrer-policy'),'strict-origin-when-cross-origin');
 });
+test('raw-data API requires local origin and CSRF; filters scope and month while preserving cancelled and original values',async t=>{
+  const {files}=fixture(t),db=connect(files.db);
+  const collect=async(month,items)=>collectMonth(db,'key','11110',month,'서울특별시 종로구',{pause:0,fetcher:async()=>({total:items.length,items,xml:xml(items)})});
+  await collect('202601',[raw,{...raw,cdealType:'O'},{...raw,umdNm:'신교동'}]);
+  await collect('202512',[{...raw,dealYear:'2025',dealMonth:'12'}]);db.close();
+  const server=createAdminServer({files});server.listen(0,'127.0.0.1');await once(server,'listening');t.after(()=>new Promise(resolve=>server.close(resolve)));
+  const base=`http://127.0.0.1:${server.address().port}`,state=await(await fetch(base+'/api/state')).json();
+  const post=(body,headers={})=>fetch(base+'/api/raw-data',{method:'POST',headers:{'Content-Type':'application/json','X-Admin-CSRF':state.csrf,...headers},body:JSON.stringify(body)});
+  const body={region_id:'dong_11110101',start:'202601',end:'202601'};
+  const response=await post(body),data=await response.json();assert.equal(response.status,200);
+  assert.equal(data.rows.length,2);assert.equal(data.rows.filter(r=>r.cancelled).length,1);
+  assert.deepEqual(data.rows.find(r=>!r.cancelled).raw,raw);assert(!JSON.stringify(data).includes('fixturekey'));
+  const whole=await(await post({...body,region_id:'area_11110',start:'202512'})).json();assert.equal(whole.rows.length,4);
+  assert.equal((await post(body,{'X-Admin-CSRF':''})).status,403);
+  assert.equal((await post(body,{Origin:'https://evil.example'})).status,403);
+  assert.equal((await post({...body,region_id:'unknown'})).status,400);
+  assert.equal((await post({...body,end:'202613'})).status,400);
+  assert.equal((await fetch(base+'/api/raw-data')).status,405);
+});
 test('local job deduplicates districts, rejects overlapping work and supports cancellation',async t=>{
   const {files,catalog}=fixture(t);saveFavorites(catalog.map(r=>r.region_id),files.favorites,catalog);
   let requested=0;const fetcher=async(_key,_code,_month,_page,signal)=>{requested++;await new Promise((resolve,reject)=>{signal.addEventListener('abort',()=>reject(new Error('aborted')),{once:true});});};

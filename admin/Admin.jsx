@@ -1,6 +1,7 @@
 import React,{useEffect,useMemo,useRef,useState} from 'react';
 import {Star,House,Database,Download,Play,Square,Save,Undo2,MapPin,ExternalLink,Plus} from 'lucide-react';
 import RegionMap from './RegionMap.jsx';
+import RawExplorer from './RawExplorer.jsx';
 import {hierarchy,formatNumber} from '../src/domain.mjs';
 const unique=values=>[...new Set(values.filter(Boolean))].sort((a,b)=>a.localeCompare(b,'ko'));
 export async function adminApi(endpoint,body,csrf) {
@@ -12,6 +13,7 @@ export default function Admin({initialState,initialBoundaries,initialAdminBounda
   const [boundaries,setBoundaries]=useState(initialBoundaries),[adminBoundaries,setAdminBoundaries]=useState(initialAdminBoundaries);
   const [province,setProvince]=useState(''),[city,setCity]=useState(''),[district,setDistrict]=useState(''),[query,setQuery]=useState('');
   const [error,setError]=useState(''),[message,setMessage]=useState(''),[pending,setPending]=useState(false),[start,setStart]=useState(''),[end,setEnd]=useState('');
+  const [tab,setTab]=useState('collection');
   const [custom,setCustom]=useState({code:'',name:'',label:'',dongs:''});
   const loadStarted=useRef(false);
   const refreshState=next=>setState(previous=>previous&&JSON.stringify(previous.catalog)===JSON.stringify(next.catalog)?{...next,catalog:previous.catalog}:next);
@@ -40,6 +42,9 @@ export default function Admin({initialState,initialBoundaries,initialAdminBounda
   return <div className="admin-shell"><header className="admin-header"><a className="brand" href="/"><span className="brand-icon"><House size={25}/></span><span>집의 기록<small>React · 로컬 관리자</small></span></a><span className="badge">관리자 PC 전용</span><a href="https://psionic7.github.io/" target="_blank" rel="noreferrer">공개 사이트 <ExternalLink size={14}/></a></header>
     <main className="admin-main"><div className="page-header"><div><p className="eyebrow">LOCAL DATA COLLECTION</p><h1>데이터 수집 · 관리</h1><p>수집 지역을 편집하고 실거래 자료를 로컬 SQLite에 저장합니다.</p></div><div className="admin-count"><Database size={20}/><strong>{formatNumber(state?.stats.count||0)}건</strong><small>로컬 거래 데이터</small></div></div>
       {error&&<div className="notice error" role="alert">{error}</div>}{message&&<div className="notice success" role="status">{message}</div>}
+      <nav className="tabs" aria-label="관리자 화면"><button aria-current={tab==='collection'?'page':undefined} onClick={()=>setTab('collection')}>데이터 수집</button><button aria-current={tab==='raw'?'page':undefined} onClick={()=>setTab('raw')}>원천 데이터</button></nav>
+      {tab==='raw'&&state&&<RawExplorer state={state} request={request}/>}
+      <div hidden={tab!=='collection'}>
       {!state||!boundaries||!adminBoundaries?<section className="panel">지역 목록과 경계를 불러오고 있습니다.</section>:<>
       <section className="panel"><div className="panel-heading"><MapPin size={19}/><h2>지도에서 수집 지역 선택</h2><span className="badge">선택 {draft.length}곳 · 저장 {saved.length}곳</span></div><p className="small-note">지역을 클릭하면 정보 팝업이 열립니다. 우측 위 별표를 눌러 추가·해제하세요. 지도와 확대 상태는 유지됩니다.</p>
         <div className="location-filters"><label>시도<select value={province} onChange={e=>{setProvince(e.target.value);setCity('');setDistrict('');}}><option value="">서울·경기 전체</option>{unique(catalog.map(r=>hierarchy(r).province)).map(v=><option key={v}>{v}</option>)}</select></label><label>시·군<select value={city} onChange={e=>{setCity(e.target.value);setDistrict('');}}><option value="">전체 시·군</option>{unique(catalog.filter(r=>!province||hierarchy(r).province===province).map(r=>hierarchy(r).city)).map(v=><option key={v}>{v}</option>)}</select></label><label>구<select value={district} onChange={e=>setDistrict(e.target.value)}><option value="">전체 구</option>{unique(catalog.filter(r=>(!province||hierarchy(r).province===province)&&(!city||hierarchy(r).city===city)).map(r=>hierarchy(r).district)).map(v=><option key={v}>{v}</option>)}</select></label><label>동·읍·면 검색<input value={query} onChange={e=>setQuery(e.target.value)} placeholder="동 이름 또는 지역명"/></label></div>
@@ -60,6 +65,7 @@ export default function Admin({initialState,initialBoundaries,initialAdminBounda
       <section className="panel"><details><summary><Plus size={15}/> 경계에 없는 지역 등록 (행정구역 개편 등)</summary><p className="small-note">새 시군구의 공식 5자리 LAWD_CD와 법정동명을 알고 있을 때 등록합니다. 현재 지도 경계에는 표시되지 않으며 아래 목록에서 별표로 선택할 수 있습니다.</p><div className="location-filters">{[['code','시군구 코드'],['name','전체 시군구명'],['label','표시 이름'],['dongs','법정동 (쉼표 구분, 비우면 구 전체)']].map(([k,label])=><label key={k}>{label}<input value={custom[k]} onChange={e=>setCustom(c=>({...c,[k]:e.target.value}))}/></label>)}</div><button disabled={pending||running} onClick={()=>action('regions',{...custom,dongs:custom.dongs.split(',').map(d=>d.trim()).filter(Boolean)},()=>{setMessage('지역을 등록했습니다. 별표 선택 후 업데이트해 수집 대상으로 저장하세요.');setCustom({code:'',name:'',label:'',dongs:''});})}>지역 등록</button><div className="favorite-chips">{catalog.filter(r=>r.region_id.startsWith('custom_')).map(r=><button key={r.region_id} disabled={pending||running} onClick={()=>toggle(r.region_id)}><Star size={14} fill={draft.includes(r.region_id)?'currentColor':'none'}/>{r.label}</button>)}</div></details></section>
       <section className="panel"><div className="panel-heading"><Database size={19}/><h2>최근 수집 이력</h2></div><div className="admin-table-scroll"><table><thead><tr><th>지역</th><th>계약월</th><th>수집 시각</th><th>응답 건수</th><th>저장 건수</th></tr></thead><tbody>{state.history.map(r=><tr key={r.id}><td>{r.region_name}</td><td>{r.deal_month}</td><td>{new Date(r.fetched_at).toLocaleString('ko-KR')}</td><td>{formatNumber(r.api_count)}</td><td>{formatNumber(r.stored_count)}</td></tr>)}</tbody></table>{!state.history.length&&<p>아직 수집 이력이 없습니다.</p>}</div></section>
       </>}
+      </div>
       <footer className="page-footer">React · Vite / Node.js · SQLite · 관리자 API는 이 PC에서만 실행됩니다.</footer>
     </main></div>;
 }

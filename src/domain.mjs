@@ -11,6 +11,11 @@ export const OPERATORS = {
   not_empty: '비어 있지 않음', gte: '숫자 이상', lte: '숫자 이하',
 };
 export const PYEONG_M2 = 3.305785;
+export const areaValue = (m2, unit = 'm2') => unit === 'pyeong' ? m2 / PYEONG_M2 : m2;
+export const areaM2 = (value, unit = 'm2') => unit === 'pyeong' ? value * PYEONG_M2 : value;
+export const areaUnitLabel = unit => unit === 'pyeong' ? '평' : '㎡';
+export const areaInputValue = (m2, unit) => Number(areaValue(m2, unit).toFixed(4));
+export const unitPrice = (summary, unit) => summary.pyeong == null ? null : (unit === 'pyeong' ? summary.pyeong : summary.pyeong / PYEONG_M2);
 export const formatNumber = (value, digits = 0) => value == null || !Number.isFinite(value)
   ? '—' : new Intl.NumberFormat('ko-KR', { maximumFractionDigits: digits, minimumFractionDigits: digits }).format(value);
 export const monthLabel = (value) => value ? `${value.slice(0, 4)}.${value.slice(4)}` : '—';
@@ -64,10 +69,15 @@ export function apartmentSummary(rows) {
     latest: items.reduce((value, row) => row.deal_date > value ? row.deal_date : value, ''),
   })).sort((a, b) => b.count - a.count || b.median - a.median || a.key.localeCompare(b.key, 'ko'));
 }
-export function areaSummary(rows) {
+export function areaSummary(rows, unit = 'm2') {
   const ranges = [[0, 60, '60㎡ 이하'], [60, 85, '60–85㎡'], [85, 102, '85–102㎡'],
     [102, 135, '102–135㎡'], [135, Infinity, '135㎡ 초과']];
-  return ranges.map(([min, max, label]) => ({ label, ...stats(rows.filter(row => row.area_m2 > min && row.area_m2 <= max)) }));
+  return ranges.map(([min, max, label]) => ({
+    label: unit === 'pyeong' ? (min === 0 ? `${formatNumber(areaValue(max, unit), 2)}평 이하` :
+      !Number.isFinite(max) ? `${formatNumber(areaValue(min, unit), 2)}평 초과` :
+      `${formatNumber(areaValue(min, unit), 2)}–${formatNumber(areaValue(max, unit), 2)}평`) : label,
+    ...stats(rows.filter(row => row.area_m2 > min && row.area_m2 <= max)),
+  }));
 }
 export function rawFields(rows) {
   const available = new Set(rows.flatMap(row => Object.keys(row.raw)));
