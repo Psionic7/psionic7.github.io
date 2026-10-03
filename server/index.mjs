@@ -25,7 +25,8 @@ export function createAdminServer({files=paths,staticRoot=path.join(ROOT,'admin-
     const port=server.address()?.port,hosts=new Set([`127.0.0.1:${port}`,`localhost:${port}`]);
     if(!['127.0.0.1','::1','::ffff:127.0.0.1'].includes(req.socket.remoteAddress)||!hosts.has(req.headers.host)||req.headers.origin&&!new Set([`http://127.0.0.1:${port}`,`http://localhost:${port}`]).has(req.headers.origin))return json(res,403,{error:'이 PC의 로컬 관리자에서만 접근할 수 있습니다.'});
     res.setHeader('Content-Security-Policy',"default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://tile.openstreetmap.org; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'");
-    res.setHeader('Referrer-Policy','no-referrer');
+    // OSM web tiles require a Referer. Cross-origin requests disclose only this origin.
+    res.setHeader('Referrer-Policy','strict-origin-when-cross-origin');
     let pathname;try{pathname=decodeURIComponent(new URL(req.url,`http://${req.headers.host}`).pathname);}catch{return json(res,400,{error:'잘못된 경로'});}
     try {
       if(pathname==='/api/state'&&req.method==='GET')return json(res,200,state());

@@ -92,7 +92,9 @@ test('local API denies foreign origins, DNS rebinding, missing CSRF and private 
   assert.equal(rebinding,403);
   assert.equal((await fetch(base+'/api/favorites',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({ids:[]})})).status,403);
   const saved=await fetch(base+'/api/favorites',{method:'POST',headers:{'Content-Type':'application/json','X-Admin-CSRF':state.csrf},body:JSON.stringify({ids:[catalog[0].region_id]})});assert.equal(saved.status,200);assert.deepEqual(savedIds(files.favorites,catalog),[catalog[0].region_id]);
-  assert.equal((await fetch(base+'/')).status,200);
+  const document=await fetch(base+'/');
+  assert.equal(document.status,200);
+  assert.equal(document.headers.get('referrer-policy'),'strict-origin-when-cross-origin');
 });
 test('local job deduplicates districts, rejects overlapping work and supports cancellation',async t=>{
   const {files,catalog}=fixture(t);saveFavorites(catalog.map(r=>r.region_id),files.favorites,catalog);

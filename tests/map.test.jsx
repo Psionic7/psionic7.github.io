@@ -18,6 +18,7 @@ it('star updates layer styles and the open popup without reloading map, tiles or
   const catalog=[{region_id:'dong_11110101',label:'서울특별시 종로구 청운동',region_code:'11110',region_name:'서울특별시 종로구',dongs:['청운동']}],visible=['dong_11110101'];
   function Harness(){const [draft,setDraft]=useState([]);return <RegionMap boundaries={boundaries} adminBoundaries={adminBoundaries} catalog={catalog} draft={draft} saved={[]} visibleIds={visible} onToggle={id=>setDraft(current=>current.includes(id)?[]:[id])}/>;}
   render(<Harness/>);expect(mock.maps.length).toBe(1);expect(mock.tiles.length).toBe(1);
+  expect((await import('leaflet')).default.tileLayer).toHaveBeenCalledWith('https://tile.openstreetmap.org/{z}/{x}/{y}.png',expect.objectContaining({referrerPolicy:'strict-origin-when-cross-origin'}));
   act(()=>mock.dongs[0].click({latlng:[37.5,127]}));
   const popup=mock.popup,fitCount=mock.maps[0].fitBounds.mock.calls.length;
   await userEvent.setup().click(screen.getByRole('button',{name:'서울특별시 종로구 청운동 수집 지역 추가'}));

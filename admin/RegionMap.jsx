@@ -9,7 +9,7 @@ export default function RegionMap({boundaries,adminBoundaries,catalog,draft,save
   const [tileError,setTileError]=useState(false);
   useEffect(()=>{
     const map=L.map(container.current,{preferCanvas:true,zoomControl:true}).setView([37.45,127.1],10);mapRef.current=map;
-    const tiles=L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap</a> · 경계: V-World / kr-admin-geojson'}).addTo(map);
+    const tiles=L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,referrerPolicy:'strict-origin-when-cross-origin',attribution:'&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap</a> · 경계: V-World / kr-admin-geojson'}).addTo(map);
     tiles.on('tileerror',()=>setTileError(true));tiles.on('tileload',()=>setTileError(false));
     map.createPane('cityBoundaries');map.getPane('cityBoundaries').style.zIndex='430';map.getPane('cityBoundaries').style.pointerEvents='none';
     map.createPane('guBoundaries');map.getPane('guBoundaries').style.zIndex='440';map.getPane('guBoundaries').style.pointerEvents='none';
