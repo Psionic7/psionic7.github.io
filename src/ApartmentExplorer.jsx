@@ -3,13 +3,14 @@ import {Building2, Search, ChevronLeft, ChevronRight} from 'lucide-react';
 import {ResponsiveContainer, ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip} from 'recharts';
 import {apartmentAddress, apartmentKey, areaUnitLabel, areaValue, formatNumber, monthly, priceEok, pricePerPyeong, stats, unitPrice} from './domain.mjs';
 import {Empty} from './ViewState.jsx';
+import {textPreference,useStoredState} from './preferences.js';
 
 const areaLabel = (area,unit) => unit === 'pyeong'
   ? `${formatNumber(areaValue(area,unit),2)}평 (${area.toLocaleString('ko-KR',{maximumFractionDigits:4})}㎡)`
   : `${area.toLocaleString('ko-KR',{maximumFractionDigits:4})}㎡`;
 
 export default function ApartmentExplorer({apartments, rows, selectedKey, onSelect, region, start, end, areaUnit}) {
-  const [search,setSearch] = useState('');
+  const [search,setSearch] = useStoredState(`apartments:${region.region_id}`,'search','',textPreference);
   const selected = apartments.find(item=>item.key===selectedKey);
   const needle = search.trim().toLocaleLowerCase();
   const choices = apartments.filter(item=>`${item.apartment} ${item.dong} ${item.jibun} ${item.road_address}`.toLocaleLowerCase().includes(needle));
@@ -32,7 +33,8 @@ export default function ApartmentExplorer({apartments, rows, selectedKey, onSele
 }
 
 function ApartmentDetails({apartment, rows, region, start, end, areaUnit}) {
-  const [area,setArea] = useState(''), [page,setPage] = useState(1);
+  const [area,setArea] = useStoredState(`apartment:${region.region_id}:${apartment.key}`,'area','',value=>value==='' || typeof value==='string' && rows.some(row=>String(row.area_m2)===value));
+  const [page,setPage] = useState(1);
   const availableAreas = useMemo(()=>[...new Set(rows.map(row=>row.area_m2))].sort((a,b)=>a-b),[rows]);
   const activeArea = availableAreas.some(value=>String(value)===area)?area:'';
   const trades = useMemo(()=>rows.filter(row=>!activeArea||row.area_m2===Number(activeArea))

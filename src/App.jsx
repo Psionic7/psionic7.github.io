@@ -3,7 +3,8 @@ import { House, ChartNoAxesCombined, Building2, CalendarDays, Info, Search, Arro
 import { buildCatalog, favoriteRegions, formatNumber, hierarchy, monthLabel, scopeRows } from './domain.mjs';
 import { fetchJson, loadDistrict } from './data.js';
 import {Empty,Loading} from './ViewState.jsx';
-import {publishedDay,weekBounds} from './weekly.mjs';
+import {weekBounds} from './weekly.mjs';
+import {clearPreferences,restoreExplorer,savePreferences} from './preferences.js';
 const Dashboard = lazy(() => import('./Dashboard.jsx'));
 const ApartmentPage = lazy(() => import('./ApartmentPage.jsx'));
 const WeeklyPage = lazy(() => import('./WeeklyPage.jsx'));
@@ -14,6 +15,7 @@ const timestamp = value => new Date(value).toLocaleString('ko-KR', {timeZone: 'A
 export default function App({ initialManifest = null, districtLoader = loadDistrict }) {
   const [manifest, setManifest] = useState(initialManifest), [error, setError] = useState('');
   const [revision, setRevision] = useState(0);
+  const [preferencesRevision,setPreferencesRevision]=useState(0);
   useEffect(() => {
     if (initialManifest) return;
     let active = true;
@@ -24,27 +26,27 @@ export default function App({ initialManifest = null, districtLoader = loadDistr
   }, [initialManifest, revision]);
   if (error) return <main className="startup"><h1>집의 기록</h1><div role="alert" className="notice error">{error}</div><button onClick={() => setRevision(value => value + 1)}>다시 불러오기</button></main>;
   if (!manifest) return <main className="startup"><h1>집의 기록</h1><Loading text="공개 데이터 목록을 불러오는 중입니다." /></main>;
-  return <Explorer manifest={manifest} districtLoader={districtLoader} />;
+  const resetPreferences=()=>{clearPreferences();window.history.replaceState(null,'','/');setPreferencesRevision(value=>value+1);};
+  return <Explorer key={preferencesRevision} manifest={manifest} districtLoader={districtLoader} onResetPreferences={resetPreferences} />;
 }
 
-function Explorer({ manifest, districtLoader }) {
+function Explorer({ manifest, districtLoader,onResetPreferences }) {
   const catalog = useMemo(() => buildCatalog(manifest.regions), [manifest]);
   const favorites = useMemo(() => favoriteRegions(manifest, catalog), [manifest, catalog]);
-  const initial = useMemo(() => new URLSearchParams(window.location.search), []);
-  const [regionId, setRegionId] = useState(catalog.some(item => item.region_id === initial.get('region')) ? initial.get('region') : '');
+  const initial = useMemo(() => restoreExplorer(manifest,catalog,new URLSearchParams(window.location.search)), []);
+  const [regionId, setRegionId] = useState(initial.regionId);
   const region = catalog.find(item => item.region_id === regionId) || null;
   const regionCode = region?.region_code;
   const available = manifest.districts[regionCode]?.months || manifest.months;
-  const initialEnd = available.includes(initial.get('end')) ? initial.get('end') : (available.at(-1) || '');
-  const [start, setStart] = useState(available.includes(initial.get('start')) && initial.get('start') <= initialEnd ? initial.get('start') : (available.filter(value => value <= initialEnd).slice(-12)[0] || ''));
-  const [end, setEnd] = useState(available.includes(initial.get('end')) ? initial.get('end') : (available.at(-1) || ''));
-  const [tab, setTab] = useState(tabs.some(([value]) => value === initial.get('tab')) ? initial.get('tab') : 'dashboard');
+  const [start, setStart] = useState(initial.start);
+  const [end, setEnd] = useState(initial.end);
+  const [tab, setTab] = useState(initial.tab);
   const isWeekly = tab === 'weekly';
-  const [weeklyIds,setWeeklyIds] = useState(()=>[...new Set(initial.getAll('dong'))].filter(id=>catalog.some(item=>item.region_id===id&&item.dongs.length===1)));
-  const [weeklyDay,setWeeklyDay] = useState(()=>weekBounds(initial.get('week'))?.start||weekBounds(publishedDay(manifest.published_at))?.start||'');
-  const [selectedApartment, setSelectedApartment] = useState('');
-  const [province, setProvince] = useState(''), [city, setCity] = useState(''), [district, setDistrict] = useState('');
-  const [search, setSearch] = useState(''), [rows, setRows] = useState([]), [busy, setBusy] = useState(true);
+  const [weeklyIds,setWeeklyIds] = useState(initial.weeklyIds);
+  const [weeklyDay,setWeeklyDay] = useState(initial.weeklyDay);
+  const [selectedApartment, setSelectedApartment] = useState(initial.selectedApartment);
+  const [province, setProvince] = useState(initial.province), [city, setCity] = useState(initial.city), [district, setDistrict] = useState(initial.district);
+  const [search, setSearch] = useState(initial.search), [rows, setRows] = useState([]), [busy, setBusy] = useState(true);
   const [error, setError] = useState(''), [retry, setRetry] = useState(0), [copied, setCopied] = useState(false);
   useEffect(() => {
     let active = true;
@@ -61,6 +63,9 @@ function Explorer({ manifest, districtLoader }) {
     else if (region) { params.set('region', region.region_id); params.set('start', start); params.set('end', end); }
     window.history.replaceState(null, '', `?${params}`);
   }, [regionId, start, end, tab, weeklyIds, weeklyDay]);
+  useEffect(()=>{
+    savePreferences('explorer',{regionId,start,end,tab,weeklyIds,weeklyDay,selectedApartment,province,city,district,search});
+  },[regionId,start,end,tab,weeklyIds,weeklyDay,selectedApartment,province,city,district,search]);
   const choices = catalog.filter(item => {
     const location = hierarchy(item);
     return (!province || location.province === province) && (!city || location.city === city) &&
@@ -108,12 +113,12 @@ function Explorer({ manifest, districtLoader }) {
       <span className="filter-heading">계약월 범위</span>
       <div className="two-fields"><label>시작 계약월<select disabled={!region} value={start} onChange={event => { setStart(event.target.value); if (event.target.value > end) setEnd(event.target.value); }}>{available.map(value => <option key={value} value={value}>{monthLabel(value)}</option>)}</select></label><label>종료 계약월<select disabled={!region} value={end} onChange={event => {setEnd(event.target.value); if (event.target.value < start) setStart(event.target.value);}}>{available.map(value => <option key={value} value={value}>{monthLabel(value)}</option>)}</select></label></div>
       {region && <div className="scope-card"><span className="status-dot" /><div><strong>{region.region_name}</strong><small>시군구 코드 {region.region_code}</small>{region.dongs.length > 0 && <small>{region.dongs.join(' · ')}</small>}</div></div>}
-      <p className="small-note">선택한 지역·기간은 대시보드와 아파트별 실거래가에 적용됩니다.</p>
+      <p className="small-note">선택한 지역·기간은 대시보드와 아파트별 실거래가에 적용됩니다. 조회 조건은 이 브라우저에 자동 저장됩니다.</p>
       </div>
       </section>
       <div className="context-line"><strong>{region?.label || '조회할 지역을 선택해 주세요'}</strong>{region && <><span>{monthLabel(start)} — {monthLabel(end)}</span><span>{formatNumber(data.length)}건의 원천 자료</span></>}</div>
       </>}
-      {isWeekly ? <Suspense fallback={<Loading text="주간 조회를 준비하고 있습니다." />}><WeeklyPage manifest={manifest} catalog={catalog} selectedIds={weeklyIds} onChange={setWeeklyIds} day={weeklyDay} onDayChange={value=>setWeeklyDay(weekBounds(value)?.start||'')} districtLoader={districtLoader}/></Suspense> : tab === 'about' ? <About manifest={manifest} /> : !region ? <section className="panel"><Empty title="조회할 지역을 선택해 주세요.">{favorites.length ? '위의 즐겨찾기에서 지역을 고르거나 시·구·동으로 검색하세요.' : '위의 시·구·동 필터에서 조회할 지역을 고르세요.'}</Empty></section> : busy ? <Loading /> : error ? <div className="notice error" role="alert">{error}<button onClick={() => setRetry(value => value + 1)}>다시 불러오기</button></div> :
+      {isWeekly ? <Suspense fallback={<Loading text="주간 조회를 준비하고 있습니다." />}><WeeklyPage manifest={manifest} catalog={catalog} selectedIds={weeklyIds} onChange={setWeeklyIds} day={weeklyDay} onDayChange={value=>setWeeklyDay(weekBounds(value)?.start||'')} districtLoader={districtLoader}/></Suspense> : tab === 'about' ? <About manifest={manifest} onResetPreferences={onResetPreferences} /> : !region ? <section className="panel"><Empty title="조회할 지역을 선택해 주세요.">{favorites.length ? '위의 즐겨찾기에서 지역을 고르거나 시·구·동으로 검색하세요.' : '위의 시·구·동 필터에서 조회할 지역을 고르세요.'}</Empty></section> : busy ? <Loading /> : error ? <div className="notice error" role="alert">{error}<button onClick={() => setRetry(value => value + 1)}>다시 불러오기</button></div> :
         <Suspense fallback={<Loading text="조회 화면을 준비하고 있습니다." />}>
           {tab === 'apartments' ? <ApartmentPage key={region.region_id} rows={data} region={region} start={start} end={end} selectedKey={selectedApartment} onSelect={setSelectedApartment} />
             : <Dashboard key={region.region_id} rows={data} region={region} manifest={manifest} favorites={favorites} start={start} end={end} districtLoader={districtLoader} onOpenApartment={key=>{setSelectedApartment(key);setTab('apartments');document.querySelector('.tabs')?.scrollIntoView?.({block:'start'});}} />}
@@ -124,9 +129,10 @@ function Explorer({ manifest, districtLoader }) {
   </div>;
 }
 
-function About({ manifest }) {
+function About({ manifest,onResetPreferences }) {
   const covered = Object.keys(manifest.districts);
   return <div className="about-grid">
+    <section className="panel"><div className="panel-heading"><SlidersHorizontal size={19}/><h2>이 브라우저의 조회 설정</h2></div><p>마지막 조회 지역·기간·탭, 아파트와 면적, 주간 조회 동, 검색·필터·면적 단위를 자동으로 기억합니다. 창을 닫았다 다시 열어도 같은 기기와 브라우저에서 복원됩니다.</p><p className="small-note">조회 설정은 이 브라우저에 보관됩니다. 다른 기기나 브라우저에는 공유되지 않으며, 시크릿 모드 종료나 사이트 데이터 삭제 시 사라질 수 있습니다. 공유 링크에 지정된 조건은 저장된 조건보다 우선합니다.</p><button onClick={onResetPreferences}>이 브라우저의 조회 설정 초기화</button></section>
     <section className="panel"><div className="panel-heading"><Database size={19} /><h2>공개 데이터</h2></div><p>로컬에서 수집한 아파트 매매 신고 자료를 공개합니다. 조회 화면은 마지막으로 배포한 자료를 사용합니다.</p>
       <dl className="info-list"><div><dt>전체 거래</dt><dd>{formatNumber(manifest.count)}건</dd></div><div><dt>계약월</dt><dd>{monthLabel(manifest.months[0])} — {monthLabel(manifest.months.at(-1))}</dd></div><div><dt>데이터 생성</dt><dd>{timestamp(manifest.published_at)} KST</dd></div><div><dt>지역 목록</dt><dd>{formatNumber(manifest.regions.length)}개 · 서울 / 경기</dd></div></dl>
       <h3>수집된 시군구</h3>{covered.map(code => <p className="coverage-row" key={code}><span>{manifest.regions.find(item => item.region_code === code)?.region_name || code}</span><strong>{formatNumber(manifest.districts[code].count)}건</strong></p>)}

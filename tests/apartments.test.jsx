@@ -11,7 +11,7 @@ function ApartmentHarness({rows}) {
   return <ApartmentPage rows={rows} region={region} start="202601" end="202604" selectedKey={selectedKey} onSelect={onSelect}/>;
 }
 const renderApartments=rows=>render(<ApartmentHarness rows={rows}/>);
-afterEach(()=>{cleanup();vi.restoreAllMocks();});
+afterEach(()=>{cleanup();vi.restoreAllMocks();window.localStorage.clear();});
 
 describe('Apartment transaction detail',()=>{
   it('isolates the chosen lot, excludes cancellations and retains an exact area through unit changes',async()=>{

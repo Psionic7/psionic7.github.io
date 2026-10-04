@@ -10,7 +10,7 @@ const c={...a,region_id:'dong_41465103',label:'경기도 용인시 수지구 동
 const uncollected={...a,region_id:'dong_41117101',label:'경기도 수원시 영통구 매탄동',region_name:'경기도 수원시 영통구',region_code:'41117',dongs:['매탄동']};
 const manifest={regions:[a,b,c,uncollected],favorite_region_ids:[a.region_id],districts:{'41465':{file:'suji.json',months:['202609','202610']},'11110':{file:'seoul.json',months:['202610']}},months:['202609','202610'],published_at:'2026-10-03T12:00:00Z',count:8};
 const row=(id,overrides={})=>({id,region_code:'41465',dong:'풍덕천동',apartment:'수지단지',jibun:'1',area_m2:85,price_man:100000,deal_month:'202609',deal_date:'2026-09-28',floor:10,cancelled:0,raw:{dealingGbn:'중개거래'},...overrides});
-beforeEach(()=>window.history.replaceState(null,'','/?tab=weekly'));
+beforeEach(()=>{window.localStorage.clear();window.history.replaceState(null,'','/?tab=weekly');});
 afterEach(()=>{cleanup();vi.restoreAllMocks();});
 describe('Dong weekly transaction tab',()=>{
   it('stacks multiple districts in selection order, keeps selections during search, caches shared districts and changes area units',async()=>{

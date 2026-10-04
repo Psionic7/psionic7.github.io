@@ -4,11 +4,17 @@ import {apartmentAddress, areaUnitLabel, areaValue, formatNumber, hierarchy, pri
 import {publishedDay, shiftWeek, weekBounds, weeklyRows} from './weekly.mjs';
 import {Empty,Loading} from './ViewState.jsx';
 import AreaUnit from './AreaUnit.jsx';
+import {textPreference,unitPreference,useStoredState} from './preferences.js';
 
 const unique=values=>[...new Set(values)].sort((a,b)=>a.localeCompare(b,'ko'));
 export default function WeeklyPage({manifest, catalog, selectedIds, onChange, day, onDayChange, districtLoader}) {
-  const [province,setProvince]=useState(''), [city,setCity]=useState(''), [district,setDistrict]=useState(''), [search,setSearch]=useState('');
-  const [areaUnit,setAreaUnit]=useState('m2'), [datasets,setDatasets]=useState({}), [retry,setRetry]=useState(0);
+  const locations=catalog.map(hierarchy);
+  const [province,setProvince]=useStoredState('weekly','province','',value=>value==='' || locations.some(item=>item.province===value));
+  const [city,setCity]=useStoredState('weekly','city','',value=>value==='' || locations.some(item=>(!province || item.province===province) && item.city===value));
+  const [district,setDistrict]=useStoredState('weekly','district','',value=>value==='' || locations.some(item=>(!province || item.province===province) && (!city || item.city===city) && item.district===value));
+  const [search,setSearch]=useStoredState('weekly','search','',textPreference);
+  const [areaUnit,setAreaUnit]=useStoredState('display','areaUnit','m2',unitPreference);
+  const [datasets,setDatasets]=useState({}), [retry,setRetry]=useState(0);
   const cache=useRef(new Map());
   const dongs=useMemo(()=>catalog.filter(region=>region.dongs.length===1),[catalog]);
   const selected=selectedIds.map(id=>dongs.find(region=>region.region_id===id)).filter(Boolean);

@@ -1,10 +1,11 @@
-import React, {useMemo, useState} from 'react';
+import React, {useMemo} from 'react';
 import {apartmentSummary, validRows} from './domain.mjs';
 import AreaUnit from './AreaUnit.jsx';
 import ApartmentExplorer from './ApartmentExplorer.jsx';
+import {unitPreference,useStoredState} from './preferences.js';
 
 export default function ApartmentPage({rows, region, start, end, selectedKey, onSelect}) {
-  const [areaUnit,setAreaUnit] = useState('m2');
+  const [areaUnit,setAreaUnit] = useStoredState('display','areaUnit','m2',unitPreference);
   const valid = useMemo(()=>validRows(rows,0,Infinity),[rows]);
   const apartments = useMemo(()=>apartmentSummary(valid),[valid]);
   return <div className="apartment-page">

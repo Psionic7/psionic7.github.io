@@ -4,13 +4,17 @@ import { ResponsiveContainer, ComposedChart, Bar, Line, XAxis, YAxis, CartesianG
 import { areaSummary, areaInputValue, areaM2, areaUnitLabel, areaValue, unitPrice, apartmentAddress, apartmentSummary, favoriteRegions, formatNumber, monthly, priceEok, scopeRows, stableSample, stats, validRows } from './domain.mjs';
 import { Empty } from './ViewState.jsx';
 import AreaUnit from './AreaUnit.jsx';
+import {areaPreference,unitPreference,useStoredState} from './preferences.js';
 const color = '#178779';
 const tooltipStyle = {border:'1px solid #dce5e5',borderRadius:12,fontSize:12};
 
 export default function Dashboard({rows, region, manifest, favorites, start, end, districtLoader, onOpenApartment}) {
   // Keep the range in square metres so display rounding cannot move boundary trades.
-  const [minArea,setMinArea] = useState(0), [maxArea,setMaxArea] = useState(() => Math.max(300, Math.ceil(rows.reduce((max,row)=>Math.max(max,row.area_m2),0)))), [dongs,setDongs] = useState([]);
-  const [areaUnit,setAreaUnit] = useState('m2');
+  const scope=`dashboard:${region.region_id}`;
+  const [minArea,setMinArea] = useStoredState(scope,'minArea',0,areaPreference);
+  const [maxArea,setMaxArea] = useStoredState(scope,'maxArea',()=>Math.max(300,Math.ceil(rows.reduce((max,row)=>Math.max(max,row.area_m2),0))),areaPreference);
+  const [dongs,setDongs] = useStoredState(scope,'dongs',[],value=>Array.isArray(value) && value.length<=2000 && value.every(dong=>typeof dong==='string' && rows.some(row=>row.dong===dong)));
+  const [areaUnit,setAreaUnit] = useStoredState('display','areaUnit','m2',unitPreference);
   const unitLabel = areaUnitLabel(areaUnit);
   const priceLabel = areaUnit === 'pyeong' ? '전용평당' : '전용㎡당';
   const [comparisons,setComparisons] = useState({}), [compareError,setCompareError] = useState('');

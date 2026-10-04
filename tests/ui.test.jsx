@@ -8,7 +8,7 @@ import Dashboard from '../src/Dashboard.jsx';
 const region={region_id:'suji',label:'용인 수지구',region_name:'경기도 용인시 수지구',region_code:'41465',dongs:[]};
 const rows=Array.from({length:115},(_,i)=>({id:i+1,region_code:'41465',deal_month:'202601',deal_date:'2026-01-05',apartment:i===0?'첫 아파트':'두번째',dong:'풍덕천동',jibun:'1',road_address:'경기도 용인시 수지구 풍덕천로 12',price_man:100000,area_m2:85,cancelled:0,raw:{aptNm:i===0?'첫 아파트':'두번째',umdNm:'풍덕천동',dealAmount:i===0?'100,000':'50,000',floor:'4',cdealType:''}}));
 const manifest={regions:[region,{region_id:'dong_11110101',label:'서울특별시 종로구 청운동',region_name:'서울특별시 종로구',region_code:'11110',dongs:['청운동']}],districts:{'41465':{file:'fake.json',count:115,months:['202601']}},months:['202601'],published_at:'2026-10-02T00:00:00+00:00',count:115,boundary_catalog_date:'2023-07-29'};
-beforeEach(()=>window.history.replaceState(null,'','/?region=area_41465&tab=dashboard'));
+beforeEach(()=>{window.localStorage.clear();window.history.replaceState(null,'','/?region=area_41465&tab=dashboard');});
 afterEach(()=>{cleanup();vi.restoreAllMocks();vi.unstubAllGlobals();});
 describe('React transaction explorer',()=>{
   it('keeps apartment detail in its own tab and opens summary links there with the same region and period',async()=>{
