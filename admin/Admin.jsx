@@ -14,6 +14,7 @@ export default function Admin({initialState,initialBoundaries,initialAdminBounda
   const [province,setProvince]=useState(''),[city,setCity]=useState(''),[district,setDistrict]=useState(''),[query,setQuery]=useState('');
   const [error,setError]=useState(''),[message,setMessage]=useState(''),[pending,setPending]=useState(false),[start,setStart]=useState(''),[end,setEnd]=useState('');
   const [tab,setTab]=useState('collection');
+  const [addressLimit,setAddressLimit]=useState(100);
   const [custom,setCustom]=useState({code:'',name:'',label:'',dongs:''});
   const loadStarted=useRef(false);
   const refreshState=next=>setState(previous=>previous&&JSON.stringify(previous.catalog)===JSON.stringify(next.catalog)?{...next,catalog:previous.catalog}:next);
@@ -55,6 +56,7 @@ export default function Admin({initialState,initialBoundaries,initialAdminBounda
         <p className="small-note">경계 기준: 2023-07-29 · 서울 467개 / 경기 745개 법정읍면동. 부천·화성 등의 이후 행정구역 개편은 반영되지 않을 수 있습니다. <a href="https://github.com/KnellBalm/kr-admin-geojson" target="_blank" rel="noreferrer">V-World / kr-admin-geojson</a></p>
         <details className="selection-list"><summary>편집 중인 수집 지역 {draft.length}곳</summary><div className="favorite-chips">{draft.map(id=>{const r=catalog.find(c=>c.region_id===id);return <button key={id} disabled={running||pending} onClick={()=>toggle(id)}><Star size={12} fill="currentColor"/>{r?.label||id} ×</button>;})}</div></details>
       </section>
+      <section className="panel"><div className="panel-heading"><MapPin size={19}/><h2>도로명주소 조회</h2></div><p>실거래의 법정동·지번으로 공식 주소를 검색해 로컬 DB에 저장합니다. 정확히 일치하는 주소만 공개 화면에 표시합니다.</p><p className="small-note">확인된 도로명주소 {formatNumber(state.stats.roadAddresses)}곳 · 아직 조회하지 않은 지번 {formatNumber(state.stats.pendingAddresses)}곳</p>{!state.addressKeyReady&&<div className="notice error">프로젝트의 .env 파일에 JUSO_ADDRESS_SEARCH_KEY를 설정하세요.</div>}<div className="action-row"><label>이번 조회 건수 <input type="number" min="1" max="1000" value={addressLimit} onChange={event=>setAddressLimit(Number(event.target.value))}/></label><button disabled={running||pending||!state.addressKeyReady||!state.stats.pendingAddresses} onClick={()=>action('addresses',{limit:addressLimit})}><MapPin size={16}/>미조회 주소 검색·저장</button></div>{state.job.kind==='addresses'&&state.job.status!=='idle'&&<div className="job-status" role="status"><strong>{state.job.message}</strong><progress max={state.job.total||1} value={state.job.completed}/><small>{state.job.completed}/{state.job.total} 주소 · {state.job.status}</small></div>}</section>
       <div className="admin-grid"><section className="panel"><div className="panel-heading"><Database size={19}/><h2>실거래 데이터 수집</h2></div><p>저장한 지역 <strong>{saved.length}곳</strong> · API 시군구 <strong>{new Set(catalog.filter(r=>saved.includes(r.region_id)).map(r=>r.region_code)).size}곳</strong></p><p className="small-note">API는 시군구 전체 자료를 반환합니다. 동별 조회 범위는 별도로 적용하며, 같은 시군구·월은 한 번만 요청합니다.</p>
         {!state.keyReady&&<div className="notice error">프로젝트의 .env 파일에 MOLIT_SERVICE_KEY를 설정하세요.</div>}
         {dirty&&<p className="draft-reminder">저장하지 않은 지역 변경은 이번 수집에 반영되지 않습니다.</p>}

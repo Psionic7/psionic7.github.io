@@ -6,11 +6,12 @@ import {spawn} from 'node:child_process';
 import {pathToFileURL} from 'node:url';
 import {ROOT,paths,initialize,connect,regions,savedIds,saveFavorites,serviceKey} from './storage.mjs';
 import {collectMonth,monthsBetween,collectionTasks,currentMonth} from './collector.mjs';
+import {addressKey,collectAddresses,pendingAddresses} from './addresses.mjs';
 import {exportData} from './export.mjs';
 import {checkPublic} from '../scripts/check-public.mjs';
 import {buildCatalog} from '../src/domain.mjs';
 
-export function createAdminServer({files=paths,staticRoot=path.join(ROOT,'admin-dist'),fetcher}={}) {
+export function createAdminServer({files=paths,staticRoot=path.join(ROOT,'admin-dist'),fetcher,addressFetcher}={}) {
   const token=randomBytes(32).toString('hex');
   let job={status:'idle',completed:0,total:0,rows:0},controller;
   const busy=()=>job.status==='running';
@@ -20,7 +21,7 @@ export function createAdminServer({files=paths,staticRoot=path.join(ROOT,'admin-
     const catalog=regions(db).filter(r=>!['suji','gwanggyo','bundang'].includes(r.region_id));
     // Expand historical group favorites against the full catalog, if needed.
     const saved=savedIds(files.favorites,regions(db));
-    return {app:'home-records-local-admin',csrf:token,catalog,saved,job,keyReady:Boolean(serviceKey(files.env)),currentMonth:currentMonth(),stats:{count:db.prepare('SELECT count(*) AS n FROM trades').get().n,districts:db.prepare('SELECT region_code,count(*) AS count,min(deal_month) AS start,max(deal_month) AS end FROM trades GROUP BY region_code').all()},history:db.prepare('SELECT * FROM collection_runs ORDER BY id DESC LIMIT 100').all()};
+    return {app:'home-records-local-admin',csrf:token,catalog,saved,job,keyReady:Boolean(serviceKey(files.env)),addressKeyReady:Boolean(addressKey(files.env)),currentMonth:currentMonth(),stats:{count:db.prepare('SELECT count(*) AS n FROM trades').get().n,roadAddresses:db.prepare('SELECT count(*) AS n FROM road_addresses').get().n,pendingAddresses:db.prepare("SELECT count(*) AS n FROM (SELECT DISTINCT region_code,dong,jibun FROM trades WHERE trim(jibun)!='') t LEFT JOIN address_lookups a USING(region_code,dong,jibun) WHERE a.region_code IS NULL").get().n,districts:db.prepare('SELECT region_code,count(*) AS count,min(deal_month) AS start,max(deal_month) AS end FROM trades GROUP BY region_code').all()},history:db.prepare('SELECT * FROM collection_runs ORDER BY id DESC LIMIT 100').all()};
   });
   const server=http.createServer(async(req,res)=>{
     const port=server.address()?.port,hosts=new Set([`127.0.0.1:${port}`,`localhost:${port}`]);
@@ -77,6 +78,25 @@ export function createAdminServer({files=paths,staticRoot=path.join(ROOT,'admin-
               job.status='completed';job.message='수집 완료. 공개 데이터 내보내기를 실행하세요.';
             } catch(e){job.status=active.signal.aborted?'cancelled':'failed';job.message=active.signal.aborted?'수집을 중단했습니다. 완료한 월은 보존됩니다.':/^(API |공공 API |수집 중 |거래 필드)/.test(e.message)?e.message:'수집 실패. API 승인, 연결 및 응답을 확인하세요.';}
             finally {db.close();job.finishedAt=new Date().toISOString();if(controller===active)controller=null;}
+          })();
+          return json(res,202,{job});
+        }
+        if(pathname==='/api/addresses') {
+          const limit=Number(input.limit ?? 100),refresh=input.refresh===true;
+          if(!Number.isInteger(limit)||limit<1||limit>1000)throw new Error('주소 조회 건수를 확인하세요.');
+          const key=addressKey(files.env);if(!key)throw new Error('.env에 JUSO_ADDRESS_SEARCH_KEY를 설정하세요.');
+          const total=withDb(db=>pendingAddresses(db,limit,{refresh}).length);
+          controller=new AbortController();const active=controller;
+          job={kind:'addresses',status:'running',completed:0,total,rows:0,startedAt:new Date().toISOString(),message:'도로명주소를 조회하고 있습니다.'};
+          (async()=>{
+            const db=connect(files.db);
+            try {
+              const result=await collectAddresses(db,key,{limit,refresh,signal:active.signal,fetcher:addressFetcher||fetch,onProgress:counts=>{
+                job.completed=counts.completed;job.rows=counts.exact;job.message=`도로명주소 확인 ${counts.exact}건 · 미확정 ${counts.unresolved}건`;
+              }});
+              job.status='completed';job.message=`도로명주소 조회 완료: 정확히 일치 ${result.exact}건 · 미확정 ${result.unresolved}건. 공개 데이터 내보내기를 실행하세요.`;
+            }catch(e){job.status=active.signal.aborted?'cancelled':'failed';job.message=active.signal.aborted?'주소 조회를 중단했습니다. 완료한 주소는 보존됩니다.':e.message;}
+            finally{db.close();job.finishedAt=new Date().toISOString();if(controller===active)controller=null;}
           })();
           return json(res,202,{job});
         }

@@ -10,6 +10,7 @@ import {connect,PUBLIC_SCHEMA,LOCAL_SCHEMA,regions,savedIds,saveFavorites,checke
 import {parsePage,normalize,collectMonth,monthsBetween,collectionTasks,fetchPage} from '../server/collector.mjs';
 import {exportData,sha256} from '../server/export.mjs';
 import {createAdminServer} from '../server/index.mjs';
+import {parseAddressResult,collectAddresses} from '../server/addresses.mjs';
 const raw={aptNm:' 아파트 ',umdNm:'청운동',jibun:'001-2',dealAmount:' 100,000 ',excluUseAr:'84.5',dealYear:'2026',dealMonth:'01',dealDay:'09',sggCd:'11110',floor:'-1',buildYear:'2000',cdealType:'',newField:'',leading:'0001'};
 const xml=(items,total=items.length)=>`<response><header><resultCode>000</resultCode></header><body><items>${items.map(item=>'<item>'+Object.entries(item).map(([k,v])=>`<${k}>${v}</${k}>`).join('')+'</item>').join('')}</items><totalCount>${total}</totalCount></body></response>`;
 function fixture(t) {
@@ -55,6 +56,27 @@ test('response storage redacts raw and encoded keys before parsing',async()=>{
   const result=await fetchPage(key,'11110','202601',1,undefined,async url=>{assert.equal(new URL(url).searchParams.get('serviceKey'),'abcd+fixture/0123456789');return {ok:true,text:async()=>responseXml};});
   assert.equal(result.items[0].newField,'[REDACTED]');assert(!result.xml.includes('abcd+fixture'));
 });
+test('official road address is saved only for one exact parcel and exported with the apartment',async t=>{
+  const {root,files,catalog}=fixture(t),db=connect(files.db);
+  await collectMonth(db,'key','11110','202601','서울특별시 종로구',{pause:0,fetcher:async()=>({total:1,items:[raw],xml:xml([raw])})});
+  const query='서울특별시 종로구 청운동 001-2';
+  const payload={results:{common:{errorCode:'0',totalCount:'1'},juso:[{jibunAddr:query+' 아파트',roadAddr:'서울특별시 종로구 자하문로 1'}]}};
+  assert.equal(parseAddressResult(query,{results:{common:{errorCode:'0',totalCount:'1'},juso:[{jibunAddr:'서울특별시 종로구 청운동 001-20',roadAddr:'잘못된 주소'}]}}).status,'unmatched');
+  assert.equal(parseAddressResult(query,{results:{common:{errorCode:'0',totalCount:'2'},juso:[payload.results.juso[0],payload.results.juso[0]]}}).status,'ambiguous');
+  await collectAddresses(db,'fixture-key',{pause:0,fetcher:async url=>{
+    assert.equal(url.hostname,'business.juso.go.kr');assert.equal(url.searchParams.get('keyword'),query);
+    return {ok:true,json:async()=>payload};
+  }});
+  assert.equal(db.prepare('SELECT road_address FROM road_addresses').get().road_address,'서울특별시 종로구 자하문로 1');
+  assert.equal(db.prepare('SELECT status FROM address_lookups').get().status,'exact');
+  db.close();
+  const target=path.join(root,'public');
+  const manifest=exportData({source:files.db,target,favorites:files.favorites,secretsFile:files.env});
+  assert.equal(JSON.parse(fs.readFileSync(path.join(target,manifest.districts['11110'].file)))[0].road_address,'서울특별시 종로구 자하문로 1');
+  const publicDb=connect(path.join(target,'public.sqlite3'),true);
+  assert.equal(publicDb.prepare('SELECT road_address FROM road_addresses').get().road_address,'서울특별시 종로구 자하문로 1');
+  publicDb.close();
+});
 test('saved favorites permit an empty list and reject damaged files without overwriting',t=>{
   const {files,catalog}=fixture(t);assert.deepEqual(savedIds(files.favorites,catalog),[]);
   saveFavorites([catalog[0].region_id,catalog[0].region_id],files.favorites,catalog);assert.deepEqual(savedIds(files.favorites,catalog),[catalog[0].region_id]);
@@ -75,14 +97,14 @@ test('export only allows public tables and saved IDs; secret failures preserve p
   saveFavorites([catalog[0].region_id],files.favorites,catalog);
   const target=path.join(root,'public'),manifest=exportData({source:files.db,target,favorites:files.favorites,secretsFile:files.env});
   assert.equal(manifest.count,1);assert.deepEqual(manifest.favorite_region_ids,[catalog[0].region_id]);
-  const out=connect(path.join(target,'public.sqlite3'),true);assert.deepEqual(out.prepare("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name").all().map(r=>r.name),['metadata','regions','trades']);out.close();
+  const out=connect(path.join(target,'public.sqlite3'),true);assert.deepEqual(out.prepare("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name").all().map(r=>r.name),['metadata','regions','road_addresses','trades']);out.close();
   assert.deepEqual(JSON.parse(fs.readFileSync(path.join(target,manifest.districts['11110'].file)))[0].raw,raw);
   const compressed=exportData({source:files.db,target,favorites:files.favorites,secretsFile:files.env,compressAbove:0});
   assert.equal(compressed.database.file,'public.sqlite3.gz');assert.equal(compressed.database.format,'sqlite3+gzip');assert(!fs.existsSync(path.join(target,'public.sqlite3')));
   const archive=fs.readFileSync(path.join(target,compressed.database.file)),unpacked=gunzipSync(archive);
   assert.equal(sha256(archive),compressed.database.sha256);assert.equal(sha256(unpacked),compressed.database.uncompressed_sha256);
   const restored=path.join(root,'restored.sqlite3');fs.writeFileSync(restored,unpacked);
-  const restoredDb=connect(restored,true);assert.equal(restoredDb.prepare('SELECT count(*) AS n FROM trades').get().n,1);assert.equal(restoredDb.prepare('SELECT raw_json FROM trades').get().raw_json,JSON.stringify(raw));assert.deepEqual(restoredDb.prepare("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name").all().map(r=>r.name),['metadata','regions','trades']);restoredDb.close();
+  const restoredDb=connect(restored,true);assert.equal(restoredDb.prepare('SELECT count(*) AS n FROM trades').get().n,1);assert.equal(restoredDb.prepare('SELECT raw_json FROM trades').get().raw_json,JSON.stringify(raw));assert.deepEqual(restoredDb.prepare("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name").all().map(r=>r.name),['metadata','regions','road_addresses','trades']);restoredDb.close();
   const old=fs.readFileSync(path.join(target,'manifest.json'));
   const work=connect(files.db);work.prepare('UPDATE trades SET raw_json=?').run(JSON.stringify({...raw,newField:'fixturekey0123456789'}));work.close();
   assert.throws(()=>exportData({source:files.db,target,favorites:files.favorites,secretsFile:files.env}));assert(fs.readFileSync(path.join(target,'manifest.json')).equals(old));
@@ -121,6 +143,19 @@ test('raw-data API requires local origin and CSRF; filters scope and month while
   assert.equal((await post({...body,region_id:'unknown'})).status,400);
   assert.equal((await post({...body,end:'202613'})).status,400);
   assert.equal((await fetch(base+'/api/raw-data')).status,405);
+});
+test('local address job stores confirmed roads without returning the API key',async t=>{
+  const {files}=fixture(t);fs.appendFileSync(files.env,'\nJUSO_ADDRESS_SEARCH_KEY=fixtureaddresskey012345\n');
+  const db=connect(files.db);
+  await collectMonth(db,'key','11110','202601','서울특별시 종로구',{pause:0,fetcher:async()=>({total:1,items:[raw],xml:xml([raw])})});db.close();
+  const addressFetcher=async url=>({ok:true,json:async()=>({results:{common:{errorCode:'0',totalCount:'1'},juso:[{jibunAddr:url.searchParams.get('keyword'),roadAddr:'서울특별시 종로구 자하문로 1'}]}})});
+  const server=createAdminServer({files,addressFetcher});server.listen(0,'127.0.0.1');await once(server,'listening');t.after(()=>new Promise(resolve=>server.close(resolve)));
+  const base=`http://127.0.0.1:${server.address().port}`,state=await(await fetch(base+'/api/state')).json();
+  assert.equal(state.addressKeyReady,true);assert.equal(state.stats.pendingAddresses,1);assert(!JSON.stringify(state).includes('fixtureaddresskey'));
+  const response=await fetch(base+'/api/addresses',{method:'POST',headers:{'Content-Type':'application/json','X-Admin-CSRF':state.csrf},body:JSON.stringify({limit:1})});
+  assert.equal(response.status,202);
+  let final;for(let i=0;i<30;i++){final=await(await fetch(base+'/api/state')).json();if(final.job.status!=='running')break;await new Promise(resolve=>setTimeout(resolve,10));}
+  assert.equal(final.job.status,'completed');assert.equal(final.stats.roadAddresses,1);assert.equal(final.stats.pendingAddresses,0);
 });
 test('local job deduplicates districts, rejects overlapping work and supports cancellation',async t=>{
   const {files,catalog}=fixture(t);saveFavorites(catalog.map(r=>r.region_id),files.favorites,catalog);

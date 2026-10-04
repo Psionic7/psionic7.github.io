@@ -13,22 +13,24 @@ export function databasePayload(raw,secrets,compressAbove=95*1024*1024) {
 export function exportData({source=paths.db,target=path.join(ROOT,'public/data'),favorites=paths.favorites,secretsFile=paths.env,compressAbove=95*1024*1024}={}) {
   source=path.resolve(source);target=path.resolve(target);
   if(!fs.existsSync(source)||source===path.join(target,'public.sqlite3')) throw new Error('원본 작업 DB와 내보내기 경로를 확인하세요.');
-  const secrets=secretValues(secretsFile),db=connect(source,true);let trades,regionRows,published;
+  const secrets=secretValues(secretsFile),db=connect(source,true);let trades,regionRows,roadRows,published;
   try {
     db.exec('BEGIN');
     if(Object.values(db.prepare('PRAGMA quick_check').get())[0]!=='ok')throw new Error('원본 DB 무결성 확인 실패');
     trades=db.prepare(`SELECT ${TRADE_COLUMNS.join(',')} FROM trades ORDER BY deal_date DESC,id DESC`).all();
     regionRows=db.prepare(`SELECT ${REGION_COLUMNS.join(',')} FROM regions ORDER BY rowid`).all();
+    roadRows=db.prepare('SELECT region_code,dong,jibun,road_address FROM road_addresses ORDER BY region_code,dong,jibun').all();
     published=db.prepare("SELECT value FROM metadata WHERE key='published_at'").get()?.value || new Date().toISOString();
   } finally {db.close();}
   const catalog=regionRows.map(({dongs_json,...r})=>({...r,dongs:JSON.parse(dongs_json)}));
+  const addresses=new Map(roadRows.map(row=>[JSON.stringify([row.region_code,row.dong,row.jibun]),row.road_address]));
   const groups=new Map();
   for(const row of trades) {
     if(!/^\d{5}$/.test(row.region_code))throw new Error('지역 코드가 올바르지 않습니다.');
     const {raw_json,...normal}=row,raw=JSON.parse(raw_json);
     if(!raw||Array.isArray(raw)||typeof raw!=='object'||Object.values(raw).some(v=>typeof v!=='string')) throw new Error('원천 필드는 문자열이어야 합니다.');
     if(!groups.has(row.region_code))groups.set(row.region_code,[]);
-    groups.get(row.region_code).push({...normal,raw});
+    groups.get(row.region_code).push({...normal,road_address:addresses.get(JSON.stringify([row.region_code,row.dong,row.jibun])) || '',raw});
   }
   const payloads=new Map(),districts={};
   for(const [code,rows] of [...groups].sort(([a],[b])=>a.localeCompare(b))) {
@@ -46,6 +48,8 @@ export function exportData({source=paths.db,target=path.join(ROOT,'public/data')
       trades.forEach(r=>insert.run(...TRADE_COLUMNS.map(k=>r[k])));
       const regionInsert=out.prepare('INSERT INTO regions VALUES (?,?,?,?,?,?,?)');
       regionRows.forEach(r=>regionInsert.run(...REGION_COLUMNS.map(k=>r[k])));
+      const roadInsert=out.prepare('INSERT INTO road_addresses VALUES (?,?,?,?)');
+      roadRows.forEach(r=>roadInsert.run(r.region_code,r.dong,r.jibun,r.road_address));
       out.prepare('INSERT INTO metadata VALUES (?,?)').run('published_at',published);
       out.exec('COMMIT');
       if(Object.values(out.prepare('PRAGMA integrity_check').get())[0]!=='ok')throw new Error('공개 DB 무결성 확인 실패');

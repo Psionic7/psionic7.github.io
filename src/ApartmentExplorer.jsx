@@ -1,7 +1,7 @@
 import React, {useEffect, useMemo, useState} from 'react';
 import {Building2, Search, ChevronLeft, ChevronRight} from 'lucide-react';
 import {ResponsiveContainer, ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip} from 'recharts';
-import {apartmentKey, areaUnitLabel, areaValue, formatNumber, monthly, priceEok, pricePerPyeong, stats, unitPrice} from './domain.mjs';
+import {apartmentAddress, apartmentKey, areaUnitLabel, areaValue, formatNumber, monthly, priceEok, pricePerPyeong, stats, unitPrice} from './domain.mjs';
 import {Empty} from './ViewState.jsx';
 
 const areaLabel = (area,unit) => unit === 'pyeong'
@@ -12,13 +12,13 @@ export default function ApartmentExplorer({apartments, rows, selectedKey, onSele
   const [search,setSearch] = useState('');
   const selected = apartments.find(item=>item.key===selectedKey);
   const needle = search.trim().toLocaleLowerCase();
-  const choices = apartments.filter(item=>`${item.apartment} ${item.dong} ${item.jibun}`.toLocaleLowerCase().includes(needle));
+  const choices = apartments.filter(item=>`${item.apartment} ${item.dong} ${item.jibun} ${item.road_address}`.toLocaleLowerCase().includes(needle));
   const selectedRows = useMemo(()=>selectedKey ? rows.filter(row=>apartmentKey(row)===selectedKey) : [],[rows,selectedKey]);
-  const optionLabel = item => `${item.apartment} · ${item.dong} ${item.jibun} (${formatNumber(item.count)}건)`;
+  const optionLabel = item => `${item.apartment} · ${apartmentAddress(item,region.region_name)} (${formatNumber(item.count)}건)`;
   return <section id="apartment-detail" className="panel apartment-explorer" aria-label="아파트별 실거래가">
     <div className="section-title"><div><h2><Building2 size={19}/>아파트별 실거래가</h2><p>선택한 지역·기간에 해당하는 전체 아파트를 검색합니다. 계약 해제 거래는 제외합니다.</p></div><span className="badge">{formatNumber(apartments.length)}개 단지</span></div>
     <div className="apartment-selector">
-      <label className="search-input"><span>아파트 검색</span><Search size={16}/><input type="search" placeholder="아파트명 · 법정동 · 지번" value={search} onChange={event=>setSearch(event.target.value)}/></label>
+      <label className="search-input"><span>아파트 검색</span><Search size={16}/><input type="search" placeholder="아파트명 · 도로명주소 · 법정동" value={search} onChange={event=>setSearch(event.target.value)}/></label>
       <label>조회 아파트<select value={selected?.key||''} onChange={event=>onSelect(event.target.value)}><option value="" disabled>아파트 선택 ({formatNumber(choices.length)}곳)</option>
         {selected&&!choices.some(item=>item.key===selected.key)&&<option value={selected.key}>{optionLabel(selected)}</option>}
         {choices.map(item=><option key={item.key} value={item.key}>{optionLabel(item)}</option>)}
@@ -52,7 +52,7 @@ function ApartmentDetails({apartment, rows, region, start, end, areaUnit}) {
   useEffect(()=>setPage(1),[rows,activeArea]);
   const shown = trades.slice((safePage-1)*50,safePage*50);
   return <div className="apartment-details">
-    <header className="apartment-heading"><div><h3>{apartment.apartment}</h3><p>{region.region_name} {apartment.dong} · 지번 {apartment.jibun||'미상'}{buildYears.length>0&&` · 건축 ${buildYears.length===1?buildYears[0]:`${buildYears[0]}–${buildYears.at(-1)}`}년`}</p></div>
+    <header className="apartment-heading"><div><h3>{apartment.apartment}</h3><p>{apartmentAddress(apartment,region.region_name)}{buildYears.length>0&&` · 건축 ${buildYears.length===1?buildYears[0]:`${buildYears[0]}–${buildYears.at(-1)}`}년`}</p></div>
       <label>단지 전용면적<select value={activeArea} onChange={event=>setArea(event.target.value)}><option value="">전체 면적 ({availableAreas.length}종류)</option>{availableAreas.map(value=><option key={value} value={String(value)}>{areaLabel(value,areaUnit)}</option>)}</select></label>
     </header>
     <div className="apartment-metrics" aria-label="선택 아파트 통계">

@@ -37,6 +37,8 @@ export function validRows(rows, minArea = 0, maxArea = Infinity, dongs = []) {
 export const priceEok = row => row.price_man / 10000;
 export const pricePerPyeong = row => row.price_man * PYEONG_M2 / row.area_m2;
 export const apartmentKey = row => JSON.stringify([row.dong, row.jibun, row.apartment]);
+export const apartmentAddress = (item,regionName='') => item.road_address ||
+  `${[regionName,item.dong].filter(Boolean).join(' ')} · 지번 ${item.jibun || '미상'}`;
 export function stats(rows) {
   return { count: rows.length, median: median(rows.map(priceEok)),
     pyeong: median(rows.map(pricePerPyeong)), apartments: new Set(rows.map(apartmentKey)).size };
@@ -63,7 +65,8 @@ export function apartmentSummary(rows) {
   const groups = new Map();
   rows.forEach(row => { const key = apartmentKey(row); if (!groups.has(key)) groups.set(key, []); groups.get(key).push(row); });
   return [...groups].map(([key, items]) => ({ key, apartment: items[0].apartment,
-    dong: items[0].dong, jibun: items[0].jibun, count: items.length,
+    dong: items[0].dong, jibun: items[0].jibun,
+    road_address: items.find(item=>item.road_address)?.road_address || '',count: items.length,
     median: median(items.map(priceEok)), min: Math.min(...items.map(priceEok)),
     max: Math.max(...items.map(priceEok)), area: items.reduce((sum, row) => sum + row.area_m2, 0) / items.length,
     latest: items.reduce((value, row) => row.deal_date > value ? row.deal_date : value, ''),

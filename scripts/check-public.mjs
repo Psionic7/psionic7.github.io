@@ -43,7 +43,7 @@ export function checkPublic(root=ROOT,secretsFile=paths.env,{checkIndex=true}={}
     try {
       db=connect(dbFile,true);
       const tables=db.prepare("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name").all().map(r=>r.name);
-      if(JSON.stringify(tables)!==JSON.stringify(['metadata','regions','trades']))throw new Error('공개 DB에 비공개 테이블이 있습니다.');
+      if(JSON.stringify(tables)!==JSON.stringify(['metadata','regions','road_addresses','trades']))throw new Error('공개 DB에 비공개 테이블이 있습니다.');
       if(count!==manifest.count||count!==db.prepare('SELECT count(*) AS n FROM trades').get().n||Object.values(db.prepare('PRAGMA integrity_check').get())[0]!=='ok')throw new Error('공개 DB 건수 / 무결성 오류');
     }finally{db?.close();if(temporary&&fs.existsSync(temporary))fs.unlinkSync(temporary);}
   }

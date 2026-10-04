@@ -11,9 +11,12 @@ export const TRADE_COLUMNS = ['id','region_code','deal_month','deal_date','apart
 export const REGION_COLUMNS = ['region_id','label','region_code','region_name','dongs_json','latitude','longitude'];
 export const PUBLIC_SCHEMA = `CREATE TABLE IF NOT EXISTS trades (id INTEGER PRIMARY KEY,region_code TEXT NOT NULL,deal_month TEXT NOT NULL,deal_date TEXT NOT NULL,apartment TEXT NOT NULL,dong TEXT NOT NULL,jibun TEXT NOT NULL,price_man INTEGER NOT NULL,area_m2 REAL NOT NULL,floor INTEGER,build_year INTEGER,cancelled INTEGER NOT NULL,raw_json TEXT NOT NULL);
 CREATE INDEX IF NOT EXISTS trades_region_month ON trades(region_code,deal_month);
+CREATE INDEX IF NOT EXISTS trades_parcel ON trades(region_code,dong,jibun);
+CREATE TABLE IF NOT EXISTS road_addresses (region_code TEXT NOT NULL,dong TEXT NOT NULL,jibun TEXT NOT NULL,road_address TEXT NOT NULL,PRIMARY KEY(region_code,dong,jibun));
 CREATE TABLE IF NOT EXISTS regions (region_id TEXT PRIMARY KEY,label TEXT NOT NULL UNIQUE,region_code TEXT NOT NULL,region_name TEXT NOT NULL,dongs_json TEXT NOT NULL,latitude REAL,longitude REAL);
 CREATE TABLE IF NOT EXISTS metadata (key TEXT PRIMARY KEY,value TEXT NOT NULL);`;
 export const LOCAL_SCHEMA = `CREATE TABLE IF NOT EXISTS collection_runs (id INTEGER PRIMARY KEY,region_code TEXT NOT NULL,region_name TEXT NOT NULL,deal_month TEXT NOT NULL,fetched_at TEXT NOT NULL,api_count INTEGER NOT NULL,stored_count INTEGER NOT NULL);
+CREATE TABLE IF NOT EXISTS address_lookups (region_code TEXT NOT NULL,dong TEXT NOT NULL,jibun TEXT NOT NULL,query TEXT NOT NULL,status TEXT NOT NULL,road_address TEXT NOT NULL DEFAULT '',response_json TEXT NOT NULL,fetched_at TEXT NOT NULL,PRIMARY KEY(region_code,dong,jibun));
 CREATE TABLE IF NOT EXISTS api_pages (run_id INTEGER NOT NULL,page_no INTEGER NOT NULL,response_xml BLOB NOT NULL,PRIMARY KEY(run_id,page_no),FOREIGN KEY(run_id) REFERENCES collection_runs(id));`;
 export function atomicWrite(filename, data) {
   fs.mkdirSync(path.dirname(filename),{recursive:true});
