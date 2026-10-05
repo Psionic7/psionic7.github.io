@@ -3,9 +3,9 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
 export function dongStyle(code,selected,styles) {return {color:selected?'#b77912':(styles[code]?.region_color||'#64748b'),weight:selected?2.7:0.75,fillColor:styles[code]?.region_color||'#739a99',fillOpacity:selected?0.4:0.1,opacity:selected?1:0.85};}
-export default function RegionMap({boundaries,adminBoundaries,catalog,draft,saved,visibleIds,onToggle}) {
+export default function RegionMap({boundaries,adminBoundaries,catalog,draft,saved,visibleIds,onToggle,disabled=false,saveLabel='업데이트'}) {
   const container=useRef(null),mapRef=useRef(null),layers=useRef(new Map()),popupRef=useRef(null);
-  const latest=useRef({draft,saved,onToggle});latest.current={draft,saved,onToggle};
+  const latest=useRef({draft,saved,onToggle,disabled});latest.current={draft,saved,onToggle,disabled};
   const [tileError,setTileError]=useState(false);
   useEffect(()=>{
     const map=L.map(container.current,{preferCanvas:true,zoomControl:true}).setView([37.45,127.1],10);mapRef.current=map;
@@ -23,12 +23,12 @@ export default function RegionMap({boundaries,adminBoundaries,catalog,draft,save
       layer.on('click',event=>{
         const box=document.createElement('div');box.className='region-popup';
         const star=document.createElement('button');star.type='button';star.className='popup-star';
-        const update=()=>{const selected=latest.current.draft.includes(id);star.textContent=selected?'★':'☆';star.setAttribute('aria-label',`${r.label} 수집 지역 ${selected?'해제':'추가'}`);star.title=selected?'수집 지역 해제 (아직 저장되지 않음)':'수집 지역 추가 (아직 저장되지 않음)';};
-        update();star.addEventListener('click',e=>{e.stopPropagation();latest.current.onToggle(id);});
+        const update=()=>{const selected=latest.current.draft.includes(id);star.textContent=selected?'★':'☆';star.disabled=latest.current.disabled;star.setAttribute('aria-label',`${r.label} 수집 지역 ${selected?'해제':'추가'}`);star.title=selected?'수집 지역 해제 (아직 저장되지 않음)':'수집 지역 추가 (아직 저장되지 않음)';};
+        update();star.addEventListener('click',e=>{e.stopPropagation();if(!latest.current.disabled)latest.current.onToggle(id);});
         const heading=document.createElement('strong');heading.textContent=r.dongs[0]||r.label;
         const location=document.createElement('p');location.textContent=r.region_name;
         const code=document.createElement('small');code.textContent=`법정동 ${feature.properties.EMD_CD} · API ${r.region_code}`;
-        const note=document.createElement('p');note.className='popup-note';note.textContent='별표로 수집 대상을 편집하세요. 업데이트 버튼을 누르면 저장됩니다.';
+        const note=document.createElement('p');note.className='popup-note';note.textContent=`별표로 수집 대상을 편집하세요. ${saveLabel} 버튼을 누르면 저장됩니다.`;
         box.append(star,heading,location,code,note);popupRef.current={id,update};
         L.popup({maxWidth:290,minWidth:240,autoPan:true}).setLatLng(event.latlng).setContent(box).openOn(map);
       });
@@ -42,7 +42,7 @@ export default function RegionMap({boundaries,adminBoundaries,catalog,draft,save
     for(const [id,layer] of layers.current) layer.setStyle(dongStyle(id.slice(5,10),selected.has(id),adminBoundaries.styles));
     popupRef.current?.update();
     // Do not recreate the map, tile layer, popup or viewport when stars change.
-  },[draft,adminBoundaries]);
+  },[draft,adminBoundaries,disabled]);
   useEffect(()=>{
     const map=mapRef.current;if(!map)return;const visible=new Set(visibleIds),bounds=L.latLngBounds([]);
     for(const [id,layer] of layers.current){if(visible.has(id)){if(!map.hasLayer(layer))layer.addTo(map);bounds.extend(layer.getBounds());}else if(map.hasLayer(layer))map.removeLayer(layer);}

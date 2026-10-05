@@ -1,0 +1,18 @@
+.cloud-region-map .map-wrap{position:relative;margin:18px 0}
+.cloud-region-map .region-map{height:550px;border-radius:10px;z-index:0;background:#e9f0f1}
+.cloud-region-map .map-legend{position:absolute;bottom:25px;left:12px;z-index:500;background:#fffef5ed;padding:12px;border:1px solid #d6e2e8;border-radius:7px;box-shadow:0 2px 8px #25485a15;display:flex;flex-direction:column;gap:6px;font-size:12px;pointer-events:none}
+.cloud-region-map .map-legend span{display:flex;align-items:center;gap:8px}
+.cloud-region-map .map-legend i{width:24px;display:inline-block}
+.cloud-region-map .city-line{border-top:4px solid #685c9c}
+.cloud-region-map .gu-line{border-top:2px dashed #429381}
+.cloud-region-map .dong-line{border-top:1px solid #788898}
+.cloud-region-map .selected-swatch{height:10px;background:#77aa8a;border:2px solid #b77912}
+.cloud-region-map .region-popup{position:relative;padding:8px 8px 3px;min-width:215px;color:#223d4e}
+.cloud-region-map .region-popup strong{font-size:17px;display:block;margin-right:45px}
+.cloud-region-map .region-popup p{margin:8px 0!important}
+.cloud-region-map .region-popup small{font-size:11px;color:#697b88}
+.cloud-region-map .region-popup .popup-note{font-size:12px;color:#708293;line-height:1.5}
+.cloud-region-map .region-popup .popup-star{position:absolute;right:0;top:0;width:36px;height:36px;padding:0;font-size:27px;color:#b77912;background:#fff8dd;border-color:#ead28b}
+.cloud-region-map .tile-warning{position:absolute;z-index:500;top:12px;left:60px;right:25px;background:#fff6de;padding:10px;border-radius:5px;font-size:12px}
+.cloud-admin .cloud-map-filters{grid-template-columns:repeat(3,minmax(0,1fr));margin-bottom:12px}
+@media(max-width:600px){.cloud-region-map .region-map{height:440px}.cloud-region-map .map-legend{font-size:10px;padding:8px;gap:4px}.cloud-admin .cloud-map-filters{grid-template-columns:1fr 1fr}.cloud-map-filters label:first-child{grid-column:1/-1}}

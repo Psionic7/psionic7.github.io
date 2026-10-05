@@ -1,15 +1,28 @@
-import React, {useEffect, useRef, useState} from 'react';
+import React, {lazy, Suspense, useEffect, useMemo, useRef, useState} from 'react';
 import {adminClient} from './cloud-admin-client.js';
 import {REPOSITORY} from '../automation/config.mjs';
+import {hierarchy} from './domain.mjs';
+const CloudRegionMap = lazy(() => import('./CloudRegionMap.jsx'));
+const unique = values => [...new Set(values.filter(Boolean))].sort((a, b) => a.localeCompare(b, 'ko'));
 
 const statusName = run => run.status === 'completed' ? ({success: '성공', failure: '실패', cancelled: '취소', skipped: '건너뜀'}[run.conclusion] || run.conclusion) : ({queued: '대기', in_progress: '실행 중', waiting: '배포 대기'}[run.status] || run.status);
 const time = value => new Date(value).toLocaleString('ko-KR', {timeZone: 'Asia/Seoul', dateStyle: 'short', timeStyle: 'short'});
-export default function CloudAdmin({clientFactory = adminClient, fetcher = fetch}) {
+export default function CloudAdmin({clientFactory = adminClient, fetcher = fetch, MapComponent = CloudRegionMap}) {
   const [token, setToken] = useState(''), [client, setClient] = useState(null), [user, setUser] = useState('');
   const [loaded, setLoaded] = useState(null), [config, setConfig] = useState(null), [catalog, setCatalog] = useState([]);
   const [runs, setRuns] = useState([]), [busy, setBusy] = useState(false), [error, setError] = useState(''), [message, setMessage] = useState('');
   const [search, setSearch] = useState(''), [months, setMonths] = useState(''), [published, setPublished] = useState(null), [pending, setPending] = useState(false);
   const requestedAfter = useRef(new Set());
+  const [province, setProvince] = useState(''), [city, setCity] = useState(''), [district, setDistrict] = useState('');
+  const matches = useMemo(() => catalog.filter(r => {
+    const location = hierarchy(r);
+    return (!province || location.province === province) && (!city || location.city === city) &&
+      (!district || location.district === district) && (!search.trim() || r.label.includes(search.trim()));
+  }), [catalog, province, city, district, search]);
+  const visibleIds = useMemo(() => matches.map(r => r.region_id), [matches]);
+  const provinces = unique(catalog.map(r => hierarchy(r).province));
+  const cities = unique(catalog.filter(r => !province || hierarchy(r).province === province).map(r => hierarchy(r).city));
+  const districts = unique(catalog.filter(r => (!province || hierarchy(r).province === province) && (!city || hierarchy(r).city === city)).map(r => hierarchy(r).district));
   useEffect(() => {
     let active = true;
     fetcher('/data/manifest.json', {cache: 'no-store'}).then(r => {if (!r.ok) throw new Error(); return r.json();})
@@ -45,8 +58,8 @@ export default function CloudAdmin({clientFactory = adminClient, fetcher = fetch
   });
   const dirty = config && loaded && JSON.stringify(config) !== JSON.stringify(loaded.config);
   const activeRun = runs.some(r => r.status !== 'completed');
-  const visible = catalog.filter(r => !search.trim() || r.label.includes(search.trim())).slice(0, 100);
-  const toggle = id => setConfig(c => ({...c, region_ids: c.region_ids.includes(id) ? c.region_ids.filter(v => v !== id) : [...c.region_ids, id]}));
+  const visible = matches.slice(0, 100);
+  const toggle = id => {if (!busy) setConfig(c => ({...c, region_ids: c.region_ids.includes(id) ? c.region_ids.filter(v => v !== id) : [...c.region_ids, id]}));};
   return <main className="cloud-admin">
     <header className="page-header"><div><a href="/">집의 기록</a><h1>데이터 수집 관리자</h1><p>매일 예약 수집과 수동 실행을 관리합니다.</p></div>{client && <button disabled={busy} onClick={logout}>{user} · 로그아웃</button>}</header>
     {error && <p role="alert" className="notice error">{error}</p>}{message && <p role="status" className="notice">{message}</p>}
@@ -64,7 +77,14 @@ export default function CloudAdmin({clientFactory = adminClient, fetcher = fetch
         </div>
         <p className="small-note">최근 계약월을 다시 받아 늦게 신고되거나 해제된 거래를 반영합니다. 예약 실행은 GitHub 상황에 따라 지연될 수 있습니다.</p>
         <h3>수집 지역 · {config.region_ids.length}곳</h3><div className="weekly-selected">{config.region_ids.map(id => <button disabled={busy} key={id} onClick={() => toggle(id)}>{catalog.find(r => r.region_id === id)?.label || id} ×</button>)}</div>
+        <div className="cloud-fields cloud-map-filters">
+          <label>수집 지역 시도<select value={province} onChange={e => {setProvince(e.target.value); setCity(''); setDistrict('');}}><option value="">전체 시도</option>{provinces.map(v => <option key={v}>{v}</option>)}</select></label>
+          <label>수집 지역 시·군<select value={city} onChange={e => {setCity(e.target.value); setDistrict('');}}><option value="">전체 시·군</option>{cities.map(v => <option key={v}>{v}</option>)}</select></label>
+          <label>수집 지역 구<select value={district} onChange={e => setDistrict(e.target.value)}><option value="">전체 구</option>{districts.map(v => <option key={v}>{v}</option>)}</select></label>
+        </div>
         <label>추가할 지역 검색<input type="search" value={search} onChange={e => setSearch(e.target.value)} placeholder="시·구·동 이름" /></label>
+        <Suspense fallback={<p role="status">지역 지도를 준비하고 있습니다.</p>}><MapComponent fetcher={fetcher} catalog={catalog} draft={config.region_ids} saved={loaded.config.region_ids} visibleIds={visibleIds} onToggle={toggle} disabled={busy} /></Suspense>
+        <p className="small-note">지도에서 지역을 누른 뒤 팝업의 별표로 추가·해제하세요. 선택은 위 목록과 함께 바뀌며 설정 저장을 눌러야 적용됩니다. 시·군·구 필터와 검색은 지도에도 적용됩니다. 경계 기준: 2023-07-29 · V-World / kr-admin-geojson.</p>
         <div className="weekly-dong-picker">{visible.map(r => <label key={r.region_id}><input type="checkbox" checked={config.region_ids.includes(r.region_id)} disabled={busy} onChange={() => toggle(r.region_id)} />{r.label}</label>)}</div>
         <p className="small-note">검색 결과는 최대 100곳까지 표시합니다. 같은 시군구의 여러 동은 API를 한 번만 요청합니다.</p>
         <button className="primary" disabled={busy || !dirty || activeRun || pending || !config.region_ids.length} onClick={() => operation(async () => {const saved = await client.save(config, loaded, catalog); setLoaded(saved); setConfig(saved.config); setMessage('예약 시간과 수집 지역을 저장했습니다. 사이트도 최신 저장 DB로 다시 배포됩니다.');})}>설정 저장</button>
