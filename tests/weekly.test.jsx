@@ -3,6 +3,7 @@ import {afterEach,beforeEach,describe,expect,it,vi} from 'vitest';
 import {cleanup,render,screen,waitFor,within} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import App from '../src/App.jsx';
+import {readPreferences} from '../src/preferences.js';
 
 const a={region_id:'dong_41465101',label:'경기도 용인시 수지구 풍덕천동',region_name:'경기도 용인시 수지구',region_code:'41465',dongs:['풍덕천동']};
 const b={region_id:'dong_11110101',label:'서울특별시 종로구 풍덕천동',region_name:'서울특별시 종로구',region_code:'11110',dongs:['풍덕천동']};
@@ -13,6 +14,49 @@ const row=(id,overrides={})=>({id,region_code:'41465',dong:'풍덕천동',apartm
 beforeEach(()=>{window.localStorage.clear();window.history.replaceState(null,'','/?tab=weekly');});
 afterEach(()=>{cleanup();vi.restoreAllMocks();});
 describe('Dong weekly transaction tab',()=>{
+  it('filters every dong and its statistics inclusively, keeps exact bounds across units and revisits, and resets the range',async()=>{
+    const user=userEvent.setup();
+    window.history.replaceState(null,'',`/?tab=weekly&dong=${a.region_id}&dong=${b.region_id}`);
+    const loader=vi.fn((_,code)=>Promise.resolve([
+      row(1,{region_code:code,area_m2:59.99,apartment:'작은단지',price_man:30000}),
+      row(2,{region_code:code,area_m2:60,apartment:'경계60단지',price_man:60000}),
+      row(3,{region_code:code,area_m2:85,apartment:'경계85단지',price_man:100000}),
+      row(4,{region_code:code,area_m2:85.01,apartment:'큰단지',price_man:150000}),
+      row(5,{region_code:code,cancelled:1,area_m2:70,apartment:'해제단지',price_man:900000})
+    ]));
+    const first=render(<App initialManifest={manifest} districtLoader={loader}/>);
+    await screen.findByRole('region',{name:`${b.label} 주간 거래 내역`});
+    await user.type(screen.getByRole('spinbutton',{name:'최소 전용면적 (㎡)'}),'60');
+    await user.type(screen.getByRole('spinbutton',{name:'최대 전용면적 (㎡)'}),'85');
+    for(const region of [a,b]){
+      const table=screen.getByRole('region',{name:`${region.label} 주간 거래 내역`});
+      expect(within(table).getAllByRole('row')).toHaveLength(3);
+      expect(within(table).queryByText('작은단지')).toBeNull();
+      expect(within(table).queryByText('큰단지')).toBeNull();
+      expect(within(table).queryByText('해제단지')).toBeNull();
+      const metrics=screen.getByLabelText(`${region.label} 주간 통계`);
+      expect(within(metrics).getByText('유효 거래').parentElement.textContent).toBe('유효 거래2건');
+      expect(within(metrics).getByText('거래금액 중앙값').parentElement.textContent).toBe('거래금액 중앙값8.00억 원');
+    }
+    await user.click(screen.getByRole('button',{name:'평 (전용)',exact:true}));
+    expect(screen.getByRole('spinbutton',{name:'최소 전용면적 (평)'}).value).toBe('18.15');
+    expect(readPreferences('weekly')).toMatchObject({minArea:60,maxArea:85});
+    expect(within(screen.getByRole('region',{name:`${a.label} 주간 거래 내역`})).getAllByRole('row')).toHaveLength(3);
+    expect(loader).toHaveBeenCalledTimes(2);
+    first.unmount();window.history.replaceState(null,'','/');
+    render(<App initialManifest={manifest} districtLoader={loader}/>);
+    await screen.findByRole('region',{name:`${b.label} 주간 거래 내역`});
+    expect(screen.getByRole('spinbutton',{name:'최대 전용면적 (평)'}).value).toBe('25.7125');
+    await user.click(screen.getByRole('button',{name:'㎡',exact:true}));
+    const min=screen.getByRole('spinbutton',{name:'최소 전용면적 (㎡)'});
+    expect(min.value).toBe('60');
+    await user.clear(min);await user.type(min,'90');
+    expect(screen.getByRole('alert').textContent).toContain('최소 전용면적은 최대 전용면적보다');
+    expect(screen.getAllByText('이 주의 면적 조건에 맞는 유효 거래가 없습니다.')).toHaveLength(2);
+    await user.click(screen.getByRole('button',{name:'면적 필터 초기화'}));
+    expect(min.value).toBe('');expect(screen.queryByRole('alert')).toBeNull();
+    expect(within(screen.getByRole('region',{name:`${a.label} 주간 거래 내역`})).getAllByRole('row')).toHaveLength(5);
+  });
   it('stacks multiple districts in selection order, keeps selections during search, caches shared districts and changes area units',async()=>{
     const user=userEvent.setup();
     const data=[row(1),row(2,{deal_month:'202610',deal_date:'2026-10-04',price_man:120000}),row(3,{deal_date:'2026-09-27',price_man:700000}),row(4,{cancelled:1,price_man:800000}),row(5,{dong:'동천동',apartment:'동천단지'}),row(6,{deal_date:'2026-10-05',price_man:900000})];
@@ -54,6 +98,10 @@ describe('Dong weekly transaction tab',()=>{
     await user.click(screen.getByRole('button',{name:`${a.label} 다음 거래 페이지`}));
     expect(within(table).getAllByRole('row')).toHaveLength(3);
     expect(within(table).getByText('7.70억 원')).toBeTruthy();
+    await user.type(screen.getByRole('spinbutton',{name:'최대 전용면적 (㎡)'}),'85');
+    await waitFor(()=>expect(screen.getByRole('button',{name:`${a.label} 이전 거래 페이지`}).disabled).toBe(true));
+    expect(within(screen.getByRole('region',{name:`${a.label} 주간 거래 내역`})).getAllByRole('row')).toHaveLength(51);
+    await user.click(screen.getByRole('button',{name:'면적 필터 초기화'}));
     await user.click(screen.getByRole('button',{name:'이전 주',exact:true}));
     await screen.findByText('이 주에 조회되는 유효 거래가 없습니다.');
     await user.click(screen.getByRole('button',{name:'다음 주',exact:true}));
