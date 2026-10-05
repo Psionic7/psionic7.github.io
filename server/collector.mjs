@@ -37,7 +37,7 @@ export async function fetchPage(key,code,month,page,signal,fetcher=fetch) {
     signal?.throwIfAborted();
     let response;
     try {response=await fetcher(url,{signal:signal?AbortSignal.any([signal,AbortSignal.timeout(30000)]):AbortSignal.timeout(30000)});}
-    catch {signal?.throwIfAborted();if(attempt===2) throw new Error('공공 API 연결 실패. 네트워크를 확인하세요.');await delay(700*(attempt+1),undefined,{signal});continue;}
+    catch(error) {signal?.throwIfAborted();if(attempt===2) {const code=error.cause?.code||error.code;throw new Error(`공공 API 연결 실패${/^[A-Z_0-9]{1,80}$/.test(code||'')?' ('+code+')':''}. 네트워크를 확인하세요.`);}await delay(700*(attempt+1),undefined,{signal});continue;}
     if(!response.ok) {if([429,500,502,503,504].includes(response.status)&&attempt<2){await delay(700*(attempt+1),undefined,{signal});continue;}throw new Error(`공공 API 요청 실패 (HTTP ${response.status})`);}
     let xml;
     try {xml=await response.text();}

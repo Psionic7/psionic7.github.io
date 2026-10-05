@@ -45,11 +45,14 @@ jobs:
           COLLECTION_STATE_KEY: ${{ secrets.COLLECTION_STATE_KEY }}
       - name: Collect saved regions and new road addresses
         if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.collect)
-        run: node scripts/automation.mjs collect
+        run: node --dns-result-order=ipv4first scripts/automation.mjs collect
         env:
           MOLIT_SERVICE_KEY: ${{ secrets.MOLIT_SERVICE_KEY }}
           JUSO_ADDRESS_SEARCH_KEY: ${{ secrets.JUSO_ADDRESS_SEARCH_KEY }}
           INPUT_RECENT_MONTHS: ${{ inputs.recent_months }}
+      - name: Diagnose public API connectivity on failure
+        if: failure()
+        run: node scripts/diagnose-public-api.mjs
       - name: Export public data
         run: node scripts/automation.mjs export
         env:
