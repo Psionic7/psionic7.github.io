@@ -203,7 +203,7 @@ describe('React transaction explorer',()=>{
     expect(window.location.search).toContain('dong_11110101');
     expect(screen.queryByRole('button',{name:'선택 지역 수집'})).toBeNull();
     await user.click(screen.getByRole('button',{name:'데이터 안내'}));
-    expect(screen.getByText('로컬 전용')).toBeTruthy();
+    expect(screen.getByRole('link',{name:'웹 수집 관리자'}).getAttribute('href')).toBe('/admin.html');
     expect(screen.getByRole('link',{name:'공개 SQLite 다운로드'}).getAttribute('href')).toBe('/data/public.sqlite3');
   });
   it('uses the manifest SQLite archive link and explains decompression for large datasets',()=>{

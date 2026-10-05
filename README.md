@@ -27,7 +27,7 @@ MOLIT_SERVICE_KEY=<공공데이터포털에서 받은 실제 키>
 JUSO_ADDRESS_SEARCH_KEY=<주소정보누리집 주소 검색 승인키>
 ```
 
-실제 키는 관리자 브라우저에 전달되지 않습니다. 화면에는 설정 여부만 표시합니다. 서버는 `127.0.0.1`에만 바인딩하며 Host·Origin·CSRF를 검사하고 외부 사이트의 요청을 거부합니다. 공개 사이트에는 관리자 API, 수집 기능이나 관리자 빌드가 배포되지 않습니다.
+실제 공공 API 키는 관리자 브라우저에 전달되지 않습니다. 로컬 화면에는 설정 여부만 표시합니다. 로컬 서버는 `127.0.0.1`에만 바인딩하며 Host·Origin·CSRF를 검사하고 외부 사이트의 요청을 거부합니다. 로컬 관리자 API와 원천 조회 화면은 공개 사이트에 배포되지 않습니다. 웹 수집 관리자는 GitHub 권한 확인 후 Actions 실행·예약 설정 변경만 담당합니다.
 
 ## 구조
 
@@ -65,6 +65,34 @@ scripts/                Node.js 검사·내보내기·GitHub Pages 도구
 경계는 [V-World 기반 kr-admin-geojson](https://github.com/KnellBalm/kr-admin-geojson)의 **2023-07-29** 공개 자료입니다. 이후 부천·화성 등의 개편은 반영되지 않을 수 있습니다. 상세 출처: [admin/assets/BOUNDARIES.md](admin/assets/BOUNDARIES.md).
 
 ## 데이터 갱신
+
+### 자동 수집과 웹 관리자
+
+`https://psionic7.github.io/admin.html`에서 예약 시간·지역·최근 계약월 수·새 주소 조회 한도를 변경하거나 **수집하고 배포**를 실행합니다. 기본은 **매일 한국 시간 07:15, 저장한 21개 동, 최근 3개월, 미조회 주소 최대 1,000건**입니다. 같은 시군구의 여러 동은 시군구·계약월마다 API를 한 번만 요청합니다. 오래된 정정·해제까지 확인하려면 수동 실행에서 최근 12개월을 선택하세요.
+
+수집은 PC나 모바일 브라우저가 닫혀 있어도 GitHub Actions에서 실행합니다. 예약은 정시 실행을 보장하지 않으며 혼잡하면 지연·누락될 수 있습니다. 공개 저장소는 60일 동안 활동이 없으면 예약이 비활성화될 수 있으므로 웹 관리자에서 실행 이력을 확인하세요. 워크플로는 배포 파일을 매일 Git 커밋하지 않습니다.
+
+웹 관리자 접속은 저장소 하나로 범위를 제한한 **GitHub fine-grained personal access token**을 사용합니다. 토큰 생성 시 `Psionic7/psionic7.github.io`를 선택하고 **Actions / Contents: Read and write**, 예약 시간 변경에 **Workflows: Read and write**를 설정합니다. 토큰은 React 메모리에만 유지하며 localStorage·sessionStorage·URL·서버 로그에 기록하지 않습니다. 새로고침·로그아웃 후 다시 입력해야 합니다. 관리자 작업은 GitHub가 실제 권한을 검사합니다. 관리자 페이지가 공개되어 있어도 관리 권한 없는 방문자는 작업을 실행할 수 없습니다. 화면에는 공공 API 키 입력란이 없습니다.
+
+초기 설정 (PC에서 한 번):
+
+```powershell
+# Secrets 등록용 LibSodium은 공개 앱 의존성과 분리합니다.
+New-Item -ItemType Directory -Force local/automation-tools
+Set-Content local/automation-tools/package.json '{"private":true}'
+pnpm --dir local/automation-tools add libsodium-wrappers
+pnpm automation:setup
+```
+
+초기 설정 스크립트는 로컬 Git 인증으로 `.env`의 `MOLIT_SERVICE_KEY`, `JUSO_ADDRESS_SEARCH_KEY`와 새 `COLLECTION_STATE_KEY`를 GitHub Secrets에 암호화하여 등록합니다. API 키와 Git 인증 토큰을 출력하지 않습니다. 로컬 DB를 SQLite 백업 API로 복사한 뒤 gzip + AES-256-GCM으로 암호화해 **draft release의 `state-*.enc` 첨부 파일**로 보관합니다. 큰 파일 전송 실패를 줄이기 위해 2 MiB씩 나누며, 조각과 전체 파일의 SHA256을 확인하고 마지막에 `state.json` 목록을 저장합니다. 목록이 없는 불완전한 업로드는 복원에 사용하지 않습니다. 초기 설정을 다시 실행하면 기존 클라우드 DB를 유지합니다. **`local/collection-state.key`는 별도로 백업하세요. 이 키를 잃으면 저장 DB를 복호화할 수 없습니다.**
+
+Pages의 게시 방식을 **Settings → Pages → Source → GitHub Actions**로 설정하고 코드를 푸시합니다. `.github/workflows/refresh-data.yml`이 저장 DB 복원 → 수집 → 새 주소 조회 → 공개 데이터 내보내기 → 빌드·비밀 값 검사 → DB 보관 → Pages 배포를 실행합니다. 수집·검사 실패 시 새 DB를 보관하거나 사이트를 배포하지 않습니다. DB 보관 후 배포만 실패하면 다음 재배포가 저장된 최신 DB를 사용합니다. 최신 암호화 DB 3개를 유지하며 각 지역·월별 원천 응답도 최신 3회를 유지합니다. 과거 거래는 삭제하지 않습니다.
+
+`automation/config.json`에는 공개 가능한 지역 ID와 예약 옵션만 있습니다. 웹 관리자에서 저장하면 config와 예약 cron을 하나의 Git 커밋으로 갱신하며, 다른 변경과 충돌하면 저장을 거부합니다. 예약·수동·푸시 배포는 동시에 실행되지 않습니다. Actions에는 `workflow_dispatch` 수동 실행도 있으며 `collect`를 해제하면 API를 호출하지 않고 최신 저장 DB로 재배포합니다.
+
+**클라우드 DB와 로컬 관리자 DB는 별개입니다.** 처음에는 로컬 DB를 그대로 이어받으며 이후 각각 수집합니다. 클라우드 운영 중 소스만 푸시해도 최신 클라우드 DB로 다시 내보내므로 예전 Git 데이터로 돌아가지 않습니다. 클라우드에서 새로 수집한 자료는 배포 산출물에 포함되며 `public/data`·`docs/data`에 매일 커밋하지 않습니다. 로컬에서 추가 수집한 자료는 자동으로 클라우드 DB에 합쳐지지 않습니다.
+
+### 로컬 수집
 
 주소를 일괄 조회하려면 관리자 화면의 **미조회 주소 검색·저장**을 누르거나 `node scripts/collect-addresses.mjs --all`을 실행합니다. 이후 아래 공개 데이터 내보내기와 정적 빌드를 실행해야 사이트에 반영됩니다. 새 실거래를 수집하면 새 지번만 미조회 목록에 추가됩니다.
 
@@ -131,7 +159,7 @@ pnpm check:publish
 
 ## 배포
 
-GitHub Settings → Pages → **Deploy from a branch** → `main` / `/docs`. Vite `base`는 사용자 사이트에 맞춰 `/`입니다. `pnpm build`가 `.nojekyll`을 만듭니다. `admin-dist/`는 별도의 빌드이며 Pages에 들어가지 않습니다.
+자동 수집 사용 시 GitHub Settings → Pages → **GitHub Actions**를 사용합니다. Git 푸시도 최신 클라우드 DB로 공개 사이트를 재배포합니다. Vite `base`는 사용자 사이트에 맞춰 `/`이며 `pnpm build`가 공개 조회 화면과 `admin.html`을 빌드합니다. `admin-dist/`의 로컬 원천 조회 화면은 Pages에 들어가지 않습니다. 자동 수집을 사용하지 않는 경우 기존 **Deploy from a branch → main / docs** 게시 방식을 사용할 수 있습니다.
 
 ```powershell
 node scripts/github-pages.mjs status

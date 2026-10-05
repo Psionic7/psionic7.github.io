@@ -28,7 +28,7 @@ export function readJson(filename) {return JSON.parse(fs.readFileSync(filename,'
 export function localEnv(filename=paths.env) {return fs.existsSync(filename)?parseEnv(fs.readFileSync(filename,'utf8').replace(/^\uFEFF/,'')):{};}
 export function serviceKey(filename=paths.env) {return process.env.MOLIT_SERVICE_KEY || localEnv(filename).MOLIT_SERVICE_KEY || '';}
 export function secretValues(filename=paths.env) {
-  const values=Object.entries({...localEnv(filename),...process.env}).filter(([k,v])=>/(SERVICE_KEY|API_KEY|TOKEN|SECRET|PASSWORD)$/i.test(k)&&v?.length>=12).map(([,v])=>v);
+  const values=Object.entries({...localEnv(filename),...process.env}).filter(([k,v])=>/(SERVICE_KEY|API_KEY|STATE_KEY|SEARCH_KEY|TOKEN|SECRET|PASSWORD)$/i.test(k)&&v?.length>=12).map(([,v])=>v);
   return [...new Set(values.flatMap(v=>{let decoded=v;try{decoded=decodeURIComponent(v);}catch{}return [v,decoded,encodeURIComponent(decoded)];}))];
 }
 export function checkedBytes(value,secrets=secretValues(),{maxBytes=95*1024*1024}={}) {

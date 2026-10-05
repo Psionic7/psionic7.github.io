@@ -13,7 +13,8 @@
     "admin:build": "vite build --config vite.admin.config.js",
     "admin": "pnpm admin:build && node server/index.mjs",
     "data:export": "node scripts/export-data.mjs",
-    "test:server": "node --test tests/server.test.mjs"
+    "test:server": "node --test tests/server.test.mjs tests/automation.test.mjs",
+    "automation:setup": "node scripts/setup-automation.mjs"
   },
   "dependencies": {
     "fast-xml-parser": "5.11.2",
