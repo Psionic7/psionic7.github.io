@@ -4,6 +4,7 @@ import {apartmentAddress, areaInputValue, areaM2, areaUnitLabel, areaValue, form
 import {publishedDay, shiftWeek, weekBounds, weeklyRows} from './weekly.mjs';
 import {Empty,Loading} from './ViewState.jsx';
 import AreaUnit from './AreaUnit.jsx';
+import AreaRange from './AreaRange.jsx';
 import {areaPreference,textPreference,unitPreference,useStoredState} from './preferences.js';
 
 const unique=values=>[...new Set(values)].sort((a,b)=>a.localeCompare(b,'ko'));
@@ -27,6 +28,8 @@ export default function WeeklyPage({manifest, catalog, selectedIds, onChange, da
   const dongs=useMemo(()=>catalog.filter(region=>region.dongs.length===1),[catalog]);
   const selected=selectedIds.map(id=>dongs.find(region=>region.region_id===id)).filter(Boolean);
   const codes=JSON.stringify([...new Set(selected.map(region=>region.region_code))].sort());
+  const knownMaxArea=useMemo(()=>JSON.parse(codes).reduce((max,code)=>(datasets[code]?.rows||[]).reduce((value,row)=>Math.max(value,Number(row.area_m2)||0),max),300),[codes,datasets]);
+  const sliderCeiling=Math.max(Math.ceil(knownMaxArea/50)*50,minArea||0,maxArea||0);
   useEffect(()=>{
     let active=true;
     JSON.parse(codes).forEach(code=>{
@@ -57,12 +60,13 @@ export default function WeeklyPage({manifest, catalog, selectedIds, onChange, da
       <div className="weekly-period"><label>조회 주 기준 날짜<input type="date" value={day} min={earliestDay} max={latestDay||undefined} onChange={event=>onDayChange(event.target.value)}/></label><div className="weekly-navigation"><button aria-label="이전 주" disabled={!week||!!earliestDay&&shiftWeek(day,-1)<weekBounds(earliestDay).start} onClick={()=>onDayChange(shiftWeek(day,-1))}><ChevronLeft size={16}/></button><strong>{week?`${week.start} — ${week.end}`:'조회 날짜를 선택해 주세요'}</strong><button aria-label="다음 주" disabled={!week||!!latestDay&&shiftWeek(day,1)>latestDay} onClick={()=>onDayChange(shiftWeek(day,1))}><ChevronRight size={16}/></button></div><AreaUnit value={areaUnit} onChange={setAreaUnit}/></div>
       <p className="small-note">계약일 기준 월요일~일요일 · 계약 해제 거래 제외 · 신고 지연에 따라 최근 주의 자료는 적거나 없을 수 있습니다. 자료 기준일: {latestDay||'미상'} (한국 시간)</p>
       {!week&&<p className="notice error" role="alert">주간 조회를 위해 올바른 날짜를 선택해 주세요.</p>}
+      <AreaRange minArea={minArea} maxArea={maxArea} ceilingM2={sliderCeiling} unit={areaUnit} onMinChange={setMinArea} onMaxChange={setMaxArea}/>
       <div className="weekly-area-filter" role="group" aria-label="주간 전용면적 필터">
         <label>최소 전용면적 ({unit})<input type="number" min="0" step="any" placeholder="제한 없음" value={minArea===''?'':areaInputValue(minArea,areaUnit)} onChange={event=>setArea(setMinArea,event.target.value)}/></label>
         <label>최대 전용면적 ({unit})<input type="number" min="0" step="any" placeholder="제한 없음" value={maxArea===''?'':areaInputValue(maxArea,areaUnit)} onChange={event=>setArea(setMaxArea,event.target.value)}/></label>
         <button disabled={!areaFiltered} onClick={()=>{setMinArea('');setMaxArea('');}}>면적 필터 초기화</button>
       </div>
-      <p className="small-note">선택한 모든 동의 거래 내역과 통계에 적용합니다. 입력한 최소·최대 면적을 포함하며, 비워두면 제한하지 않습니다. 단위를 바꿔도 같은 면적 범위를 유지합니다.</p>
+      <p className="small-note">양쪽 손잡이를 움직여 면적 범위를 조절하세요. 선택한 모든 동의 거래와 통계에 적용됩니다. 숫자로도 입력할 수 있으며, 양 끝으로 이동하거나 입력을 비우면 해당 면적 제한을 해제합니다.</p>
       {invalidArea&&<p className="notice error" role="alert">최소 전용면적은 최대 전용면적보다 클 수 없습니다.</p>}
       <div className="weekly-location"><label>주간 시도<select value={province} onChange={event=>{setProvince(event.target.value);setCity('');setDistrict('');}}><option value="">전체 시도</option>{provinces.map(value=><option key={value}>{value}</option>)}</select></label><label>주간 시<select value={city} onChange={event=>{setCity(event.target.value);setDistrict('');}}><option value="">전체 시</option>{cities.map(value=><option key={value}>{value}</option>)}</select></label><label>주간 구<select value={district} onChange={event=>setDistrict(event.target.value)}><option value="">전체 구</option>{districts.map(value=><option key={value}>{value}</option>)}</select></label><label className="search-input"><span>주간 동 검색</span><Search size={16}/><input type="search" placeholder="동 이름 또는 시·구 이름" value={search} onChange={event=>setSearch(event.target.value)}/></label></div>
       <div className="weekly-picker-title"><span>조회할 동 선택 · {formatNumber(choices.length)}곳</span><button disabled={!selectedIds.length} onClick={()=>onChange([])}>선택 모두 해제</button></div>

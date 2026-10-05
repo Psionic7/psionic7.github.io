@@ -1,6 +1,6 @@
 import React from 'react';
 import {afterEach,beforeEach,describe,expect,it,vi} from 'vitest';
-import {cleanup,render,screen,waitFor,within} from '@testing-library/react';
+import {cleanup,fireEvent,render,screen,waitFor,within} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import App from '../src/App.jsx';
 import {readPreferences} from '../src/preferences.js';
@@ -14,6 +14,29 @@ const row=(id,overrides={})=>({id,region_code:'41465',dong:'풍덕천동',apartm
 beforeEach(()=>{window.localStorage.clear();window.history.replaceState(null,'','/?tab=weekly');});
 afterEach(()=>{cleanup();vi.restoreAllMocks();});
 describe('Dong weekly transaction tab',()=>{
+  it('connects both slider handles to the filters, prevents crossing and supports unbounded endpoints',async()=>{
+    window.history.replaceState(null,'',`/?tab=weekly&dong=${a.region_id}`);
+    render(<App initialManifest={manifest} districtLoader={()=>Promise.resolve([row(1,{area_m2:60}),row(2),row(3,{area_m2:120})])}/>);
+    await screen.findByRole('region',{name:`${a.label} 주간 거래 내역`});
+    const lower=screen.getByRole('slider',{name:'최소 전용면적 슬라이더 (㎡)'});
+    const upper=screen.getByRole('slider',{name:'최대 전용면적 슬라이더 (㎡)'});
+    fireEvent.change(upper,{target:{value:'85'}});
+    fireEvent.change(lower,{target:{value:'60'}});
+    expect(screen.getByRole('spinbutton',{name:'최소 전용면적 (㎡)'}).value).toBe('60');
+    expect(screen.getByRole('spinbutton',{name:'최대 전용면적 (㎡)'}).value).toBe('85');
+    expect(within(screen.getByRole('region',{name:`${a.label} 주간 거래 내역`})).getAllByRole('row')).toHaveLength(3);
+    fireEvent.keyDown(lower,{key:'ArrowRight'});
+    expect(lower.value).toBe('61');
+    fireEvent.change(lower,{target:{value:'100'}});
+    expect(lower.value).toBe('85');expect(screen.queryByRole('alert')).toBeNull();
+    fireEvent.change(upper,{target:{value:'40'}});
+    expect(upper.value).toBe('85');
+    fireEvent.change(lower,{target:{value:'0'}});
+    fireEvent.change(upper,{target:{value:upper.max}});
+    expect(readPreferences('weekly')).toMatchObject({minArea:'',maxArea:''});
+    fireEvent.change(screen.getByRole('spinbutton',{name:'최대 전용면적 (㎡)'}),{target:{value:'400'}});
+    expect(Number(upper.max)).toBeGreaterThanOrEqual(400);expect(upper.value).toBe('400');
+  });
   it('filters every dong and its statistics inclusively, keeps exact bounds across units and revisits, and resets the range',async()=>{
     const user=userEvent.setup();
     window.history.replaceState(null,'',`/?tab=weekly&dong=${a.region_id}&dong=${b.region_id}`);
