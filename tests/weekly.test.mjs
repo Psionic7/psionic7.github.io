@@ -16,5 +16,6 @@ test('weekly transactions include both boundaries and isolate same-named dongs b
   const row=(id,deal_date,overrides={})=>({id,deal_date,region_code:'41465',dong:'풍덕천동',cancelled:0,...overrides});
   const rows=[row(1,'2026-09-27'),row(2,'2026-09-28'),row(3,'2026-10-04'),row(4,'2026-10-05'),row(5,'2026-10-01',{cancelled:1}),row(6,'2026-10-01',{region_code:'11110'}),row(7,'2026-10-01',{dong:'동천동'})];
   assert.deepEqual(weeklyRows(rows,region,weekBounds('2026-10-02')).map(item=>item.id),[3,2]);
+  assert.deepEqual(weeklyRows(rows,region,weekBounds('2026-10-02'),true).map(item=>item.id),[3,5,2]);
   assert.deepEqual(weeklyRows(rows,region,null),[]);
 });

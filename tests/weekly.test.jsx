@@ -14,6 +14,28 @@ const row=(id,overrides={})=>({id,region_code:'41465',dong:'풍덕천동',apartm
 beforeEach(()=>{window.localStorage.clear();window.history.replaceState(null,'','/?tab=weekly');});
 afterEach(()=>{cleanup();vi.restoreAllMocks();});
 describe('Dong weekly transaction tab',()=>{
+  it('shows cancellations and their dates by default while summary prices use valid trades only',async()=>{
+    const user=userEvent.setup();
+    window.history.replaceState(null,'',`/?tab=weekly&dong=${a.region_id}`);
+    const loader=()=>Promise.resolve([row(1,{area_m2:60,price_man:60000}),row(2,{cancelled:1,apartment:'해제단지',price_man:900000,raw:{cdealDay:'2026-10-01'}})]);
+    const first=render(<App initialManifest={manifest} districtLoader={loader}/>);
+    const table=await screen.findByRole('region',{name:`${a.label} 주간 거래 내역`});
+    expect(screen.getByRole('checkbox',{name:'해제 거래 포함'}).checked).toBe(true);
+    expect(within(table).getAllByRole('row')).toHaveLength(3);
+    expect(within(table).getByText('해제일 2026-10-01')).toBeTruthy();
+    const metrics=screen.getByLabelText(`${a.label} 주간 통계`);
+    expect(within(metrics).getByText('거래금액 중앙값').parentElement.textContent).toBe('거래금액 중앙값6.00억 원');
+    await user.type(screen.getByRole('spinbutton',{name:'최소 전용면적 (㎡)'}),'70');
+    expect(within(table).getByText('해제단지')).toBeTruthy();
+    expect(within(metrics).getByText('유효 거래').parentElement.textContent).toBe('유효 거래0건');
+    expect(within(metrics).getByText('거래금액 중앙값').parentElement.textContent).toBe('거래금액 중앙값—억 원');
+    await user.click(screen.getByRole('button',{name:'면적 필터 초기화'}));
+    await user.click(screen.getByRole('checkbox',{name:'해제 거래 포함'}));
+    expect(within(table).queryByText('해제단지')).toBeNull();
+    first.unmount();render(<App initialManifest={manifest} districtLoader={loader}/>);
+    await screen.findByRole('region',{name:`${a.label} 주간 거래 내역`});
+    expect(screen.getByRole('checkbox',{name:'해제 거래 포함'}).checked).toBe(false);
+  });
   it('connects both slider handles to the filters, prevents crossing and supports unbounded endpoints',async()=>{
     window.history.replaceState(null,'',`/?tab=weekly&dong=${a.region_id}`);
     render(<App initialManifest={manifest} districtLoader={()=>Promise.resolve([row(1,{area_m2:60}),row(2),row(3,{area_m2:120})])}/>);
@@ -49,6 +71,7 @@ describe('Dong weekly transaction tab',()=>{
     ]));
     const first=render(<App initialManifest={manifest} districtLoader={loader}/>);
     await screen.findByRole('region',{name:`${b.label} 주간 거래 내역`});
+    await user.click(screen.getByRole('checkbox',{name:'해제 거래 포함'}));
     await user.type(screen.getByRole('spinbutton',{name:'최소 전용면적 (㎡)'}),'60');
     await user.type(screen.getByRole('spinbutton',{name:'최대 전용면적 (㎡)'}),'85');
     for(const region of [a,b]){
@@ -86,6 +109,7 @@ describe('Dong weekly transaction tab',()=>{
     const loader=vi.fn((_,code)=>Promise.resolve(code==='41465'?data:[row(1,{region_code:'11110',apartment:'서울단지',price_man:50000})]));
     render(<App initialManifest={manifest} districtLoader={loader}/>);
     await screen.findByText('주간 실거래가를 볼 동을 선택해 주세요.');
+    await user.click(screen.getByRole('checkbox',{name:'해제 거래 포함'}));
     expect(loader).not.toHaveBeenCalled();
     await user.click(screen.getByRole('checkbox',{name:/풍덕천동.*용인시/}));
     const sectionA=screen.getByRole('region',{name:`${a.label} 주간 실거래가`});
@@ -126,7 +150,7 @@ describe('Dong weekly transaction tab',()=>{
     expect(within(screen.getByRole('region',{name:`${a.label} 주간 거래 내역`})).getAllByRole('row')).toHaveLength(51);
     await user.click(screen.getByRole('button',{name:'면적 필터 초기화'}));
     await user.click(screen.getByRole('button',{name:'이전 주',exact:true}));
-    await screen.findByText('이 주에 조회되는 유효 거래가 없습니다.');
+    await screen.findByText('이 주에 조회되는 거래가 없습니다.');
     await user.click(screen.getByRole('button',{name:'다음 주',exact:true}));
     const refreshed=screen.getByRole('region',{name:`${a.label} 주간 거래 내역`});
     expect(within(refreshed).getAllByRole('row')).toHaveLength(51);
