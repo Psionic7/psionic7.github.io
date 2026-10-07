@@ -66,7 +66,7 @@ describe('Browser selection persistence',()=>{
     await user.click(screen.getByRole('checkbox',{name:/풍덕천동/}));
     await user.type(screen.getByRole('searchbox',{name:'주간 동 검색'}),'동천');
     first.unmount();window.history.replaceState(null,'','/');open();
-    await screen.findByText('동천단지');
+    await screen.findByRole('region',{name:`${b.label} 주간 거래 내역`});
     expect([...document.querySelector('.weekly-stack').children].map(item=>item.getAttribute('aria-label'))).toEqual([b,a].map(item=>`${item.label} 주간 실거래가`));
     expect(screen.getByLabelText('조회 주 기준 날짜').value).toBe('2026-09-28');
     expect(screen.getByRole('searchbox',{name:'주간 동 검색'}).value).toBe('동천');

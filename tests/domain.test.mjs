@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { apartmentSummary, areaSummary, buildCatalog, csv, favoriteRegions, filterRaw, filterError, monthSequence, monthly, rawFields, scopeRows, stats, validRows } from '../src/domain.mjs';
+import { apartmentSummary, areaSummary, buildCatalog, csv, favoriteRegions, filterRaw, filterError, monthSequence, monthly, rawFields, scopeRows, stats, topTrades, validRows } from '../src/domain.mjs';
 const make = (id, overrides={}) => ({id,region_code:'41465',deal_month:'202601',deal_date:'2026-01-05',apartment:'같은이름',dong:'풍덕천동',jibun:'1',price_man:100000,area_m2:85,floor:4,build_year:2000,cancelled:0,raw:{aptNm:'같은이름',dealAmount:'100,000',floor:'4',aptDong:'',unknown:'새 필드'},...overrides});
 test('legacy presets disappear and favorites only use explicit valid saved IDs',()=>{
   const regions=[{region_id:'suji',region_code:'41465',region_name:'경기도 용인시 수지구',label:'용인 수지구',dongs:[]},
@@ -18,18 +18,23 @@ test('region scopes, inclusive dates/areas and cancellations reproduce existing 
   assert.deepEqual(validRows(scoped,85,85).map(row=>row.id),[1]);
   assert.equal(scopeRows(rows,{region_code:'41465',dongs:[]},'202601','202602').length,4);
 });
-test('median and apartment identity keep equal-name, different-lot trades separate',()=>{
+test('actual price extremes and apartment identity keep equal-name, different-lot trades separate',()=>{
   const rows=[make(1),make(2,{price_man:120000}),make(3,{jibun:'2',price_man:50000})];
   const result=stats(rows);
-  assert.equal(result.median,10); assert.equal(result.apartments,2);
-  assert.ok(Math.abs(result.pyeong-100000*3.305785/85)<1e-9);
-  const groups=apartmentSummary(rows); assert.equal(groups[0].count,2); assert.equal(groups[0].median,11);
+  assert.equal(result.min,5); assert.equal(result.max,12); assert.equal(result.apartments,2);
+  const groups=apartmentSummary(rows); assert.equal(groups[0].count,2); assert.equal(groups[0].min,10); assert.equal(groups[0].max,12);
 });
 test('monthly gaps stay empty rather than inventing a zero price',()=>{
   assert.deepEqual(monthSequence('202512','202602'),['202512','202601','202602']);
   const result=monthly([make(1)],'202512','202602');
-  assert.equal(result[0].count,0); assert.equal(result[0].median,null); assert.equal(result[1].median,10);
+  assert.equal(result[0].count,0); assert.equal(result[0].min,null); assert.equal(result[0].max,null); assert.equal(result[1].max,10);
   assert.deepEqual(monthSequence('202613','202614'),[]);
+});
+test('top five keep individual equal-price trades, exclude cancellations and use dates for ties without mutating input',()=>{
+  const rows=[make(1),make(2,{price_man:120000}),make(3,{price_man:120000,deal_date:'2026-01-06'}),make(4,{price_man:900000,cancelled:1}),make(5,{price_man:90000}),make(6,{price_man:80000}),make(7,{price_man:70000})];
+  assert.deepEqual(topTrades(rows).map(row=>row.id),[3,2,1,5,6]);
+  assert.deepEqual(rows.map(row=>row.id),[1,2,3,4,5,6,7]);
+  assert.deepEqual(topTrades([]),[]);
 });
 test('area bands are right-inclusive at 60, 85, 102 and 135',()=>{
   const result=areaSummary([60,85,102,135,136].map((area_m2,index)=>make(index,{area_m2})));

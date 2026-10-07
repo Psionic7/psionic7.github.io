@@ -15,16 +15,9 @@ export const areaValue = (m2, unit = 'm2') => unit === 'pyeong' ? m2 / PYEONG_M2
 export const areaM2 = (value, unit = 'm2') => unit === 'pyeong' ? value * PYEONG_M2 : value;
 export const areaUnitLabel = unit => unit === 'pyeong' ? '평' : '㎡';
 export const areaInputValue = (m2, unit) => Number(areaValue(m2, unit).toFixed(4));
-export const unitPrice = (summary, unit) => summary.pyeong == null ? null : (unit === 'pyeong' ? summary.pyeong : summary.pyeong / PYEONG_M2);
 export const formatNumber = (value, digits = 0) => value == null || !Number.isFinite(value)
   ? '—' : new Intl.NumberFormat('ko-KR', { maximumFractionDigits: digits, minimumFractionDigits: digits }).format(value);
 export const monthLabel = (value) => value ? `${value.slice(0, 4)}.${value.slice(4)}` : '—';
-export function median(values) {
-  if (!values.length) return null;
-  const sorted = [...values].sort((a, b) => a - b);
-  const middle = Math.floor(sorted.length / 2);
-  return sorted.length % 2 ? sorted[middle] : (sorted[middle - 1] + sorted[middle]) / 2;
-}
 export function scopeRows(rows, region, start, end) {
   return rows.filter(row => row.region_code === region.region_code &&
     (!region.dongs.length || region.dongs.includes(row.dong)) &&
@@ -40,8 +33,11 @@ export const apartmentKey = row => JSON.stringify([row.dong, row.jibun, row.apar
 export const apartmentAddress = (item,regionName='') => item.road_address ||
   `${[regionName,item.dong].filter(Boolean).join(' ')} · 지번 ${item.jibun || '미상'}`;
 export function stats(rows) {
-  return { count: rows.length, median: median(rows.map(priceEok)),
-    pyeong: median(rows.map(pricePerPyeong)), apartments: new Set(rows.map(apartmentKey)).size };
+  const range=rows.reduce((value,row)=>({min:Math.min(value.min,priceEok(row)),max:Math.max(value.max,priceEok(row))}),{min:Infinity,max:-Infinity});
+  return {count:rows.length,min:rows.length?range.min:null,max:rows.length?range.max:null,apartments:new Set(rows.map(apartmentKey)).size};
+}
+export function topTrades(rows,limit=5) {
+  return rows.filter(row=>row.cancelled===0).sort((a,b)=>b.price_man-a.price_man || b.deal_date.localeCompare(a.deal_date) || b.id-a.id).slice(0,limit);
 }
 export function monthSequence(start, end) {
   if (!/^\d{6}$/.test(start ?? '') || !/^\d{6}$/.test(end ?? '') || start > end) return [];
@@ -66,11 +62,10 @@ export function apartmentSummary(rows) {
   rows.forEach(row => { const key = apartmentKey(row); if (!groups.has(key)) groups.set(key, []); groups.get(key).push(row); });
   return [...groups].map(([key, items]) => ({ key, apartment: items[0].apartment,
     dong: items[0].dong, jibun: items[0].jibun,
-    road_address: items.find(item=>item.road_address)?.road_address || '',count: items.length,
-    median: median(items.map(priceEok)), min: Math.min(...items.map(priceEok)),
-    max: Math.max(...items.map(priceEok)), area: items.reduce((sum, row) => sum + row.area_m2, 0) / items.length,
+    road_address: items.find(item=>item.road_address)?.road_address || '',...stats(items),
+    area: items.reduce((sum, row) => sum + row.area_m2, 0) / items.length,
     latest: items.reduce((value, row) => row.deal_date > value ? row.deal_date : value, ''),
-  })).sort((a, b) => b.count - a.count || b.median - a.median || a.key.localeCompare(b.key, 'ko'));
+  })).sort((a, b) => b.count - a.count || b.max - a.max || a.key.localeCompare(b.key, 'ko'));
 }
 export function areaSummary(rows, unit = 'm2') {
   const ranges = [[0, 60, '60㎡ 이하'], [60, 85, '60–85㎡'], [85, 102, '85–102㎡'],

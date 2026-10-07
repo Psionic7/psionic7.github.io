@@ -14,6 +14,25 @@ const row=(id,overrides={})=>({id,region_code:'41465',dong:'풍덕천동',apartm
 beforeEach(()=>{window.localStorage.clear();window.history.replaceState(null,'','/?tab=weekly');});
 afterEach(()=>{cleanup();vi.restoreAllMocks();});
 describe('Dong weekly transaction tab',()=>{
+  it('shows actual extremes and the five highest valid trades under the current area and week filters',async()=>{
+    const user=userEvent.setup();
+    window.history.replaceState(null,'',`/?tab=weekly&dong=${a.region_id}`);
+    const data=[6,8,10,10,12,15].map((price,index)=>row(index+1,{price_man:price*10000,apartment:`가격단지${index}`,area_m2:index===5?120:85}));
+    data.push(row(99,{cancelled:1,price_man:990000,apartment:'해제최고가'}));
+    render(<App initialManifest={manifest} districtLoader={()=>Promise.resolve(data)}/>);
+    const leaders=await screen.findByRole('region',{name:'풍덕천동 금액 상위 5건 거래 내역'});
+    const prices=()=>within(screen.getByRole('region',{name:'풍덕천동 금액 상위 5건 거래 내역'})).getAllByRole('row').slice(1).map(tr=>within(tr).getAllByRole('cell')[1].querySelector('strong').textContent);
+    expect(prices()).toEqual(['15.00억 원','12.00억 원','10.00억 원','10.00억 원','8.00억 원']);
+    expect(within(leaders).queryByText('해제최고가')).toBeNull();
+    const metrics=screen.getByLabelText(`${a.label} 주간 통계`);
+    expect(within(metrics).getByText('최저 거래금액').parentElement.textContent).toBe('최저 거래금액6.00억 원');
+    expect(within(metrics).getByText('최고 거래금액').parentElement.textContent).toBe('최고 거래금액15.00억 원');
+    await user.type(screen.getByRole('spinbutton',{name:'최대 전용면적 (㎡)'}),'85');
+    expect(prices()).toEqual(['12.00억 원','10.00억 원','10.00억 원','8.00억 원','6.00억 원']);
+    expect(screen.queryByText(/중앙값/)).toBeNull();
+    await user.click(screen.getByRole('button',{name:'이전 주',exact:true}));
+    expect(screen.queryByRole('region',{name:'풍덕천동 금액 상위 5건 거래 내역'})).toBeNull();
+  });
   it('shows cancellations and their dates by default while summary prices use valid trades only',async()=>{
     const user=userEvent.setup();
     window.history.replaceState(null,'',`/?tab=weekly&dong=${a.region_id}`);
@@ -24,11 +43,11 @@ describe('Dong weekly transaction tab',()=>{
     expect(within(table).getAllByRole('row')).toHaveLength(3);
     expect(within(table).getByText('해제일 2026-10-01')).toBeTruthy();
     const metrics=screen.getByLabelText(`${a.label} 주간 통계`);
-    expect(within(metrics).getByText('거래금액 중앙값').parentElement.textContent).toBe('거래금액 중앙값6.00억 원');
+    expect(within(metrics).getByText('최고 거래금액').parentElement.textContent).toBe('최고 거래금액6.00억 원');
     await user.type(screen.getByRole('spinbutton',{name:'최소 전용면적 (㎡)'}),'70');
     expect(within(table).getByText('해제단지')).toBeTruthy();
     expect(within(metrics).getByText('유효 거래').parentElement.textContent).toBe('유효 거래0건');
-    expect(within(metrics).getByText('거래금액 중앙값').parentElement.textContent).toBe('거래금액 중앙값—억 원');
+    expect(within(metrics).getByText('최저 거래금액').parentElement.textContent).toBe('최저 거래금액—억 원');
     await user.click(screen.getByRole('button',{name:'면적 필터 초기화'}));
     await user.click(screen.getByRole('checkbox',{name:'해제 거래 포함'}));
     expect(within(table).queryByText('해제단지')).toBeNull();
@@ -82,7 +101,8 @@ describe('Dong weekly transaction tab',()=>{
       expect(within(table).queryByText('해제단지')).toBeNull();
       const metrics=screen.getByLabelText(`${region.label} 주간 통계`);
       expect(within(metrics).getByText('유효 거래').parentElement.textContent).toBe('유효 거래2건');
-      expect(within(metrics).getByText('거래금액 중앙값').parentElement.textContent).toBe('거래금액 중앙값8.00억 원');
+      expect(within(metrics).getByText('최저 거래금액').parentElement.textContent).toBe('최저 거래금액6.00억 원');
+      expect(within(metrics).getByText('최고 거래금액').parentElement.textContent).toBe('최고 거래금액10.00억 원');
     }
     await user.click(screen.getByRole('button',{name:'평 (전용)',exact:true}));
     expect(screen.getByRole('spinbutton',{name:'최소 전용면적 (평)'}).value).toBe('18.15');
@@ -113,15 +133,15 @@ describe('Dong weekly transaction tab',()=>{
     expect(loader).not.toHaveBeenCalled();
     await user.click(screen.getByRole('checkbox',{name:/풍덕천동.*용인시/}));
     const sectionA=screen.getByRole('region',{name:`${a.label} 주간 실거래가`});
-    await within(sectionA).findByText('11.00');
+    await within(sectionA).findByText('12.00');
     const tableA=within(sectionA).getByRole('region',{name:`${a.label} 주간 거래 내역`});
     expect(within(tableA).getAllByRole('row')).toHaveLength(3);
     await user.click(screen.getByRole('checkbox',{name:/풍덕천동.*종로구/}));
     const sectionB=screen.getByRole('region',{name:`${b.label} 주간 실거래가`});
-    await within(sectionB).findByText('5.00억 원');
+    await within(sectionB).findByRole('region',{name:`${b.label} 주간 거래 내역`});
     expect(within(sectionA).queryByText('서울단지')).toBeNull();
     await user.click(screen.getByRole('checkbox',{name:/동천동.*용인시/}));
-    await screen.findByText('동천단지');
+    await screen.findByRole('region',{name:`${c.label} 주간 거래 내역`});
     const stack=document.querySelector('.weekly-stack');
     expect([...stack.children].map(el=>el.getAttribute('aria-label'))).toEqual([a,b,c].map(region=>`${region.label} 주간 실거래가`));
     expect(loader).toHaveBeenCalledTimes(2);

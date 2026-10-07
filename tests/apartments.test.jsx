@@ -28,8 +28,8 @@ describe('Apartment transaction detail',()=>{
     const detail=screen.getByRole('region',{name:'아파트별 실거래가'});
     const metrics=within(detail).getByLabelText('선택 아파트 통계');
     expect(within(metrics).getByText('3')).toBeTruthy();
-    expect(within(metrics).getByText('12.00')).toBeTruthy();
-    expect(within(metrics).getByText('10.00')).toBeTruthy();
+    expect(within(metrics).getByText('최고 거래금액').parentElement.querySelector('strong').textContent).toBe('12.00억 원');
+    expect(within(metrics).getByText('최저 거래금액').parentElement.querySelector('strong').textContent).toBe('9.00억 원');
     let table=within(detail).getByRole('region',{name:'선택 아파트 실거래 내역'});
     expect(within(table).getAllByRole('row')).toHaveLength(4);
     expect(within(table).queryByText('90.00억 원')).toBeNull();
@@ -39,7 +39,7 @@ describe('Apartment transaction detail',()=>{
     const emptyMonth=within(detail).getByRole('cell',{name:'2026.04'}).closest('tr');
     expect(emptyMonth.textContent).toContain('0건');expect(emptyMonth.textContent).toContain('—억 원');
     await user.selectOptions(within(detail).getByRole('combobox',{name:'단지 전용면적'}),'85');
-    expect(within(metrics).getByText('2')).toBeTruthy();expect(within(metrics).getByText('11.00')).toBeTruthy();
+    expect(within(metrics).getByText('2')).toBeTruthy();expect(within(metrics).getByText('최저 거래금액').parentElement.querySelector('strong').textContent).toBe('10.00억 원');
     await user.click(screen.getByRole('button',{name:'평 (전용)',exact:true}));
     expect(within(detail).getByRole('combobox',{name:'단지 전용면적'}).value).toBe('85');
     expect(within(metrics).getByText('2')).toBeTruthy();

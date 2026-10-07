@@ -79,14 +79,14 @@ describe('React transaction explorer',()=>{
     expect(Number(minimum.value)).toBeCloseTo(18.15,2);
     expect(Number(maximum.value)).toBeCloseTo(25.71,2);
     expect(count()).toBe('2건');
-    expect(screen.getByText('전용평당 중앙값',{selector:'.metric-label'})).toBeTruthy();
+    expect(screen.getByText('최고 거래금액',{selector:'.metric-label'})).toBeTruthy();
     expect(screen.getByText('평균 전용면적 (평)')).toBeTruthy();
     expect(screen.getByText('21.93평')).toBeTruthy();
     expect(screen.getByText('18.15–25.71평')).toBeTruthy();
     await user.click(screen.getByRole('button',{name:'㎡',exact:true}));
     expect(minimum.value).toBe('60');expect(maximum.value).toBe('85');
     expect(count()).toBe('2건');
-    expect(screen.getByText('전용㎡당 중앙값',{selector:'.metric-label'})).toBeTruthy();
+    expect(screen.getByText('최저 거래금액',{selector:'.metric-label'})).toBeTruthy();
     await user.click(screen.getByRole('button',{name:'평 (전용)'}));
     await user.clear(maximum);await user.type(maximum,'20');
     expect(count()).toBe('1건');
@@ -154,7 +154,7 @@ describe('React transaction explorer',()=>{
     await screen.findByText('1건의 해제 거래 제외');
     const metric=screen.getByText('유효 거래',{selector:'.metric-label'}).closest('section');
     expect(metric.querySelector('.metric-value').textContent).toBe('1건');
-    expect(screen.getByText('거래금액 중앙값').closest('section').querySelector('.metric-value').textContent).toBe('10.00억 원');
+    expect(screen.getByText('최고 거래금액',{selector:'.metric-label'}).closest('section').querySelector('.metric-value').textContent).toBe('10.00억 원');
     await waitFor(()=>expect(document.querySelectorAll('.recharts-surface').length).toBeGreaterThanOrEqual(3));
     await waitFor(()=>expect(screen.getByText('즐겨찾기 풍덕천동').closest('div').querySelector('p').textContent).toContain('1건'));
     expect(screen.getByText('즐겨찾기 죽전동').closest('div').querySelector('p').textContent).toContain('0건');
