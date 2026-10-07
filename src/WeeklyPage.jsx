@@ -1,16 +1,18 @@
 import React, {useEffect, useMemo, useRef, useState} from 'react';
-import {CalendarDays, ChevronLeft, ChevronRight, Search, X} from 'lucide-react';
+import {CalendarDays, ChevronLeft, ChevronRight, Search, X, MapPin, SlidersHorizontal} from 'lucide-react';
 import {apartmentAddress, areaInputValue, areaM2, areaUnitLabel, areaValue, formatNumber, hierarchy, priceEok, stats} from './domain.mjs';
-import {publishedDay, shiftWeek, weekBounds, weeklyRows} from './weekly.mjs';
+import {periodBounds,publishedDay,weeklyRows} from './weekly.mjs';
 import {Empty,Loading} from './ViewState.jsx';
 import AreaUnit from './AreaUnit.jsx';
 import AreaRange from './AreaRange.jsx';
 import PriceLeaders from './PriceLeaders.jsx';
+import PeriodPicker from './PeriodPicker.jsx';
+import './dong-filters.css';
 import {areaPreference,textPreference,unitPreference,useStoredState} from './preferences.js';
 
 const unique=values=>[...new Set(values)].sort((a,b)=>a.localeCompare(b,'ko'));
 const optionalArea=value=>value==='' || areaPreference(value);
-export default function WeeklyPage({manifest, catalog, selectedIds, onChange, day, onDayChange, districtLoader}) {
+export default function WeeklyPage({manifest, catalog, selectedIds, onChange, day, onDayChange,period,onPeriodChange,districtLoader}) {
   const locations=catalog.map(hierarchy);
   const [province,setProvince]=useStoredState('weekly','province','',value=>value==='' || locations.some(item=>item.province===value));
   const [city,setCity]=useStoredState('weekly','city','',value=>value==='' || locations.some(item=>(!province || item.province===province) && item.city===value));
@@ -54,50 +56,65 @@ export default function WeeklyPage({manifest, catalog, selectedIds, onChange, da
     return (!province||location.province===province)&&(!city||location.city===city)&&(!district||location.district===district)&&(!search.trim()||region.label.includes(search.trim()));
   });
   const toggle=id=>onChange(selectedIds.includes(id)?selectedIds.filter(value=>value!==id):[...selectedIds,id]);
-  const week=weekBounds(day), latestDay=publishedDay(manifest.published_at);
+  const latestDay=publishedDay(manifest.published_at),requestedRange=periodBounds(period,day);
   const firstMonth=manifest.months[0], earliestDay=firstMonth?`${firstMonth.slice(0,4)}-${firstMonth.slice(4)}-01`:undefined;
+  let periodError=!requestedRange?'올바른 조회 날짜를 선택해 주세요.':'';
+  if(period.mode==='custom'&&period.start&&period.end&&period.start>period.end)periodError='조회 시작일은 종료일보다 늦을 수 없습니다.';
+  if(requestedRange&&period.mode==='custom'&&((earliestDay&&requestedRange.start<earliestDay)||(latestDay&&requestedRange.end>latestDay)))periodError='공개 자료 범위 안에서 시작일과 종료일을 선택해 주세요.';
+  if(requestedRange&&period.mode==='month'&&((earliestDay&&period.month<earliestDay.slice(0,7))||(latestDay&&period.month>latestDay.slice(0,7))))periodError='공개 자료 범위 안에서 조회 월을 선택해 주세요.';
+  const week=periodError?null:requestedRange;
   return <div className="weekly-page">
     <section className="panel weekly-controls" aria-label="주간 조회 조건">
-      <div className="section-title"><div><h2><CalendarDays size={19}/>동별 주간 실거래가</h2><p>여러 동을 선택하면 선택한 순서대로 아래에 거래 정보를 쌓아 보여줍니다.</p></div><span className="badge">{selected.length}개 동 선택</span></div>
-      <div className="weekly-period"><label>조회 주 기준 날짜<input type="date" value={day} min={earliestDay} max={latestDay||undefined} onChange={event=>onDayChange(event.target.value)}/></label><div className="weekly-navigation"><button aria-label="이전 주" disabled={!week||!!earliestDay&&shiftWeek(day,-1)<weekBounds(earliestDay).start} onClick={()=>onDayChange(shiftWeek(day,-1))}><ChevronLeft size={16}/></button><strong>{week?`${week.start} — ${week.end}`:'조회 날짜를 선택해 주세요'}</strong><button aria-label="다음 주" disabled={!week||!!latestDay&&shiftWeek(day,1)>latestDay} onClick={()=>onDayChange(shiftWeek(day,1))}><ChevronRight size={16}/></button></div><AreaUnit value={areaUnit} onChange={setAreaUnit}/></div>
-      <p className="small-note">계약일 기준 월요일~일요일 · 신고 지연에 따라 최근 주의 자료는 적거나 없을 수 있습니다. 자료 기준일: {latestDay||'미상'} (한국 시간)</p>
-      {!week&&<p className="notice error" role="alert">주간 조회를 위해 올바른 날짜를 선택해 주세요.</p>}
-      <AreaRange minArea={minArea} maxArea={maxArea} ceilingM2={sliderCeiling} unit={areaUnit} onMinChange={setMinArea} onMaxChange={setMaxArea}/>
-      <div className="weekly-area-filter" role="group" aria-label="주간 전용면적 필터">
-        <label>최소 전용면적 ({unit})<input type="number" min="0" step="any" placeholder="제한 없음" value={minArea===''?'':areaInputValue(minArea,areaUnit)} onChange={event=>setArea(setMinArea,event.target.value)}/></label>
-        <label>최대 전용면적 ({unit})<input type="number" min="0" step="any" placeholder="제한 없음" value={maxArea===''?'':areaInputValue(maxArea,areaUnit)} onChange={event=>setArea(setMaxArea,event.target.value)}/></label>
-        <button disabled={!areaFiltered} onClick={()=>{setMinArea('');setMaxArea('');}}>면적 필터 초기화</button>
+      <div className="section-title weekly-controls-title"><div><h2><CalendarDays size={19}/>동별 주간 실거래가</h2><p>기간과 면적을 고르고, 여러 동의 실제 거래를 함께 비교하세요.</p></div><span className="badge">{selected.length}개 동 선택</span></div>
+      <div className="dong-filter-grid">
+        <PeriodPicker period={period} onChange={onPeriodChange} day={day} onDayChange={onDayChange} range={week} earliestDay={earliestDay} latestDay={latestDay} error={periodError}/>
+        <section className="dong-filter-card area-card" aria-label="조회 면적 설정">
+          <div className="dong-filter-heading"><span className="filter-step">02</span><h3><SlidersHorizontal size={16}/>전용면적</h3><AreaUnit value={areaUnit} onChange={setAreaUnit}/></div>
+          <AreaRange minArea={minArea} maxArea={maxArea} ceilingM2={sliderCeiling} unit={areaUnit} onMinChange={setMinArea} onMaxChange={setMaxArea}/>
+          <div className="weekly-area-filter" role="group" aria-label="주간 전용면적 필터">
+            <label>최소 전용면적 ({unit})<input type="number" min="0" step="any" placeholder="제한 없음" value={minArea===''?'':areaInputValue(minArea,areaUnit)} onChange={event=>setArea(setMinArea,event.target.value)}/></label>
+            <label>최대 전용면적 ({unit})<input type="number" min="0" step="any" placeholder="제한 없음" value={maxArea===''?'':areaInputValue(maxArea,areaUnit)} onChange={event=>setArea(setMaxArea,event.target.value)}/></label>
+          </div>
+          <div className="area-card-footer"><span>전용평 = ㎡ ÷ 3.305785</span><button className="text-button" disabled={!areaFiltered} onClick={()=>{setMinArea('');setMaxArea('');}}>면적 필터 초기화</button></div>
+          {invalidArea&&<p className="notice error" role="alert">최소 전용면적은 최대 전용면적보다 클 수 없습니다.</p>}
+        </section>
       </div>
-      <p className="small-note">양쪽 손잡이를 움직여 면적 범위를 조절하세요. 선택한 모든 동의 거래와 통계에 적용됩니다. 숫자로도 입력할 수 있으며, 양 끝으로 이동하거나 입력을 비우면 해당 면적 제한을 해제합니다.</p>
-      {invalidArea&&<p className="notice error" role="alert">최소 전용면적은 최대 전용면적보다 클 수 없습니다.</p>}
-      <label className="weekly-cancel-toggle"><input type="checkbox" checked={includeCancelled} onChange={event=>setIncludeCancelled(event.target.checked)}/>해제 거래 포함</label>
-      <p className="small-note">해제 거래는 거래표에서 확인할 수 있습니다. 최저·최고가와 금액 상위 5건은 해제되지 않은 거래 기준입니다.</p>
-      <div className="weekly-location"><label>주간 시도<select value={province} onChange={event=>{setProvince(event.target.value);setCity('');setDistrict('');}}><option value="">전체 시도</option>{provinces.map(value=><option key={value}>{value}</option>)}</select></label><label>주간 시<select value={city} onChange={event=>{setCity(event.target.value);setDistrict('');}}><option value="">전체 시</option>{cities.map(value=><option key={value}>{value}</option>)}</select></label><label>주간 구<select value={district} onChange={event=>setDistrict(event.target.value)}><option value="">전체 구</option>{districts.map(value=><option key={value}>{value}</option>)}</select></label><label className="search-input"><span>주간 동 검색</span><Search size={16}/><input type="search" placeholder="동 이름 또는 시·구 이름" value={search} onChange={event=>setSearch(event.target.value)}/></label></div>
-      <div className="weekly-picker-title"><span>조회할 동 선택 · {formatNumber(choices.length)}곳</span><button disabled={!selectedIds.length} onClick={()=>onChange([])}>선택 모두 해제</button></div>
-      <div className="weekly-dong-picker" role="group" aria-label="주간 조회할 동 선택">{choices.map(region=><label key={region.region_id} className={selectedIds.includes(region.region_id)?'selected':''}><input type="checkbox" checked={selectedIds.includes(region.region_id)} onChange={()=>toggle(region.region_id)}/><span>{region.dongs[0]}<small>{region.region_name}{manifest.districts[region.region_code]?'':' · 미수집'}</small></span></label>)}{!choices.length&&<p className="small-note">검색 조건과 일치하는 동이 없습니다.</p>}</div>
-      <div className="weekly-selected" aria-label="선택한 주간 조회 동">{selected.map(region=><button key={region.region_id} aria-label={`${region.label} 선택 해제`} onClick={()=>toggle(region.region_id)}>{region.dongs[0]}<small>{region.region_name}</small><X size={13}/></button>)}</div>
-      <p className="small-note">검색·지역 필터를 바꿔도 선택한 동은 유지됩니다. 전용평 = 전용면적(㎡) ÷ 3.305785</p>
+      <div className="weekly-display-options"><label className="weekly-cancel-toggle"><input type="checkbox" checked={includeCancelled} onChange={event=>setIncludeCancelled(event.target.checked)}/>해제 거래 포함</label><p>최저·최고가와 상위 5건은 유효 거래 기준입니다. 최근 자료는 신고 지연으로 추가될 수 있습니다.</p></div>
+      <section className="dong-filter-card region-card" aria-label="조회 지역 설정">
+        <div className="dong-filter-heading"><span className="filter-step">03</span><h3><MapPin size={16}/>조회할 동</h3><button className="text-button" disabled={!selectedIds.length} onClick={()=>onChange([])}>선택 모두 해제</button></div>
+        <div className="weekly-location">
+          <label>시도<select aria-label="주간 시도" value={province} onChange={event=>{setProvince(event.target.value);setCity('');setDistrict('');}}><option value="">전체 시도</option>{provinces.map(value=><option key={value}>{value}</option>)}</select></label>
+          <label>시·군<select aria-label="주간 시" value={city} onChange={event=>{setCity(event.target.value);setDistrict('');}}><option value="">전체 시·군</option>{cities.map(value=><option key={value}>{value}</option>)}</select></label>
+          <label>구<select aria-label="주간 구" value={district} onChange={event=>setDistrict(event.target.value)}><option value="">전체 구</option>{districts.map(value=><option key={value}>{value}</option>)}</select></label>
+          <label className="search-input"><span>동·지역 검색</span><Search size={16}/><input aria-label="주간 동 검색" type="search" placeholder="동 이름 또는 시·구 이름" value={search} onChange={event=>setSearch(event.target.value)}/></label>
+        </div>
+        <div className="weekly-selected" aria-label="선택한 주간 조회 동">{selected.map(region=><button key={region.region_id} aria-label={region.label+' 선택 해제'} onClick={()=>toggle(region.region_id)}>{region.dongs[0]}<small>{region.region_name}</small><X size={13}/></button>)}{!selected.length&&<span className="selection-placeholder">아래 목록에서 비교할 동을 선택하세요.</span>}</div>
+        <div className="weekly-picker-title"><span>검색 결과 {formatNumber(choices.length)}곳</span><small>여러 지역을 함께 선택할 수 있습니다.</small></div>
+        <div className="weekly-dong-picker" role="group" aria-label="주간 조회할 동 선택">{choices.map(region=><label key={region.region_id} className={selectedIds.includes(region.region_id)?'selected':''}><input type="checkbox" checked={selectedIds.includes(region.region_id)} onChange={()=>toggle(region.region_id)}/><span>{region.dongs[0]}<small>{region.region_name}{manifest.districts[region.region_code]?'':' · 미수집'}</small></span></label>)}{!choices.length&&<p className="small-note">검색 조건과 일치하는 동이 없습니다.</p>}</div>
+      </section>
     </section>
+    {!!selected.length&&week&&<div className="weekly-results-context"><strong>조회 결과 · {selected.length}개 동</strong><span>{week.start} — {week.end}</span><small>{period.mode==='week'?'주간':period.mode==='month'?'월간':'직접 지정'} · {includeCancelled?'해제 포함':'유효 거래만'}</small></div>}
     {!selected.length ? <section className="panel"><Empty title="주간 실거래가를 볼 동을 선택해 주세요.">서로 다른 시·구의 동도 함께 선택할 수 있습니다.</Empty></section>
-      : week&&<div className="weekly-stack">{selected.map(region=><DongWeek key={region.region_id} region={region} week={week} dataset={datasets[region.region_code]} collected={!!manifest.districts[region.region_code]} areaUnit={areaUnit} minArea={minArea} maxArea={maxArea} includeCancelled={includeCancelled} onRemove={()=>toggle(region.region_id)} onRetry={()=>setRetry(value=>value+1)}/>)}</div>}
+      : week&&<div className="weekly-stack">{selected.map(region=><DongWeek key={region.region_id} region={region} week={week} dataset={datasets[region.region_code]} collected={!!manifest.districts[region.region_code]} areaUnit={areaUnit} minArea={minArea} maxArea={maxArea} includeCancelled={includeCancelled} mode={period.mode} onRemove={()=>toggle(region.region_id)} onRetry={()=>setRetry(value=>value+1)}/>)}</div>}
   </div>;
 }
 
-function DongWeek({region,week,dataset,collected,areaUnit,minArea,maxArea,includeCancelled,onRemove,onRetry}) {
+function DongWeek({region,week,dataset,collected,areaUnit,minArea,maxArea,includeCancelled,mode,onRemove,onRetry}) {
   const rows=useMemo(()=>weeklyRows(dataset?.rows||[],region,week,includeCancelled).filter(row=>(minArea==='' || row.area_m2>=minArea) && (maxArea==='' || row.area_m2<=maxArea)),[dataset?.rows,region,week.start,week.end,minArea,maxArea,includeCancelled]);
+  const periodLabel=mode==='week'?'주간':'기간별',timeLabel=mode==='week'?'이 주':'선택 기간';
   const areaFiltered=minArea!=='' || maxArea!=='';
   const summary=useMemo(()=>stats(rows.filter(row=>row.cancelled===0)),[rows]);
   const [page,setPage]=useState(1);
   useEffect(()=>setPage(1),[rows]);
   const pages=Math.max(1,Math.ceil(rows.length/50)), safePage=Math.min(page,pages), unit=areaUnitLabel(areaUnit);
-  return <section className="panel weekly-dong" aria-label={`${region.label} 주간 실거래가`}>
+  return <section className="panel weekly-dong" aria-label={`${region.label} ${periodLabel} 실거래가`}>
     <div className="section-title"><div><h2>{region.dongs[0]}</h2><p>{region.region_name} · {week.start} — {week.end}</p></div><button aria-label={`${region.label} 조회 제거`} onClick={onRemove}><X size={14}/>제거</button></div>
-    {!collected?<Empty title="아직 수집된 자료가 없는 동입니다.">로컬 관리자에서 수집·배포하면 조회할 수 있습니다.</Empty>:dataset?.error?<div className="notice error" role="alert">이 지역의 자료를 불러오지 못했습니다.<button onClick={onRetry}>다시 불러오기</button></div>:!dataset?.rows?<Loading text="이 동의 주간 거래를 불러오는 중입니다."/>:<>
-      <div className="weekly-metrics" aria-label={`${region.label} 주간 통계`}><div><span>유효 거래</span><strong>{formatNumber(summary.count)}<small>건</small></strong></div><div><span>최저 거래금액</span><strong>{formatNumber(summary.min,2)}<small>억 원</small></strong></div><div><span>최고 거래금액</span><strong>{formatNumber(summary.max,2)}<small>억 원</small></strong></div><div><span>거래된 아파트</span><strong>{formatNumber(summary.apartments)}<small>곳</small></strong></div></div>
+    {!collected?<Empty title="아직 수집된 자료가 없는 동입니다.">로컬 관리자에서 수집·배포하면 조회할 수 있습니다.</Empty>:dataset?.error?<div className="notice error" role="alert">이 지역의 자료를 불러오지 못했습니다.<button onClick={onRetry}>다시 불러오기</button></div>:!dataset?.rows?<Loading text="이 동의 거래를 불러오는 중입니다."/>:<>
+      <div className="weekly-metrics" aria-label={`${region.label} ${periodLabel} 통계`}><div><span>유효 거래</span><strong>{formatNumber(summary.count)}<small>건</small></strong></div><div><span>최저 거래금액</span><strong>{formatNumber(summary.min,2)}<small>억 원</small></strong></div><div><span>최고 거래금액</span><strong>{formatNumber(summary.max,2)}<small>억 원</small></strong></div><div><span>거래된 아파트</span><strong>{formatNumber(summary.apartments)}<small>곳</small></strong></div></div>
       <PriceLeaders rows={rows} areaUnit={areaUnit} regionName={region.region_name} title={`${region.dongs[0]} 금액 상위 5건`}/>
       <p className="small-note">표시 {formatNumber(rows.length)}건 · 유효 {formatNumber(summary.count)}건 · 해제 {formatNumber(rows.length-summary.count)}건. 위 통계는 유효 거래 기준이며, 거래표 금액은 각 신고의 원래 금액입니다.</p>
-      {!rows.length?<Empty title={areaFiltered?`이 주의 면적 조건에 맞는 ${includeCancelled?'':'유효 '}거래가 없습니다.`:`이 주에 조회되는 ${includeCancelled?'':'유효 '}거래가 없습니다.`}>{areaFiltered?'면적 필터를 조정하거나 초기화해 보세요.':'이전 주나 다른 동을 선택해 보세요.'}</Empty>:<>
-        <div className="table-scroll weekly-trades" role="region" aria-label={`${region.label} 주간 거래 내역`} tabIndex={0}><table className="summary-table">
+      {!rows.length?<Empty title={areaFiltered?`${timeLabel}의 면적 조건에 맞는 ${includeCancelled?'':'유효 '}거래가 없습니다.`:`${timeLabel}에 조회되는 ${includeCancelled?'':'유효 '}거래가 없습니다.`}>{areaFiltered?'면적 필터를 조정하거나 초기화해 보세요.':'기간이나 다른 동을 선택해 보세요.'}</Empty>:<>
+        <div className="table-scroll weekly-trades" role="region" aria-label={`${region.label} ${periodLabel} 거래 내역`} tabIndex={0}><table className="summary-table">
           <thead><tr><th>계약일</th><th>아파트 / 주소</th><th>전용면적 ({unit})</th><th>층</th><th>거래금액</th><th>거래유형</th><th>거래 상태 / 해제일</th></tr></thead>
           <tbody>{rows.slice((safePage-1)*50,safePage*50).map(row=><tr key={row.id} className={row.cancelled?'cancelled-trade':''}><td>{row.deal_date}</td><td><strong>{row.apartment}</strong><small>{apartmentAddress(row,region.region_name)}</small></td><td>{formatNumber(areaValue(row.area_m2,areaUnit),2)}{unit}</td><td>{row.floor??'—'}층</td><td><strong>{formatNumber(priceEok(row),2)}억 원</strong><small>{formatNumber(row.price_man)}만 원</small></td><td>{row.raw?.dealingGbn?.trim()||'—'}</td><td><span className={`trade-status ${row.cancelled?'cancelled':''}`}>{row.cancelled?'해제':'유효'}</span>{!!row.cancelled&&<small>해제일 {row.raw?.cdealDay?.trim()||'미상'}</small>}</td></tr>)}</tbody>
         </table></div>

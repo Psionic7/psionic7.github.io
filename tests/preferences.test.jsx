@@ -18,6 +18,16 @@ beforeEach(()=>{window.localStorage.clear();window.history.replaceState(null,'',
 afterEach(()=>{cleanup();vi.restoreAllMocks();window.localStorage.clear();});
 
 describe('Browser selection persistence',()=>{
+  it('discards invalid saved periods and accepts a valid custom period from a shared URL',async()=>{
+    savePreferences('explorer',{tab:'weekly',weeklyIds:[a.region_id],weeklyPeriod:{mode:'custom',start:'2099-01-01',end:'2099-02-01'}});
+    const first=open();await screen.findByRole('region',{name:`${a.label} 주간 거래 내역`});
+    expect(screen.getByRole('button',{name:'주간',exact:true}).getAttribute('aria-pressed')).toBe('true');
+    first.unmount();window.history.replaceState(null,'',`/?tab=weekly&dong=${a.region_id}&period=custom&from=2026-02-09&to=2026-02-10`);open();
+    const table=await screen.findByRole('region',{name:`${a.label} 기간별 거래 내역`});
+    expect(within(table).getAllByRole('row')).toHaveLength(3);
+    expect(screen.getByLabelText('조회 시작일').value).toBe('2026-02-09');
+    expect(screen.getByLabelText('조회 종료일').value).toBe('2026-02-10');
+  });
   it('restores the apartment, exact area, period, searches and unit on a new visit',async()=>{
     const user=userEvent.setup();
     window.history.replaceState(null,'','/?region=area_41465&tab=apartments');

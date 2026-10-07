@@ -44,6 +44,7 @@ function Explorer({ manifest, districtLoader,onResetPreferences }) {
   const isWeekly = tab === 'weekly';
   const [weeklyIds,setWeeklyIds] = useState(initial.weeklyIds);
   const [weeklyDay,setWeeklyDay] = useState(initial.weeklyDay);
+  const [weeklyPeriod,setWeeklyPeriod] = useState(initial.weeklyPeriod);
   const [selectedApartment, setSelectedApartment] = useState(initial.selectedApartment);
   const [province, setProvince] = useState(initial.province), [city, setCity] = useState(initial.city), [district, setDistrict] = useState(initial.district);
   const [search, setSearch] = useState(initial.search), [rows, setRows] = useState([]), [busy, setBusy] = useState(true);
@@ -59,13 +60,18 @@ function Explorer({ manifest, districtLoader,onResetPreferences }) {
   }, [manifest, regionCode, districtLoader, retry, isWeekly]);
   useEffect(() => {
     const params = new URLSearchParams({tab});
-    if (isWeekly) { weeklyIds.forEach(id=>params.append('dong',id)); if(weeklyDay)params.set('week',weeklyDay); }
+    if (isWeekly) {
+      weeklyIds.forEach(id=>params.append('dong',id));params.set('period',weeklyPeriod.mode);
+      if(weeklyPeriod.mode==='week'&&weeklyDay)params.set('week',weeklyDay);
+      if(weeklyPeriod.mode==='month')params.set('month',weeklyPeriod.month);
+      if(weeklyPeriod.mode==='custom'){params.set('from',weeklyPeriod.start);params.set('to',weeklyPeriod.end);}
+    }
     else if (region) { params.set('region', region.region_id); params.set('start', start); params.set('end', end); }
     window.history.replaceState(null, '', `?${params}`);
-  }, [regionId, start, end, tab, weeklyIds, weeklyDay]);
+  }, [regionId, start, end, tab, weeklyIds, weeklyDay,weeklyPeriod]);
   useEffect(()=>{
-    savePreferences('explorer',{regionId,start,end,tab,weeklyIds,weeklyDay,selectedApartment,province,city,district,search});
-  },[regionId,start,end,tab,weeklyIds,weeklyDay,selectedApartment,province,city,district,search]);
+    savePreferences('explorer',{regionId,start,end,tab,weeklyIds,weeklyDay,weeklyPeriod,selectedApartment,province,city,district,search});
+  },[regionId,start,end,tab,weeklyIds,weeklyDay,weeklyPeriod,selectedApartment,province,city,district,search]);
   const choices = catalog.filter(item => {
     const location = hierarchy(item);
     return (!province || location.province === province) && (!city || location.city === city) &&
@@ -118,7 +124,7 @@ function Explorer({ manifest, districtLoader,onResetPreferences }) {
       </section>
       <div className="context-line"><strong>{region?.label || '조회할 지역을 선택해 주세요'}</strong>{region && <><span>{monthLabel(start)} — {monthLabel(end)}</span><span>{formatNumber(data.length)}건의 원천 자료</span></>}</div>
       </>}
-      {isWeekly ? <Suspense fallback={<Loading text="주간 조회를 준비하고 있습니다." />}><WeeklyPage manifest={manifest} catalog={catalog} selectedIds={weeklyIds} onChange={setWeeklyIds} day={weeklyDay} onDayChange={value=>setWeeklyDay(weekBounds(value)?.start||'')} districtLoader={districtLoader}/></Suspense> : tab === 'about' ? <About manifest={manifest} onResetPreferences={onResetPreferences} /> : !region ? <section className="panel"><Empty title="조회할 지역을 선택해 주세요.">{favorites.length ? '위의 즐겨찾기에서 지역을 고르거나 시·구·동으로 검색하세요.' : '위의 시·구·동 필터에서 조회할 지역을 고르세요.'}</Empty></section> : busy ? <Loading /> : error ? <div className="notice error" role="alert">{error}<button onClick={() => setRetry(value => value + 1)}>다시 불러오기</button></div> :
+      {isWeekly ? <Suspense fallback={<Loading text="주간 조회를 준비하고 있습니다." />}><WeeklyPage manifest={manifest} catalog={catalog} selectedIds={weeklyIds} onChange={setWeeklyIds} day={weeklyDay} period={weeklyPeriod} onPeriodChange={setWeeklyPeriod} onDayChange={value=>setWeeklyDay(weekBounds(value)?.start||'')} districtLoader={districtLoader}/></Suspense> : tab === 'about' ? <About manifest={manifest} onResetPreferences={onResetPreferences} /> : !region ? <section className="panel"><Empty title="조회할 지역을 선택해 주세요.">{favorites.length ? '위의 즐겨찾기에서 지역을 고르거나 시·구·동으로 검색하세요.' : '위의 시·구·동 필터에서 조회할 지역을 고르세요.'}</Empty></section> : busy ? <Loading /> : error ? <div className="notice error" role="alert">{error}<button onClick={() => setRetry(value => value + 1)}>다시 불러오기</button></div> :
         <Suspense fallback={<Loading text="조회 화면을 준비하고 있습니다." />}>
           {tab === 'apartments' ? <ApartmentPage key={region.region_id} rows={data} region={region} start={start} end={end} selectedKey={selectedApartment} onSelect={setSelectedApartment} />
             : <Dashboard key={region.region_id} rows={data} region={region} manifest={manifest} favorites={favorites} start={start} end={end} districtLoader={districtLoader} onOpenApartment={key=>{setSelectedApartment(key);setTab('apartments');document.querySelector('.tabs')?.scrollIntoView?.({block:'start'});}} />}

@@ -14,6 +14,46 @@ const row=(id,overrides={})=>({id,region_code:'41465',dong:'풍덕천동',apartm
 beforeEach(()=>{window.localStorage.clear();window.history.replaceState(null,'','/?tab=weekly');});
 afterEach(()=>{cleanup();vi.restoreAllMocks();});
 describe('Dong weekly transaction tab',()=>{
+  it('queries monthly and custom periods, validates dates, shares the period and restores it without losing dongs',async()=>{
+    const user=userEvent.setup();
+    window.history.replaceState(null,'',`/?tab=weekly&dong=${a.region_id}`);
+    const data=[row(1),row(2,{deal_month:'202610',deal_date:'2026-10-02'}),row(3,{deal_month:'202610',deal_date:'2026-10-04'})];
+    const loader=vi.fn(()=>Promise.resolve(data));
+    const first=render(<App initialManifest={manifest} districtLoader={loader}/>);
+    await screen.findByRole('region',{name:`${a.label} 주간 거래 내역`});
+    await user.click(screen.getByRole('button',{name:'월간',exact:true}));
+    fireEvent.change(screen.getByLabelText('조회 월'),{target:{value:'2026-09'}});
+    const table=()=>screen.getByRole('region',{name:`${a.label} 기간별 거래 내역`});
+    expect(within(table()).getAllByRole('row')).toHaveLength(2);
+    expect(new URLSearchParams(location.search).get('month')).toBe('2026-09');
+    expect(screen.getByRole('button',{name:'이전 달'}).disabled).toBe(true);
+    await user.click(screen.getByRole('button',{name:'직접 지정',exact:true}));
+    fireEvent.change(screen.getByLabelText('조회 시작일'),{target:{value:'2026-09-28'}});
+    fireEvent.change(screen.getByLabelText('조회 종료일'),{target:{value:'2026-10-02'}});
+    expect(within(table()).getAllByRole('row')).toHaveLength(3);
+    expect(new URLSearchParams(location.search).get('from')).toBe('2026-09-28');
+    expect(loader).toHaveBeenCalledTimes(1);
+    fireEvent.change(screen.getByLabelText('조회 시작일'),{target:{value:'2026-10-03'}});
+    expect(screen.getByRole('alert').textContent).toContain('시작일은 종료일보다');
+    expect(screen.queryByRole('region',{name:`${a.label} 기간별 거래 내역`})).toBeNull();
+    fireEvent.change(screen.getByLabelText('조회 시작일'),{target:{value:'2026-09-28'}});
+    first.unmount();window.history.replaceState(null,'','/');
+    const second=render(<App initialManifest={manifest} districtLoader={loader}/>);
+    await screen.findByRole('region',{name:`${a.label} 기간별 거래 내역`});
+    expect(screen.getByLabelText('조회 종료일').value).toBe('2026-10-02');
+    expect(readPreferences('explorer').weeklyIds).toEqual([a.region_id]);
+    await user.click(screen.getByRole('button',{name:'최근 30일',exact:true}));
+    expect(screen.getByLabelText('조회 시작일').value).toBe('2026-09-04');
+    expect(screen.getByLabelText('조회 종료일').value).toBe('2026-10-03');
+    second.unmount();window.history.replaceState(null,'',`/?tab=weekly&dong=${a.region_id}&period=month&month=2026-09`);
+    const third=render(<App initialManifest={manifest} districtLoader={loader}/>);
+    await screen.findByRole('region',{name:`${a.label} 기간별 거래 내역`});
+    expect(screen.getByLabelText('조회 월').value).toBe('2026-09');
+    third.unmount();window.history.replaceState(null,'',`/?tab=weekly&dong=${a.region_id}&week=2026-09-28`);
+    render(<App initialManifest={manifest} districtLoader={loader}/>);
+    await screen.findByRole('region',{name:`${a.label} 주간 거래 내역`});
+    expect(screen.getByRole('button',{name:'주간',exact:true}).getAttribute('aria-pressed')).toBe('true');
+  });
   it('shows actual extremes and the five highest valid trades under the current area and week filters',async()=>{
     const user=userEvent.setup();
     window.history.replaceState(null,'',`/?tab=weekly&dong=${a.region_id}`);

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {publishedDay,shiftWeek,weekBounds,weeklyRows} from '../src/weekly.mjs';
+import {dateBounds,monthBounds,periodBounds,recentRange,publishedDay,shiftMonth,shiftWeek,weekBounds,weeklyRows} from '../src/weekly.mjs';
 
 test('weeks span Monday to Sunday across months and years without timezone drift',()=>{
   assert.deepEqual(weekBounds('2026-10-04'),{start:'2026-09-28',end:'2026-10-04'});
@@ -10,6 +10,18 @@ test('weeks span Monday to Sunday across months and years without timezone drift
   assert.equal(weekBounds('2026-02-30'),null);
   assert.equal(weekBounds(''),null);
   assert.equal(publishedDay('2026-10-03T17:00:00Z'),'2026-10-04');
+});
+test('flexible periods handle leap months, year changes and inclusive recent days',()=>{
+  assert.deepEqual(monthBounds('2024-02'),{start:'2024-02-01',end:'2024-02-29'});
+  assert.deepEqual(monthBounds('2026-12'),{start:'2026-12-01',end:'2026-12-31'});
+  assert.equal(shiftMonth('2026-12',1),'2027-01');assert.equal(shiftMonth('2026-01',-1),'2025-12');
+  assert.equal(monthBounds('2026-13'),null);assert.equal(dateBounds('2026-02-30','2026-03-01'),null);
+  assert.equal(dateBounds('2026-10-03','2026-10-02'),null);
+  assert.deepEqual(recentRange('2026-10-07',7),{start:'2026-10-01',end:'2026-10-07'});
+  assert.deepEqual(recentRange('2026-10-07',90,'2026-09-01'),{start:'2026-09-01',end:'2026-10-07'});
+  assert.deepEqual(periodBounds({mode:'custom',start:'2026-09-30',end:'2026-10-02'}),{start:'2026-09-30',end:'2026-10-02'});
+  const rows=['2026-08-31','2026-09-01','2026-09-30','2026-10-01'].map((deal_date,id)=>({deal_date,id,region_code:'11110',dong:'청운동',cancelled:0}));
+  assert.deepEqual(weeklyRows(rows,{region_code:'11110',dongs:['청운동']},monthBounds('2026-09')).map(row=>row.id),[2,1]);
 });
 test('weekly transactions include both boundaries and isolate same-named dongs by district',()=>{
   const region={region_code:'41465',dongs:['풍덕천동']};
