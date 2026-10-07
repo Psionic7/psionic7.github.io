@@ -3,7 +3,6 @@ import {Building2, Search, ChevronLeft, ChevronRight} from 'lucide-react';
 import {ResponsiveContainer, ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend} from 'recharts';
 import {apartmentAddress, apartmentKey, areaUnitLabel, areaValue, formatNumber, monthly, priceEok, pricePerPyeong, stats} from './domain.mjs';
 import {Empty} from './ViewState.jsx';
-import PriceLeaders from './PriceLeaders.jsx';
 import {textPreference,useStoredState} from './preferences.js';
 
 const areaLabel = (area,unit) => unit === 'pyeong'
@@ -64,7 +63,6 @@ function ApartmentDetails({apartment, rows, region, start, end, areaUnit}) {
       <div><span>최고 거래금액</span><strong>{formatNumber(summary.max,2)}<small>억 원</small></strong><p>선택 기간·전용면적의 유효 거래 기준</p></div>
       <div><span>조회 거래건수</span><strong>{formatNumber(summary.count)}<small>건</small></strong><p>해제 거래 제외 · 중복 신고 원본 유지</p></div>
     </div>
-    <PriceLeaders rows={trades} areaUnit={areaUnit} regionName={region.region_name} title="선택 아파트 금액 상위 5건"/>
     <div className="apartment-trend"><h3>단지 월별 가격 추이</h3><p className="small-note">월별 최저·최고 거래금액·거래 건수 · 거래가 없는 월은 가격을 연결하지 않습니다.</p>
       <ResponsiveContainer width="100%" height={250}><ComposedChart data={months} margin={{top:18,right:8,bottom:5,left:0}}>
         <CartesianGrid stroke="#edf1f2" vertical={false}/><XAxis dataKey="label" tick={{fontSize:11}} tickLine={false} axisLine={false}/>

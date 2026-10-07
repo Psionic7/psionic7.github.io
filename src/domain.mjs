@@ -36,9 +36,6 @@ export function stats(rows) {
   const range=rows.reduce((value,row)=>({min:Math.min(value.min,priceEok(row)),max:Math.max(value.max,priceEok(row))}),{min:Infinity,max:-Infinity});
   return {count:rows.length,min:rows.length?range.min:null,max:rows.length?range.max:null,apartments:new Set(rows.map(apartmentKey)).size};
 }
-export function topTrades(rows,limit=5) {
-  return rows.filter(row=>row.cancelled===0).sort((a,b)=>b.price_man-a.price_man || b.deal_date.localeCompare(a.deal_date) || b.id-a.id).slice(0,limit);
-}
 export function monthSequence(start, end) {
   if (!/^\d{6}$/.test(start ?? '') || !/^\d{6}$/.test(end ?? '') || start > end) return [];
   let year = Number(start.slice(0, 4)), month = Number(start.slice(4));

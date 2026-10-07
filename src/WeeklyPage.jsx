@@ -5,7 +5,6 @@ import {periodBounds,publishedDay,weeklyRows} from './weekly.mjs';
 import {Empty,Loading} from './ViewState.jsx';
 import AreaUnit from './AreaUnit.jsx';
 import AreaRange from './AreaRange.jsx';
-import PriceLeaders from './PriceLeaders.jsx';
 import PeriodPicker from './PeriodPicker.jsx';
 import './dong-filters.css';
 import {areaPreference,textPreference,unitPreference,useStoredState} from './preferences.js';
@@ -79,7 +78,7 @@ export default function WeeklyPage({manifest, catalog, selectedIds, onChange, da
           {invalidArea&&<p className="notice error" role="alert">최소 전용면적은 최대 전용면적보다 클 수 없습니다.</p>}
         </section>
       </div>
-      <div className="weekly-display-options"><label className="weekly-cancel-toggle"><input type="checkbox" checked={includeCancelled} onChange={event=>setIncludeCancelled(event.target.checked)}/>해제 거래 포함</label><p>최저·최고가와 상위 5건은 유효 거래 기준입니다. 최근 자료는 신고 지연으로 추가될 수 있습니다.</p></div>
+      <div className="weekly-display-options"><label className="weekly-cancel-toggle"><input type="checkbox" checked={includeCancelled} onChange={event=>setIncludeCancelled(event.target.checked)}/>해제 거래 포함</label><p>최저·최고가는 유효 거래 기준입니다. 최근 자료는 신고 지연으로 추가될 수 있습니다.</p></div>
       <section className="dong-filter-card region-card" aria-label="조회 지역 설정">
         <div className="dong-filter-heading"><span className="filter-step">03</span><h3><MapPin size={16}/>조회할 동</h3><button className="text-button" disabled={!selectedIds.length} onClick={()=>onChange([])}>선택 모두 해제</button></div>
         <div className="weekly-location">
@@ -111,7 +110,6 @@ function DongWeek({region,week,dataset,collected,areaUnit,minArea,maxArea,includ
     <div className="section-title"><div><h2>{region.dongs[0]}</h2><p>{region.region_name} · {week.start} — {week.end}</p></div><button aria-label={`${region.label} 조회 제거`} onClick={onRemove}><X size={14}/>제거</button></div>
     {!collected?<Empty title="아직 수집된 자료가 없는 동입니다.">로컬 관리자에서 수집·배포하면 조회할 수 있습니다.</Empty>:dataset?.error?<div className="notice error" role="alert">이 지역의 자료를 불러오지 못했습니다.<button onClick={onRetry}>다시 불러오기</button></div>:!dataset?.rows?<Loading text="이 동의 거래를 불러오는 중입니다."/>:<>
       <div className="weekly-metrics" aria-label={`${region.label} ${periodLabel} 통계`}><div><span>유효 거래</span><strong>{formatNumber(summary.count)}<small>건</small></strong></div><div><span>최저 거래금액</span><strong>{formatNumber(summary.min,2)}<small>억 원</small></strong></div><div><span>최고 거래금액</span><strong>{formatNumber(summary.max,2)}<small>억 원</small></strong></div><div><span>거래된 아파트</span><strong>{formatNumber(summary.apartments)}<small>곳</small></strong></div></div>
-      <PriceLeaders rows={rows} areaUnit={areaUnit} regionName={region.region_name} title={`${region.dongs[0]} 금액 상위 5건`}/>
       <p className="small-note">표시 {formatNumber(rows.length)}건 · 유효 {formatNumber(summary.count)}건 · 해제 {formatNumber(rows.length-summary.count)}건. 위 통계는 유효 거래 기준이며, 거래표 금액은 각 신고의 원래 금액입니다.</p>
       {!rows.length?<Empty title={areaFiltered?`${timeLabel}의 면적 조건에 맞는 ${includeCancelled?'':'유효 '}거래가 없습니다.`:`${timeLabel}에 조회되는 ${includeCancelled?'':'유효 '}거래가 없습니다.`}>{areaFiltered?'면적 필터를 조정하거나 초기화해 보세요.':'기간이나 다른 동을 선택해 보세요.'}</Empty>:<>
         <div className="table-scroll weekly-trades" role="region" aria-label={`${region.label} ${periodLabel} 거래 내역`} tabIndex={0}><table className="summary-table">

@@ -54,24 +54,22 @@ describe('Dong weekly transaction tab',()=>{
     await screen.findByRole('region',{name:`${a.label} 주간 거래 내역`});
     expect(screen.getByRole('button',{name:'주간',exact:true}).getAttribute('aria-pressed')).toBe('true');
   });
-  it('shows actual extremes and the five highest valid trades under the current area and week filters',async()=>{
+  it('shows actual extremes under the current area and week filters',async()=>{
     const user=userEvent.setup();
     window.history.replaceState(null,'',`/?tab=weekly&dong=${a.region_id}`);
     const data=[6,8,10,10,12,15].map((price,index)=>row(index+1,{price_man:price*10000,apartment:`가격단지${index}`,area_m2:index===5?120:85}));
     data.push(row(99,{cancelled:1,price_man:990000,apartment:'해제최고가'}));
     render(<App initialManifest={manifest} districtLoader={()=>Promise.resolve(data)}/>);
-    const leaders=await screen.findByRole('region',{name:'풍덕천동 금액 상위 5건 거래 내역'});
-    const prices=()=>within(screen.getByRole('region',{name:'풍덕천동 금액 상위 5건 거래 내역'})).getAllByRole('row').slice(1).map(tr=>within(tr).getAllByRole('cell')[1].querySelector('strong').textContent);
-    expect(prices()).toEqual(['15.00억 원','12.00억 원','10.00억 원','10.00억 원','8.00억 원']);
-    expect(within(leaders).queryByText('해제최고가')).toBeNull();
+    await screen.findByRole('region',{name:`${a.label} 주간 거래 내역`});
     const metrics=screen.getByLabelText(`${a.label} 주간 통계`);
     expect(within(metrics).getByText('최저 거래금액').parentElement.textContent).toBe('최저 거래금액6.00억 원');
     expect(within(metrics).getByText('최고 거래금액').parentElement.textContent).toBe('최고 거래금액15.00억 원');
     await user.type(screen.getByRole('spinbutton',{name:'최대 전용면적 (㎡)'}),'85');
-    expect(prices()).toEqual(['12.00억 원','10.00억 원','10.00억 원','8.00억 원','6.00억 원']);
+    expect(within(metrics).getByText('최저 거래금액').parentElement.textContent).toBe('최저 거래금액6.00억 원');
+    expect(within(metrics).getByText('최고 거래금액').parentElement.textContent).toBe('최고 거래금액12.00억 원');
     expect(screen.queryByText(/중앙값/)).toBeNull();
     await user.click(screen.getByRole('button',{name:'이전 주',exact:true}));
-    expect(screen.queryByRole('region',{name:'풍덕천동 금액 상위 5건 거래 내역'})).toBeNull();
+    expect(screen.queryByRole('region',{name:`${a.label} 주간 거래 내역`})).toBeNull();
   });
   it('shows cancellations and their dates by default while summary prices use valid trades only',async()=>{
     const user=userEvent.setup();
