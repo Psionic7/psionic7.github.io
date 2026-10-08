@@ -3,13 +3,14 @@ import {Building2, Search, ChevronLeft, ChevronRight} from 'lucide-react';
 import {ResponsiveContainer, ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend} from 'recharts';
 import {apartmentAddress, apartmentKey, areaUnitLabel, areaValue, formatNumber, monthly, priceEok, pricePerPyeong, stats} from './domain.mjs';
 import {Empty} from './ViewState.jsx';
+import ApartmentFavoriteButton from './ApartmentFavoriteButton.jsx';
 import {textPreference,useStoredState} from './preferences.js';
 
 const areaLabel = (area,unit) => unit === 'pyeong'
   ? `${formatNumber(areaValue(area,unit),2)}평 (${area.toLocaleString('ko-KR',{maximumFractionDigits:4})}㎡)`
   : `${area.toLocaleString('ko-KR',{maximumFractionDigits:4})}㎡`;
 
-export default function ApartmentExplorer({apartments, rows, selectedKey, onSelect, region, start, end, areaUnit}) {
+export default function ApartmentExplorer({apartments, rows, selectedKey, onSelect, region, start, end, areaUnit, favorites=[], onToggleFavorite}) {
   const [search,setSearch] = useStoredState(`apartments:${region.region_id}`,'search','',textPreference);
   const selected = apartments.find(item=>item.key===selectedKey);
   const needle = search.trim().toLocaleLowerCase();
@@ -27,6 +28,7 @@ export default function ApartmentExplorer({apartments, rows, selectedKey, onSele
       <button disabled={!selectedKey} onClick={()=>onSelect('')}>아파트 선택 해제</button>
     </div>
     {needle&&!choices.length&&<p className="notice">검색과 일치하는 아파트가 없습니다. 아파트명이나 법정동을 확인해 주세요.</p>}
+    {selected&&<div className="apartment-favorite-action"><ApartmentFavoriteButton apartment={selected} region={region} favorites={favorites} onToggle={onToggleFavorite}/><span className="small-note">즐겨찾기한 아파트는 대시보드에서 함께 볼 수 있습니다.</span></div>}
     {selected ? <ApartmentDetails key={selected.key} apartment={selected} rows={selectedRows} region={region} start={start} end={end} areaUnit={areaUnit}/>
       : <Empty title={apartments.length?'실거래가를 살펴볼 아파트를 선택해 주세요.':'이 조건에 조회할 아파트가 없습니다.'}>{apartments.length?'위에서 아파트명·법정동·지번으로 검색해 단지를 선택하세요.':'지역이나 계약월 조건을 바꿔 보세요.'}</Empty>}
   </section>;

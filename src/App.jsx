@@ -4,7 +4,8 @@ import { buildCatalog, favoriteRegions, formatNumber, hierarchy, monthLabel, sco
 import { fetchJson, loadDistrict } from './data.js';
 import {Empty,Loading} from './ViewState.jsx';
 import {weekBounds} from './weekly.mjs';
-import {clearPreferences,restoreExplorer,savePreferences} from './preferences.js';
+import {clearPreferences,restoreExplorer,savePreferences,useStoredState} from './preferences.js';
+import {validApartmentFavorites} from './apartment-favorites.js';
 const Dashboard = lazy(() => import('./Dashboard.jsx'));
 const ApartmentPage = lazy(() => import('./ApartmentPage.jsx'));
 const WeeklyPage = lazy(() => import('./WeeklyPage.jsx'));
@@ -41,7 +42,16 @@ function Explorer({ manifest, districtLoader,onResetPreferences }) {
   const [start, setStart] = useState(initial.start);
   const [end, setEnd] = useState(initial.end);
   const [tab, setTab] = useState(initial.tab);
-  const isWeekly = tab === 'weekly';
+  const isWeekly = tab === 'weekly',isApartment=tab==='apartments';
+  const [apartmentFavorites,setApartmentFavorites]=useStoredState('viewer','apartments',[],validApartmentFavorites);
+  const toggleApartmentFavorite=item=>setApartmentFavorites(previous=>previous.some(saved=>saved.id===item.id)?previous.filter(saved=>saved.id!==item.id):[...previous,item]);
+  const openFavorite=(item,range)=>{
+    setRegionId('area_'+item.region_code);setProvince('');setCity('');setDistrict('');setSearch('');setSelectedApartment(item.key);
+    const months=manifest.districts[item.region_code]?.months||manifest.months;
+    const from=range?.start.replaceAll('-','').slice(0,6),to=range?.end.replaceAll('-','').slice(0,6);
+    setStart(months.includes(from)?from:months[0]||'');setEnd(months.includes(to)?to:months.at(-1)||'');
+    setTab('apartments');document.querySelector('.tabs')?.scrollIntoView?.({block:'start'});
+  };
   const [weeklyIds,setWeeklyIds] = useState(initial.weeklyIds);
   const [weeklyDay,setWeeklyDay] = useState(initial.weeklyDay);
   const [weeklyPeriod,setWeeklyPeriod] = useState(initial.weeklyPeriod);
@@ -51,13 +61,13 @@ function Explorer({ manifest, districtLoader,onResetPreferences }) {
   const [error, setError] = useState(''), [retry, setRetry] = useState(0), [copied, setCopied] = useState(false);
   useEffect(() => {
     let active = true;
-    if (isWeekly) return;
+    if (!isApartment) return;
     if (!regionCode) { setRows([]); setBusy(false); setError(''); return; }
     setBusy(true); setError('');
     districtLoader(manifest, regionCode).then(value => { if (active) { setRows(value); setBusy(false); } })
       .catch(reason => { if (active) { setError(reason.message); setBusy(false); } });
     return () => { active = false; };
-  }, [manifest, regionCode, districtLoader, retry, isWeekly]);
+  }, [manifest, regionCode, districtLoader, retry, isApartment]);
   useEffect(() => {
     const params = new URLSearchParams({tab});
     if (isWeekly) {
@@ -66,7 +76,7 @@ function Explorer({ manifest, districtLoader,onResetPreferences }) {
       if(weeklyPeriod.mode==='month')params.set('month',weeklyPeriod.month);
       if(weeklyPeriod.mode==='custom'){params.set('from',weeklyPeriod.start);params.set('to',weeklyPeriod.end);}
     }
-    else if (region) { params.set('region', region.region_id); params.set('start', start); params.set('end', end); }
+    else if (isApartment && region) { params.set('region', region.region_id); params.set('start', start); params.set('end', end); }
     window.history.replaceState(null, '', `?${params}`);
   }, [regionId, start, end, tab, weeklyIds, weeklyDay,weeklyPeriod]);
   useEffect(()=>{
@@ -101,7 +111,7 @@ function Explorer({ manifest, districtLoader,onResetPreferences }) {
       <header className="page-header"><div><p className="eyebrow">HOME RECORDS / REAL TRANSACTIONS</p><h1>실거래로 읽는 우리 동네</h1><p>지역과 기간을 골라 거래의 흐름을 살펴보세요.</p></div><button className="share-button" onClick={share}><Copy size={15} />{copied ? '주소 복사됨' : '조회 주소 복사'}</button></header>
       <nav className="tabs" aria-label="조회 화면">{tabs.map(([id, label, Icon]) => <button key={id} aria-current={tab === id ? 'page' : undefined} onClick={() => setTab(id)}><Icon size={17} />{label}</button>)}</nav>
       <section className="tab-content" role="tabpanel" aria-label={tabs.find(([id]) => id === tab)[1]}>
-      {tab !== 'about' && !isWeekly && <>
+      {isApartment && <>
       <section className="panel query-panel" aria-label="조회 조건">
       <div className="sidebar-heading"><SlidersHorizontal size={16} /><h2>조회 조건</h2></div>
       <section className="favorites-section" aria-label="즐겨찾기 지역"><div className="filter-heading"><span><Star size={14} /> 즐겨찾기</span><small>{favorites.length}곳</small></div>
@@ -119,15 +129,14 @@ function Explorer({ manifest, districtLoader,onResetPreferences }) {
       <span className="filter-heading">계약월 범위</span>
       <div className="two-fields"><label>시작 계약월<select disabled={!region} value={start} onChange={event => { setStart(event.target.value); if (event.target.value > end) setEnd(event.target.value); }}>{available.map(value => <option key={value} value={value}>{monthLabel(value)}</option>)}</select></label><label>종료 계약월<select disabled={!region} value={end} onChange={event => {setEnd(event.target.value); if (event.target.value < start) setStart(event.target.value);}}>{available.map(value => <option key={value} value={value}>{monthLabel(value)}</option>)}</select></label></div>
       {region && <div className="scope-card"><span className="status-dot" /><div><strong>{region.region_name}</strong><small>시군구 코드 {region.region_code}</small>{region.dongs.length > 0 && <small>{region.dongs.join(' · ')}</small>}</div></div>}
-      <p className="small-note">선택한 지역·기간은 대시보드와 아파트별 실거래가에 적용됩니다. 조회 조건은 이 브라우저에 자동 저장됩니다.</p>
+      <p className="small-note">선택한 지역·기간의 아파트별 실거래가를 조회합니다. 조회 조건은 이 브라우저에 자동 저장됩니다.</p>
       </div>
       </section>
       <div className="context-line"><strong>{region?.label || '조회할 지역을 선택해 주세요'}</strong>{region && <><span>{monthLabel(start)} — {monthLabel(end)}</span><span>{formatNumber(data.length)}건의 원천 자료</span></>}</div>
       </>}
-      {isWeekly ? <Suspense fallback={<Loading text="주간 조회를 준비하고 있습니다." />}><WeeklyPage manifest={manifest} catalog={catalog} selectedIds={weeklyIds} onChange={setWeeklyIds} day={weeklyDay} period={weeklyPeriod} onPeriodChange={setWeeklyPeriod} onDayChange={value=>setWeeklyDay(weekBounds(value)?.start||'')} districtLoader={districtLoader}/></Suspense> : tab === 'about' ? <About manifest={manifest} onResetPreferences={onResetPreferences} /> : !region ? <section className="panel"><Empty title="조회할 지역을 선택해 주세요.">{favorites.length ? '위의 즐겨찾기에서 지역을 고르거나 시·구·동으로 검색하세요.' : '위의 시·구·동 필터에서 조회할 지역을 고르세요.'}</Empty></section> : busy ? <Loading /> : error ? <div className="notice error" role="alert">{error}<button onClick={() => setRetry(value => value + 1)}>다시 불러오기</button></div> :
+      {tab==='dashboard'?<Suspense fallback={<Loading text="즐겨찾기 대시보드를 준비하고 있습니다."/>}><Dashboard manifest={manifest} catalog={catalog} favorites={apartmentFavorites} onRemoveFavorite={id=>setApartmentFavorites(previous=>previous.filter(item=>item.id!==id))} onOpenApartment={openFavorite} onAddApartments={()=>setTab('apartments')} districtLoader={districtLoader}/></Suspense>:isWeekly ? <Suspense fallback={<Loading text="주간 조회를 준비하고 있습니다." />}><WeeklyPage manifest={manifest} catalog={catalog} selectedIds={weeklyIds} onChange={setWeeklyIds} day={weeklyDay} period={weeklyPeriod} onPeriodChange={setWeeklyPeriod} onDayChange={value=>setWeeklyDay(weekBounds(value)?.start||'')} districtLoader={districtLoader} favoriteApartments={apartmentFavorites} onToggleFavorite={toggleApartmentFavorite}/></Suspense> : tab === 'about' ? <About manifest={manifest} onResetPreferences={onResetPreferences} /> : !region ? <section className="panel"><Empty title="조회할 지역을 선택해 주세요.">{favorites.length ? '위의 즐겨찾기에서 지역을 고르거나 시·구·동으로 검색하세요.' : '위의 시·구·동 필터에서 조회할 지역을 고르세요.'}</Empty></section> : busy ? <Loading /> : error ? <div className="notice error" role="alert">{error}<button onClick={() => setRetry(value => value + 1)}>다시 불러오기</button></div> :
         <Suspense fallback={<Loading text="조회 화면을 준비하고 있습니다." />}>
-          {tab === 'apartments' ? <ApartmentPage key={region.region_id} rows={data} region={region} start={start} end={end} selectedKey={selectedApartment} onSelect={setSelectedApartment} />
-            : <Dashboard key={region.region_id} rows={data} region={region} manifest={manifest} favorites={favorites} start={start} end={end} districtLoader={districtLoader} onOpenApartment={key=>{setSelectedApartment(key);setTab('apartments');document.querySelector('.tabs')?.scrollIntoView?.({block:'start'});}} />}
+          <ApartmentPage key={region.region_id} rows={data} region={region} start={start} end={end} selectedKey={selectedApartment} onSelect={setSelectedApartment} favorites={apartmentFavorites} onToggleFavorite={toggleApartmentFavorite}/>
         </Suspense>}
       </section>
       <footer className="page-footer">자료: 국토교통부 아파트 매매 실거래가 · 신고 자료의 정정과 해제에 따라 값이 달라질 수 있습니다.</footer>
@@ -138,14 +147,14 @@ function Explorer({ manifest, districtLoader,onResetPreferences }) {
 function About({ manifest,onResetPreferences }) {
   const covered = Object.keys(manifest.districts);
   return <div className="about-grid">
-    <section className="panel"><div className="panel-heading"><SlidersHorizontal size={19}/><h2>이 브라우저의 조회 설정</h2></div><p>마지막 조회 지역·기간·탭, 아파트와 면적, 주간 조회 동, 검색·필터·면적 단위를 자동으로 기억합니다. 창을 닫았다 다시 열어도 같은 기기와 브라우저에서 복원됩니다.</p><p className="small-note">조회 설정은 이 브라우저에 보관됩니다. 다른 기기나 브라우저에는 공유되지 않으며, 시크릿 모드 종료나 사이트 데이터 삭제 시 사라질 수 있습니다. 공유 링크에 지정된 조건은 저장된 조건보다 우선합니다.</p><button onClick={onResetPreferences}>이 브라우저의 조회 설정 초기화</button></section>
+    <section className="panel"><div className="panel-heading"><SlidersHorizontal size={19}/><h2>이 브라우저의 조회 설정</h2></div><p>마지막 조회 지역·기간·탭, 아파트 즐겨찾기와 면적, 주간 조회 동, 검색·필터·면적 단위를 자동으로 기억합니다. 창을 닫았다 다시 열어도 같은 기기와 브라우저에서 복원됩니다.</p><p className="small-note">조회 설정은 이 브라우저에 보관됩니다. 다른 기기나 브라우저에는 공유되지 않으며, 시크릿 모드 종료나 사이트 데이터 삭제 시 사라질 수 있습니다. 공유 링크에 지정된 조건은 저장된 조건보다 우선합니다.</p><button onClick={onResetPreferences}>이 브라우저의 조회 설정 초기화</button></section>
     <section className="panel"><div className="panel-heading"><Database size={19} /><h2>공개 데이터</h2></div><p>로컬에서 수집한 아파트 매매 신고 자료를 공개합니다. 조회 화면은 마지막으로 배포한 자료를 사용합니다.</p>
       <dl className="info-list"><div><dt>전체 거래</dt><dd>{formatNumber(manifest.count)}건</dd></div><div><dt>계약월</dt><dd>{monthLabel(manifest.months[0])} — {monthLabel(manifest.months.at(-1))}</dd></div><div><dt>데이터 생성</dt><dd>{timestamp(manifest.published_at)} KST</dd></div><div><dt>지역 목록</dt><dd>{formatNumber(manifest.regions.length)}개 · 서울 / 경기</dd></div></dl>
       <h3>수집된 시군구</h3>{covered.map(code => <p className="coverage-row" key={code}><span>{manifest.regions.find(item => item.region_code === code)?.region_name || code}</span><strong>{formatNumber(manifest.districts[code].count)}건</strong></p>)}
       <a className="button primary" href={`/data/${manifest.database?.file||'public.sqlite3'}`} download><Database size={15} />공개 SQLite 다운로드{manifest.database?.format==='sqlite3+gzip'?' (.gz)':''}</a>
       {manifest.database?.format==='sqlite3+gzip'&&<p className="small-note">전체 거래가 담긴 SQLite 압축 파일입니다. 다운로드 후 gzip 압축을 풀면 public.sqlite3로 사용할 수 있습니다.</p>}
     </section>
-    <section className="panel"><div className="panel-heading"><Info size={19} /><h2>데이터를 읽는 방법</h2></div><ul className="reading-guide"><li><strong>대시보드</strong>는 계약 해제 거래를 제외합니다. 현재 조회 조건의 최저·최고 거래금액을 보여줍니다.</li><li><strong>원천 데이터</strong>는 로컬 관리자 전용입니다. 관리자 화면의 원천 데이터 탭에서 해제 거래를 포함한 전체 필드 조회·필터·CSV 다운로드를 사용할 수 있습니다.</li><li><strong>즐겨찾기</strong>는 관리자가 별표로 선택하고 저장한 지역입니다. 데이터와 함께 업데이트되며, 처음 접속할 때 조회 지역은 선택되어 있지 않습니다.</li><li><strong>지역 목록</strong>은 {manifest.boundary_catalog_date} 법정읍면동 경계 자료에 기반합니다. 이후 행정구역 개편은 반영되지 않을 수 있습니다.</li><li><strong>전용평</strong>은 전용면적 ÷ 3.305785로 계산합니다. 공급면적을 기준으로 하는 분양 평형과 다릅니다.</li></ul></section>
+    <section className="panel"><div className="panel-heading"><Info size={19} /><h2>데이터를 읽는 방법</h2></div><ul className="reading-guide"><li><strong>대시보드</strong>는 이 브라우저에서 즐겨찾기한 아파트들을 보여줍니다. 거래표에는 해제 거래도 표시할 수 있으며 최저·최고가와 최근 거래가격은 유효 거래만으로 계산합니다.</li><li><strong>원천 데이터</strong>는 로컬 관리자 전용입니다. 관리자 화면의 원천 데이터 탭에서 해제 거래를 포함한 전체 필드 조회·필터·CSV 다운로드를 사용할 수 있습니다.</li><li><strong>아파트 즐겨찾기</strong>는 각 사용자가 별표로 선택한 단지이며 이 브라우저에 저장됩니다. 아파트별 조회의 즐겨찾기 지역은 관리자가 저장한 수집 지역입니다.</li><li><strong>지역 목록</strong>은 {manifest.boundary_catalog_date} 법정읍면동 경계 자료에 기반합니다. 이후 행정구역 개편은 반영되지 않을 수 있습니다.</li><li><strong>전용평</strong>은 전용면적 ÷ 3.305785로 계산합니다. 공급면적을 기준으로 하는 분양 평형과 다릅니다.</li></ul></section>
     <section className="panel local-guide"><div className="panel-heading"><House size={19} /><h2>데이터 수집 · 관리</h2></div><p>GitHub Actions에서 매일 예약 수집·주소 조회·검사·배포를 실행합니다. 저장소 관리자는 웹 관리자에서 예약 시간과 수집 지역을 변경하고 수동 실행할 수 있습니다.</p><p><a className="button" href="/admin.html">웹 수집 관리자 <ArrowUpRight size={14} /></a></p><p>관리자의 PC에서는 <code>run-admin.bat</code>으로 원천 자료 조회와 별도 수집을 사용할 수 있습니다. 로컬 수집 DB와 클라우드 수집 DB는 각각 관리됩니다.</p><p className="small-note">API 키는 GitHub Secrets에 보관합니다. 공개 SQLite·JSON과 사이트 소스는 누구나 내려받을 수 있습니다.</p><a href="https://github.com/Psionic7/psionic7.github.io#자동-수집과-웹-관리자" target="_blank" rel="noreferrer">데이터 갱신 안내 <ArrowUpRight size={14} /></a></section>
   </div>;
 }

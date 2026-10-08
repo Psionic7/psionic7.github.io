@@ -23,7 +23,10 @@ export function readPreferences(scope) {
 export function savePreferences(scope,value) {
   try {
     const document=readDocument();
-    const scopes=Object.entries(document.scopes).filter(([key,item])=>key!==scope && object(item)).slice(-79);
+    const entries=Object.entries(document.scopes).filter(([key,item])=>key!==scope && object(item));
+    const persistent=new Set(['viewer','explorer','display','weekly','favoriteDashboard']);
+    const retained=entries.filter(([key])=>persistent.has(key));
+    const scopes=[...retained,...entries.filter(([key])=>!persistent.has(key)).slice(-(79-retained.length))];
     scopes.push([scope,value]);
     window.localStorage.setItem(PREFERENCES_KEY,JSON.stringify({version:1,scopes:Object.fromEntries(scopes)}));
   }catch{}

@@ -1,6 +1,6 @@
 import React from 'react';
 import {afterEach,beforeEach,describe,expect,it,vi} from 'vitest';
-import {cleanup,render,screen,within} from '@testing-library/react';
+import {cleanup,fireEvent,render,screen,within} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import App from '../src/App.jsx';
 import {PREFERENCES_KEY,readPreferences,savePreferences} from '../src/preferences.js';
@@ -57,16 +57,18 @@ describe('Browser selection persistence',()=>{
     expect(within(screen.getByRole('region',{name:'선택 아파트 실거래 내역'})).getAllByRole('row')).toHaveLength(2);
   });
 
-  it('retains dashboard filters when reopening the same URL',async()=>{
-    const user=userEvent.setup();window.history.replaceState(null,'','/?region=area_41465');
-    const first=open();await screen.findByText('유효 거래',{selector:'.metric-label'});
-    const max=screen.getByRole('spinbutton',{name:/최대 전용면적/});await user.clear(max);await user.type(max,'70');
-    await user.click(screen.getByText('법정동 전체',{selector:'summary'}));
-    await user.click(screen.getByRole('checkbox',{name:'풍덕천동'}));
-    first.unmount();open();await screen.findByText('유효 거래',{selector:'.metric-label'});
-    expect(screen.getByRole('spinbutton',{name:/최대 전용면적/}).value).toBe('70');
-    expect(screen.getByRole('checkbox',{name:'풍덕천동',hidden:true}).checked).toBe(true);
-    expect(screen.getByText('유효 거래',{selector:'.metric-label'}).closest('section').querySelector('.metric-value').textContent).toBe('2건');
+  it('retains favorite dashboard filters separately from weekly filters',async()=>{
+    const user=userEvent.setup();window.history.replaceState(null,'','/?tab=dashboard');
+    const first=open();await screen.findByText('즐겨찾기한 아파트가 없습니다.');
+    fireEvent.change(screen.getByRole('spinbutton',{name:'최대 전용면적 (㎡)'}),{target:{value:'70'}});
+    await user.click(screen.getByRole('button',{name:'10평대',exact:true}));
+    first.unmount();open();await screen.findByText('즐겨찾기한 아파트가 없습니다.');
+    expect(screen.getByRole('spinbutton',{name:'최대 전용면적 (㎡)'}).value).toBe('70');
+    expect(screen.getByRole('button',{name:'10평대',exact:true}).getAttribute('aria-pressed')).toBe('true');
+    await user.click(screen.getByRole('button',{name:'동별 주간 실거래가',exact:true}));
+    await screen.findByText('주간 실거래가를 볼 동을 선택해 주세요.');
+    expect(screen.getByRole('spinbutton',{name:'최대 전용면적 (㎡)'}).value).toBe('');
+    expect(screen.getByRole('button',{name:'10평대',exact:true}).getAttribute('aria-pressed')).toBe('false');
   });
 
   it('restores weekly dongs in selection order with the week and search',async()=>{
@@ -85,8 +87,8 @@ describe('Browser selection persistence',()=>{
 
   it('lets an explicit shared region and period override the previous visit',async()=>{
     savePreferences('explorer',{regionId:'area_41465',tab:'apartments',start:'202601',end:'202601',province:'경기도',city:'용인시',search:'수지',selectedApartment:JSON.stringify(['풍덕천동','1','기억단지'])});
-    window.history.replaceState(null,'','/?tab=dashboard&region=area_11110&start=202602&end=202609');open();
-    await screen.findByText('이 지역은 아직 수집된 자료가 없습니다.');
+    window.history.replaceState(null,'','/?tab=apartments&region=area_11110&start=202602&end=202609');open();
+    await screen.findByText('이 조건에 조회할 아파트가 없습니다.');
     expect(screen.getByRole('combobox',{name:'조회 지역'}).value).toBe('area_11110');
     expect(screen.getByRole('combobox',{name:'시작 계약월'}).value).toBe('202602');
     expect(screen.getByRole('combobox',{name:'종료 계약월'}).value).toBe('202609');
@@ -95,14 +97,14 @@ describe('Browser selection persistence',()=>{
 
   it('ignores damaged or obsolete saved values and survives storage denial',async()=>{
     window.localStorage.setItem(PREFERENCES_KEY,'{broken');
-    const first=open();await screen.findByRole('heading',{name:'조회할 지역을 선택해 주세요.'});first.unmount();
+    const first=open();await screen.findByRole('heading',{name:'즐겨찾기한 아파트가 없습니다.'});first.unmount();
     savePreferences('explorer',{regionId:'removed',tab:'invalid',weeklyIds:[a.region_id,'removed'],weeklyDay:'2099-01-01'});
     window.history.replaceState(null,'','/');const second=open();
-    expect(screen.getByRole('combobox',{name:'조회 지역'}).value).toBe('');second.unmount();
+    await screen.findByText('즐겨찾기한 아파트가 없습니다.');second.unmount();
     vi.spyOn(Storage.prototype,'getItem').mockImplementation(()=>{throw new Error('blocked');});
     vi.spyOn(Storage.prototype,'setItem').mockImplementation(()=>{throw new Error('blocked');});
-    window.history.replaceState(null,'','/?region=area_41465');open();
-    await screen.findByText('유효 거래',{selector:'.metric-label'});
+    window.history.replaceState(null,'','/?region=area_41465&tab=apartments');open();
+    await screen.findByRole('combobox',{name:'조회 아파트'});
     expect(screen.getByRole('combobox',{name:'조회 지역'}).value).toBe('area_41465');
   });
 
@@ -110,7 +112,7 @@ describe('Browser selection persistence',()=>{
     const user=userEvent.setup();window.localStorage.setItem('unrelated','keep');
     savePreferences('explorer',{regionId:'area_41465',tab:'about'});savePreferences('display',{areaUnit:'pyeong'});
     open();await user.click(screen.getByRole('button',{name:'이 브라우저의 조회 설정 초기화'}));
-    expect(screen.getByRole('combobox',{name:'조회 지역'}).value).toBe('');
-    expect(readPreferences('display')).toEqual({});expect(window.localStorage.getItem('unrelated')).toBe('keep');
+    await screen.findByText('즐겨찾기한 아파트가 없습니다.');
+    expect(readPreferences('display')).toEqual({areaUnit:'m2'});expect(readPreferences('viewer').apartments).toEqual([]);expect(window.localStorage.getItem('unrelated')).toBe('keep');
   });
 });
