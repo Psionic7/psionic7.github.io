@@ -1,15 +1,16 @@
 import React, { lazy, Suspense, useEffect, useMemo, useState } from 'react';
-import { House, ChartNoAxesCombined, Building2, CalendarDays, Info, Search, ArrowUpRight, Copy, Database, SlidersHorizontal, Star } from 'lucide-react';
+import { House, ChartNoAxesCombined, Building2, CalendarDays, Info, Search, ArrowUpRight, Copy, Database, SlidersHorizontal, Star, Map } from 'lucide-react';
 import { buildCatalog, favoriteRegions, formatNumber, hierarchy, monthLabel, scopeRows } from './domain.mjs';
 import { fetchJson, loadDistrict } from './data.js';
 import {Empty,Loading} from './ViewState.jsx';
 import {weekBounds} from './weekly.mjs';
 import {clearPreferences,restoreExplorer,savePreferences,useStoredState} from './preferences.js';
 import {validApartmentFavorites} from './apartment-favorites.js';
+const ApartmentMapPage = lazy(() => import('./ApartmentMapPage.jsx'));
 const Dashboard = lazy(() => import('./Dashboard.jsx'));
 const ApartmentPage = lazy(() => import('./ApartmentPage.jsx'));
 const WeeklyPage = lazy(() => import('./WeeklyPage.jsx'));
-const tabs = [['dashboard', '대시보드', ChartNoAxesCombined], ['apartments', '아파트별 실거래가', Building2], ['weekly', '동별 주간 실거래가', CalendarDays], ['about', '데이터 안내', Info]];
+const tabs = [['dashboard', '대시보드', ChartNoAxesCombined], ['apartments', '아파트별 실거래가', Building2], ['weekly', '동별 주간 실거래가', CalendarDays], ['map', '아파트 지도', Map], ['about', '데이터 안내', Info]];
 const unique = values => [...new Set(values)].sort((a, b) => a.localeCompare(b, 'ko'));
 const timestamp = value => new Date(value).toLocaleString('ko-KR', {timeZone: 'Asia/Seoul', dateStyle: 'medium', timeStyle: 'short'});
 
@@ -134,7 +135,7 @@ function Explorer({ manifest, districtLoader,onResetPreferences }) {
       </section>
       <div className="context-line"><strong>{region?.label || '조회할 지역을 선택해 주세요'}</strong>{region && <><span>{monthLabel(start)} — {monthLabel(end)}</span><span>{formatNumber(data.length)}건의 원천 자료</span></>}</div>
       </>}
-      {tab==='dashboard'?<Suspense fallback={<Loading text="즐겨찾기 대시보드를 준비하고 있습니다."/>}><Dashboard manifest={manifest} catalog={catalog} favorites={apartmentFavorites} onRemoveFavorite={id=>setApartmentFavorites(previous=>previous.filter(item=>item.id!==id))} onOpenApartment={openFavorite} onAddApartments={()=>setTab('apartments')} districtLoader={districtLoader}/></Suspense>:isWeekly ? <Suspense fallback={<Loading text="주간 조회를 준비하고 있습니다." />}><WeeklyPage manifest={manifest} catalog={catalog} selectedIds={weeklyIds} onChange={setWeeklyIds} day={weeklyDay} period={weeklyPeriod} onPeriodChange={setWeeklyPeriod} onDayChange={value=>setWeeklyDay(weekBounds(value)?.start||'')} districtLoader={districtLoader} favoriteApartments={apartmentFavorites} onToggleFavorite={toggleApartmentFavorite}/></Suspense> : tab === 'about' ? <About manifest={manifest} onResetPreferences={onResetPreferences} /> : !region ? <section className="panel"><Empty title="조회할 지역을 선택해 주세요.">{favorites.length ? '위의 즐겨찾기에서 지역을 고르거나 시·구·동으로 검색하세요.' : '위의 시·구·동 필터에서 조회할 지역을 고르세요.'}</Empty></section> : busy ? <Loading /> : error ? <div className="notice error" role="alert">{error}<button onClick={() => setRetry(value => value + 1)}>다시 불러오기</button></div> :
+      {tab==='map'?<Suspense fallback={<Loading text="아파트 지도를 준비하고 있습니다."/>}><ApartmentMapPage manifest={manifest} favorites={apartmentFavorites} onToggleFavorite={toggleApartmentFavorite}/></Suspense>:tab==='dashboard'?<Suspense fallback={<Loading text="즐겨찾기 대시보드를 준비하고 있습니다."/>}><Dashboard manifest={manifest} catalog={catalog} favorites={apartmentFavorites} onRemoveFavorite={id=>setApartmentFavorites(previous=>previous.filter(item=>item.id!==id))} onOpenApartment={openFavorite} onAddApartments={()=>setTab('apartments')} districtLoader={districtLoader}/></Suspense>:isWeekly ? <Suspense fallback={<Loading text="주간 조회를 준비하고 있습니다." />}><WeeklyPage manifest={manifest} catalog={catalog} selectedIds={weeklyIds} onChange={setWeeklyIds} day={weeklyDay} period={weeklyPeriod} onPeriodChange={setWeeklyPeriod} onDayChange={value=>setWeeklyDay(weekBounds(value)?.start||'')} districtLoader={districtLoader} favoriteApartments={apartmentFavorites} onToggleFavorite={toggleApartmentFavorite}/></Suspense> : tab === 'about' ? <About manifest={manifest} onResetPreferences={onResetPreferences} /> : !region ? <section className="panel"><Empty title="조회할 지역을 선택해 주세요.">{favorites.length ? '위의 즐겨찾기에서 지역을 고르거나 시·구·동으로 검색하세요.' : '위의 시·구·동 필터에서 조회할 지역을 고르세요.'}</Empty></section> : busy ? <Loading /> : error ? <div className="notice error" role="alert">{error}<button onClick={() => setRetry(value => value + 1)}>다시 불러오기</button></div> :
         <Suspense fallback={<Loading text="조회 화면을 준비하고 있습니다." />}>
           <ApartmentPage key={region.region_id} rows={data} region={region} start={start} end={end} selectedKey={selectedApartment} onSelect={setSelectedApartment} favorites={apartmentFavorites} onToggleFavorite={toggleApartmentFavorite}/>
         </Suspense>}

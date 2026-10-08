@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {createHash,randomUUID} from 'node:crypto';
 import {gzipSync} from 'node:zlib';
+import {exportApartmentMap} from './export-apartment-map.mjs';
 import {connect,PUBLIC_SCHEMA,TRADE_COLUMNS,REGION_COLUMNS,paths,ROOT,secretValues,checkedBytes,savedIds,atomicWrite} from './storage.mjs';
 export const sha256=data=>createHash('sha256').update(data).digest('hex');
 export function databasePayload(raw,secrets,compressAbove=95*1024*1024) {
@@ -64,5 +65,6 @@ export function exportData({source=paths.db,target=path.join(ROOT,'public/data')
     const obsolete=path.join(target,payload.metadata.file==='public.sqlite3'?'public.sqlite3.gz':'public.sqlite3');
     if(fs.existsSync(obsolete))fs.unlinkSync(obsolete);
   } finally {if(fs.existsSync(temp))fs.unlinkSync(temp);}
+  exportApartmentMap({source,target:path.join(path.dirname(target),'apartment-map'),favorites,secretsFile});
   return manifest;
 }

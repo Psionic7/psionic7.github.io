@@ -24,7 +24,7 @@ export function savePreferences(scope,value) {
   try {
     const document=readDocument();
     const entries=Object.entries(document.scopes).filter(([key,item])=>key!==scope && object(item));
-    const persistent=new Set(['viewer','explorer','display','weekly','favoriteDashboard']);
+    const persistent=new Set(['viewer','explorer','display','weekly','favoriteDashboard','apartmentMap']);
     const retained=entries.filter(([key])=>persistent.has(key));
     const scopes=[...retained,...entries.filter(([key])=>!persistent.has(key)).slice(-(79-retained.length))];
     scopes.push([scope,value]);
@@ -78,7 +78,7 @@ export function restoreExplorer(manifest,catalog,params) {
     try{const key=JSON.parse(saved.selectedApartment);if(Array.isArray(key) && key.length===3 && key.every(textPreference))selectedApartment=saved.selectedApartment;}catch{}
   }
   const newRegion=params.has('region') && !sameRegion;
-  return {regionId:region?.region_id||'',start,end,tab:['dashboard','apartments','weekly','about'].includes(tab)?tab:'dashboard',
+  return {regionId:region?.region_id||'',start,end,tab:['dashboard','apartments','weekly','map','about'].includes(tab)?tab:'dashboard',
     weeklyIds,weeklyDay,weeklyPeriod,selectedApartment,province:newRegion?'':province,city:newRegion?'':city,district:newRegion?'':district,
     search:!newRegion && textPreference(saved.search)?saved.search:''};
 }

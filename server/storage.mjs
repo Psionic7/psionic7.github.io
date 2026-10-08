@@ -17,6 +17,18 @@ CREATE TABLE IF NOT EXISTS regions (region_id TEXT PRIMARY KEY,label TEXT NOT NU
 CREATE TABLE IF NOT EXISTS metadata (key TEXT PRIMARY KEY,value TEXT NOT NULL);`;
 export const LOCAL_SCHEMA = `CREATE TABLE IF NOT EXISTS collection_runs (id INTEGER PRIMARY KEY,region_code TEXT NOT NULL,region_name TEXT NOT NULL,deal_month TEXT NOT NULL,fetched_at TEXT NOT NULL,api_count INTEGER NOT NULL,stored_count INTEGER NOT NULL);
 CREATE TABLE IF NOT EXISTS address_lookups (region_code TEXT NOT NULL,dong TEXT NOT NULL,jibun TEXT NOT NULL,query TEXT NOT NULL,status TEXT NOT NULL,road_address TEXT NOT NULL DEFAULT '',response_json TEXT NOT NULL,fetched_at TEXT NOT NULL,PRIMARY KEY(region_code,dong,jibun));
+CREATE TABLE IF NOT EXISTS parcel_coordinates (
+  region_code TEXT NOT NULL,dong TEXT NOT NULL,jibun TEXT NOT NULL,
+  road_address TEXT NOT NULL,address_fetched_at TEXT NOT NULL,address_signature TEXT NOT NULL,
+  building_id TEXT NOT NULL DEFAULT '',latitude REAL NOT NULL CHECK(latitude BETWEEN 28 AND 40),
+  longitude REAL NOT NULL CHECK(longitude BETWEEN 122 AND 135),ent_x REAL NOT NULL,ent_y REAL NOT NULL,
+  source TEXT NOT NULL CHECK(source='juso'),source_crs TEXT NOT NULL CHECK(source_crs='EPSG:5179'),
+  fetched_at TEXT NOT NULL,PRIMARY KEY(region_code,dong,jibun));
+CREATE TABLE IF NOT EXISTS coordinate_lookups (
+  region_code TEXT NOT NULL,dong TEXT NOT NULL,jibun TEXT NOT NULL,address_fetched_at TEXT NOT NULL,
+  status TEXT NOT NULL CHECK(status IN ('exact','unmatched','ambiguous','invalid','missing_codes')),
+  fetched_at TEXT NOT NULL,PRIMARY KEY(region_code,dong,jibun));
+CREATE TABLE IF NOT EXISTS apartment_boundary_sources (id TEXT PRIMARY KEY,response_json TEXT NOT NULL,fetched_at TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS api_pages (run_id INTEGER NOT NULL,page_no INTEGER NOT NULL,response_xml BLOB NOT NULL,PRIMARY KEY(run_id,page_no),FOREIGN KEY(run_id) REFERENCES collection_runs(id));`;
 export function atomicWrite(filename, data) {
   fs.mkdirSync(path.dirname(filename),{recursive:true});
@@ -82,7 +94,7 @@ export async function initialize({db=paths.db,favorites=paths.favorites,env=path
         const xs=coords.map(c=>c[0]),ys=coords.map(c=>c[1]);
         insert.run('dong_'+p.EMD_CD,p.FULL_NM,p.EMD_CD.slice(0,5),p.FULL_NM.slice(0,p.FULL_NM.lastIndexOf(' ')),JSON.stringify([p.EMD_KOR_NM]),(Math.min(...ys)+Math.max(...ys))/2,(Math.min(...xs)+Math.max(...xs))/2);
       }
-      connection.exec('PRAGMA user_version=2; COMMIT');
+      connection.exec('PRAGMA user_version=4; COMMIT');
     } catch(e) {connection.exec('ROLLBACK');throw e;}
     savedIds(favorites,regions(connection));
   } finally {connection.close();}

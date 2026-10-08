@@ -15,6 +15,8 @@ export default function Admin({initialState,initialBoundaries,initialAdminBounda
   const [error,setError]=useState(''),[message,setMessage]=useState(''),[pending,setPending]=useState(false),[start,setStart]=useState(''),[end,setEnd]=useState('');
   const [tab,setTab]=useState('collection');
   const [addressLimit,setAddressLimit]=useState(100);
+  const [coordinateLimit,setCoordinateLimit]=useState(100),[coordinateRefresh,setCoordinateRefresh]=useState(false);
+  const [coordinatePoints,setCoordinatePoints]=useState([]);
   const [custom,setCustom]=useState({code:'',name:'',label:'',dongs:''});
   const loadStarted=useRef(false);
   const refreshState=next=>setState(previous=>previous&&JSON.stringify(previous.catalog)===JSON.stringify(next.catalog)?{...next,catalog:previous.catalog}:next);
@@ -29,6 +31,12 @@ export default function Admin({initialState,initialBoundaries,initialAdminBounda
     let active=true;const interval=setInterval(()=>request('state').then(s=>{if(active)refreshState(s);}).catch(e=>active&&setError(e.message)),1000);
     return ()=>{active=false;clearInterval(interval);};
   },[state?.job.status,request]);
+  useEffect(()=>{
+    if(state?.stats.coordinateRevision===undefined)return;
+    let active=true;
+    request('coordinate-points').then(result=>{if(active)setCoordinatePoints(result.points||[]);}).catch(e=>active&&setError(e.message));
+    return ()=>{active=false;};
+  },[state?.stats.coordinateRevision,request]);
   const catalog=state?.catalog||[];
   const choices=useMemo(()=>catalog.filter(r=>{const h=hierarchy(r);return(!province||h.province===province)&&(!city||h.city===city)&&(!district||h.district===district)&&(!query||r.label.includes(query));}),[catalog,province,city,district,query]);
   const visibleIds=useMemo(()=>choices.map(r=>r.region_id),[choices]);
@@ -52,11 +60,20 @@ export default function Admin({initialState,initialBoundaries,initialAdminBounda
         <div className="action-row"><button disabled={pending||running} onClick={()=>setDraft(current=>[...new Set([...current,...visibleIds])])}>표시 지역 모두 추가 ({choices.length})</button><button disabled={pending||running} onClick={()=>setDraft(current=>current.filter(id=>!visibleIds.includes(id)))}>표시 지역 모두 해제</button><button disabled={pending||running} onClick={()=>setDraft([])}>전체 선택 해제</button><span className="small-note">필터를 바꿔도 수집 대상은 유지됩니다.</span></div>
         <div className={dirty?'draft-status dirty':'draft-status'} role="status">{dirty?`업데이트 필요 · 추가 ${added.length}곳 · 해제 ${removed.length}곳. 변경사항은 아직 파일에 저장되지 않았습니다.`:'저장된 수집 지역과 일치합니다.'}</div>
         <div className="action-row"><button className="button primary" disabled={!dirty||pending||running} onClick={()=>action('favorites',{ids:draft},result=>{setSaved(result.saved);setDraft(result.saved);setMessage('수집 지역을 파일에 저장했습니다.');})}><Save size={16}/>수집 지역 업데이트</button><button disabled={!dirty||pending||running} onClick={()=>setDraft([...saved])}><Undo2 size={16}/>변경사항 되돌리기</button></div>
-        <MapComponent boundaries={boundaries} adminBoundaries={adminBoundaries} catalog={catalog} draft={draft} saved={saved} visibleIds={visibleIds} onToggle={running||pending?()=>{}:toggle}/>
+        <MapComponent boundaries={boundaries} adminBoundaries={adminBoundaries} catalog={catalog} draft={draft} saved={saved} visibleIds={visibleIds} coordinatePoints={coordinatePoints} onToggle={running||pending?()=>{}:toggle}/>
         <p className="small-note">경계 기준: 2023-07-29 · 서울 467개 / 경기 745개 법정읍면동. 부천·화성 등의 이후 행정구역 개편은 반영되지 않을 수 있습니다. <a href="https://github.com/KnellBalm/kr-admin-geojson" target="_blank" rel="noreferrer">V-World / kr-admin-geojson</a></p>
         <details className="selection-list"><summary>편집 중인 수집 지역 {draft.length}곳</summary><div className="favorite-chips">{draft.map(id=>{const r=catalog.find(c=>c.region_id===id);return <button key={id} disabled={running||pending} onClick={()=>toggle(id)}><Star size={12} fill="currentColor"/>{r?.label||id} ×</button>;})}</div></details>
       </section>
       <section className="panel"><div className="panel-heading"><MapPin size={19}/><h2>도로명주소 조회</h2></div><p>실거래의 법정동·지번으로 공식 주소를 검색해 로컬 DB에 저장합니다. 정확히 일치하는 주소만 공개 화면에 표시합니다.</p><p className="small-note">확인된 도로명주소 {formatNumber(state.stats.roadAddresses)}곳 · 아직 조회하지 않은 지번 {formatNumber(state.stats.pendingAddresses)}곳</p>{!state.addressKeyReady&&<div className="notice error">프로젝트의 .env 파일에 JUSO_ADDRESS_SEARCH_KEY를 설정하세요.</div>}<div className="action-row"><label>이번 조회 건수 <input type="number" min="1" max="1000" value={addressLimit} onChange={event=>setAddressLimit(Number(event.target.value))}/></label><button disabled={running||pending||!state.addressKeyReady||!state.stats.pendingAddresses} onClick={()=>action('addresses',{limit:addressLimit})}><MapPin size={16}/>미조회 주소 검색·저장</button></div>{state.job.kind==='addresses'&&state.job.status!=='idle'&&<div className="job-status" role="status"><strong>{state.job.message}</strong><progress max={state.job.total||1} value={state.job.completed}/><small>{state.job.completed}/{state.job.total} 주소 · {state.job.status}</small></div>}</section>
+      <section id="apartment-coordinates" className="panel coordinate-panel"><div className="panel-heading"><MapPin size={19}/><h2>아파트 좌표 수집</h2><span className="badge">지도 표시 {formatNumber(coordinatePoints.length)}개 아파트</span></div>
+        <p>확인된 도로명주소의 건물 코드로 출입구 좌표를 조회합니다. 한 지번의 좌표를 저장해 같은 주소의 아파트 거래에서 재사용합니다.</p>
+        <div className="coordinate-counts"><span>좌표 확인 <strong>{formatNumber(state.stats.coordinates||0)}곳</strong></span><span>미조회 <strong>{formatNumber(state.stats.pendingCoordinates||0)}곳</strong></span><span>미확정 <strong>{formatNumber(state.stats.coordinateUnresolved||0)}곳</strong></span></div>
+        {!state.coordinateKeyReady&&<div className="notice error">좌표제공 API 승인키가 필요합니다. .env에 JUSO_COORDINATE_SEARCH_KEY를 추가한 뒤 아래 설정 확인을 눌러 주세요. 주소 검색 키와 별도로 발급받습니다.</div>}
+        <div className="action-row"><label>이번 좌표 조회 건수 <input type="number" min="1" max="1000" value={coordinateLimit} onChange={e=>setCoordinateLimit(Number(e.target.value))}/></label><label className="coordinate-refresh"><input type="checkbox" checked={coordinateRefresh} onChange={e=>setCoordinateRefresh(e.target.checked)}/>기존 조회 결과도 다시 확인</label></div>
+        <div className="action-row"><button className="primary" disabled={running||pending||!state.coordinateKeyReady||(!coordinateRefresh&&!state.stats.pendingCoordinates)} onClick={()=>action('coordinates',{limit:coordinateLimit,refresh:coordinateRefresh})}><MapPin size={16}/>좌표 조회·저장</button><button disabled={pending||running} onClick={()=>action('state',undefined)}>설정 확인</button><button disabled={pending||!running||state.job.kind!=='coordinates'} onClick={()=>action('cancel',{})}><Square size={14}/>좌표 수집 중단</button></div>
+        <p className="small-note">도로명주소를 먼저 조회하세요. 여러 건물이 조회되거나 좌표를 확정할 수 없는 주소는 임의로 표시하지 않습니다. 저장된 좌표는 위 지도에서 아파트 이름·주소와 함께 볼 수 있습니다.</p>
+        {state.job.kind==='coordinates'&&state.job.status!=='idle'&&<div className="job-status" role="status"><strong>{state.job.message}</strong><progress max={state.job.total||1} value={state.job.completed}/><small>{state.job.completed}/{state.job.total} 주소 · {state.job.status}</small></div>}
+      </section>
       <div className="admin-grid"><section className="panel"><div className="panel-heading"><Database size={19}/><h2>실거래 데이터 수집</h2></div><p>저장한 지역 <strong>{saved.length}곳</strong> · API 시군구 <strong>{new Set(catalog.filter(r=>saved.includes(r.region_id)).map(r=>r.region_code)).size}곳</strong></p><p className="small-note">API는 시군구 전체 자료를 반환합니다. 동별 조회 범위는 별도로 적용하며, 같은 시군구·월은 한 번만 요청합니다.</p>
         {!state.keyReady&&<div className="notice error">프로젝트의 .env 파일에 MOLIT_SERVICE_KEY를 설정하세요.</div>}
         {dirty&&<p className="draft-reminder">저장하지 않은 지역 변경은 이번 수집에 반영되지 않습니다.</p>}

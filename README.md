@@ -174,3 +174,36 @@ node scripts/github-pages.mjs status
 - [이전 프로젝트 분석 기록](project-notes/PROJECT_AUDIT.md) — 최초 이전 시점의 기록이며 현재 실행 구조는 이 문서를 기준으로 합니다.
 - [GitHub Pages 안내](https://docs.github.com/en/pages/getting-started-with-github-pages/about-github-pages)
 - [Vite 배포 안내](https://vite.dev/guide/static-deploy.html)
+
+## 아파트 좌표 DB (로컬 관리자)
+
+도로명주소를 먼저 조회한 뒤 [주소정보누리집 API 신청](https://business.juso.go.kr/addrlink/openApi/apiReqst.do)에서 **좌표제공 API** 승인키를 별도로 발급받아 프로젝트의 `.env`에 추가합니다. 기존 JUSO_COORDINATE_API_KEY 변수명도 호환용으로 지원합니다. 검색 API 키로 좌표를 조회할 수 없습니다. 키는 브라우저에 전달하지 않습니다.
+
+```dotenv
+JUSO_COORDINATE_SEARCH_KEY=발급받은_좌표제공_API_승인키
+```
+
+관리자 **아파트 좌표 수집 → 설정 확인 → 좌표 조회·저장**으로 실행합니다. 조회 건수를 제한하거나 중단할 수 있으며, 기존 결과 재조회도 지원합니다. 터미널에서는 `node scripts/collect-coordinates.mjs --limit 100` 또는 `--refresh`를 사용합니다. 서버 재시작 없이 새 키를 읽습니다.
+
+| 로컬 테이블 | 용도 |
+| --- | --- |
+| `parcel_coordinates` | 시군구 코드·법정동·지번 기준의 좌표 캐시. 도로명주소, 건물 ID, 원본 EPSG:5179 출입구 좌표, 변환한 WGS84 위도·경도, 출처·조회 시각 저장 |
+| `coordinate_lookups` | 조회 여부와 미일치·다중 결과·잘못된 좌표·건물 코드 누락 상태. 같은 주소를 매번 조회하지 않도록 기록 |
+
+기존 `address_lookups`의 정확히 일치하는 주소에서 건물 코드를 재사용합니다. 좌표는 거래별로 복제하지 않고 지번별로 저장하고, 지도에서는 같은 이름·주소의 아파트를 한 개 아이콘으로 보여줍니다. 주소가 재조회되면 기존 좌표는 다시 확인하기 전까지 지도에서 제외합니다. 요청은 기본 1초 간격으로 진행하며 E0007 요청 제한은 최대 3회 기다렸다 재시도합니다. 연결·승인 실패 시 기존 좌표를 보존하고, 모호하거나 여러 출입구가 조회되면 임의의 위치를 선택하지 않습니다. 출입구 위치이므로 단지 중심과 다를 수 있습니다.
+
+현재 좌표 테이블과 지도 아이콘은 **로컬 관리자에서 사용**합니다. 공개 JSON·SQLite에는 포함하지 않으며 GitHub Actions의 기존 일일 수집에도 아직 좌표 조회를 추가하지 않았습니다. 공개 지도 연동 시 이 캐시를 사용할 수 있습니다. 기존 DB에 테이블만 추가하며 실거래 자료는 유지합니다.
+
+검증: `node --test tests/coordinates.test.mjs`. 좌표계와 API 규격은 [주소정보누리집 좌표 안내](https://juso.go.kr/addrlink/qna/qnaDetail.do?bulletinRefSn=130956&noticeMgtSn=130956&noticeType=QNA) 및 [Proj4js](https://proj4js.org/)를 기준으로 합니다.
+
+## 아파트 지도
+
+공개 조회 화면의 **아파트 지도** 탭에서 현재 저장된 수집 지역의 좌표 확인 아파트를 보여줍니다. 시군구·법정동·이름·주소 검색, 즐겨찾기만 보기, 단지 경계/위치 레이어 선택을 지원하고 필터와 탭을 브라우저에 기억합니다.
+
+실제 경계는 OpenStreetMap의 주거 단지 폴리곤을 좌표와 이름으로 매칭한 자료입니다. 내부 좌표 또는 이름이 일치하는 25m 이내 출입구만 연결하며, 동률 후보나 경계 자료가 없는 단지는 위치 아이콘으로 표시합니다. 법적 지적 경계로 사용하지 않습니다. 폴리곤을 누르면 아파트명·주소·지번·건축년도와 우측 상단 별 모양의 즐겨찾기 추가/해제 버튼이 열립니다. 팝업은 지도 마스터의 기본 정보만 사용하고 실거래 자료를 추가 조회하지 않습니다. 한 경계에 여러 거래 이름이 연결되면 팝업에서 선택할 수 있습니다. 지도 즐겨찾기는 기존 대시보드와 같은 `viewer.apartments` 저장소를 사용합니다.
+
+- 로컬 경계 캐시: `apartment_boundary_sources` 테이블. 원본 Overpass 응답을 보관합니다.
+- 공개 지도 자료: `public/apartment-map/manifest.json` 및 해시로 구분한 아파트 JSON·경계 GeoJSON. API 키·좌표 조회 이력은 포함하지 않습니다.
+- 갱신: `pnpm data:map`. 새 Overpass 자료를 가져왔으면 `node scripts/export-apartment-map.mjs --input 경계응답.json`으로 캐시·내보내기를 갱신합니다. 기존 공개 데이터 내보내기도 좌표가 있는 DB에서 지도 자료를 갱신합니다.
+- 거래 JSON과 지도 마스터는 별도로 관리합니다. 좌표가 없는 이전 클라우드 DB를 복원해 빌드할 때는 저장소의 기존 지도 자료를 유지하고, 팝업의 아파트 기본 정보는 지도 마스터에서 읽습니다. 클라우드의 일일 경계 조회는 아직 활성화하지 않았습니다.
+- 경계 자료 출처: [OpenStreetMap contributors](https://www.openstreetmap.org/copyright), [ODbL 1.0](https://opendatacommons.org/licenses/odbl/1-0/). 경계 GeoJSON은 같은 라이선스로 제공하며, 사이트의 프로그램 코드는 별도입니다.

@@ -7,6 +7,7 @@ import os from 'node:os';
 import {randomUUID} from 'node:crypto';
 import {ROOT,paths,readJson,secretValues,checkedBytes,connect} from '../server/storage.mjs';
 import {sha256} from '../server/export.mjs';
+import {validateApartmentMap} from '../src/apartment-map-data.js';
 const privateName=name=>name.split('/').some(p=>['local','admin-dist','.venv','.streamlit'].includes(p)) || /(^|\/)(\.env[^/]*|collection_regions\.json|my_real_estate\.sqlite3|secrets\.toml)$/.test(name);
 export function checkPublic(root=ROOT,secretsFile=paths.env,{checkIndex=true}={}) {
   const secrets=secretValues(secretsFile);
@@ -46,6 +47,17 @@ export function checkPublic(root=ROOT,secretsFile=paths.env,{checkIndex=true}={}
       if(JSON.stringify(tables)!==JSON.stringify(['metadata','regions','road_addresses','trades']))throw new Error('공개 DB에 비공개 테이블이 있습니다.');
       if(count!==manifest.count||count!==db.prepare('SELECT count(*) AS n FROM trades').get().n||Object.values(db.prepare('PRAGMA integrity_check').get())[0]!=='ok')throw new Error('공개 DB 건수 / 무결성 오류');
     }finally{db?.close();if(temporary&&fs.existsSync(temporary))fs.unlinkSync(temporary);}
+  }
+  for(const sub of ['public/apartment-map','docs/apartment-map']) {
+    const folder=path.join(root,sub);if(!fs.existsSync(folder))continue;
+    const info=readJson(path.join(folder,'manifest.json'));
+    if(!/^apartments-[a-f0-9]{12}\.json$/.test(info.apartments?.file||'')||!/^boundaries-[a-f0-9]{12}\.geojson$/.test(info.boundaries?.file||''))throw new Error('아파트 지도 파일 경로 오류');
+    const expected=new Set(['manifest.json',info.apartments.file,info.boundaries.file]);if(fs.readdirSync(folder).some(file=>!expected.has(file)))throw new Error('아파트 지도 폴더에 허용되지 않은 파일이 있습니다.');
+    const apartments=checkedBytes(fs.readFileSync(path.join(folder,info.apartments.file)),secrets),boundaries=checkedBytes(fs.readFileSync(path.join(folder,info.boundaries.file)),secrets);
+    if(sha256(apartments)!==info.apartments.sha256||sha256(boundaries)!==info.boundaries.sha256)throw new Error('아파트 지도 체크섬 오류');
+    const data=validateApartmentMap({apartments:JSON.parse(apartments),boundaries:JSON.parse(boundaries)});
+    if(data.apartments.length!==info.count||data.boundaries.features.length!==info.boundary_count)throw new Error('아파트 지도 건수 오류');
+    if(!info.attribution?.includes('OpenStreetMap')||!info.license?.includes('opendatacommons.org'))throw new Error('아파트 지도 출처 누락');
   }
   if(!fs.existsSync(path.join(root,'docs/.nojekyll')))throw new Error('Pages .nojekyll 누락');
   if(!fs.readFileSync(path.join(root,'public/data/manifest.json')).equals(fs.readFileSync(path.join(root,'docs/data/manifest.json'))))throw new Error('공개 데이터를 내보낸 뒤 빌드를 다시 실행하세요.');

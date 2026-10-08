@@ -50,3 +50,21 @@ describe('Local React administrator',()=>{
     expect(screen.getByText(/업데이트 필요 · 추가 0곳 · 해제 1곳/)).toBeTruthy();
   });
 });
+
+it('coordinate API key setup is visible and its missing state disables collection',async()=>{
+  function Map(){return <div/>;}
+  const request=vi.fn(async endpoint=>endpoint==='coordinate-points'?{points:[]}:{...state,coordinateKeyReady:false,stats:{count:0,pendingCoordinates:1,coordinateRevision:'v1'}});
+  render(<Admin initialState={{...state,coordinateKeyReady:false,stats:{count:0,pendingCoordinates:1,coordinateRevision:'v1'}}} initialBoundaries={{}} initialAdminBoundaries={{}} request={request} MapComponent={Map}/>);
+  expect(screen.getByRole('button',{name:'좌표 조회·저장'}).disabled).toBe(true);expect(screen.getByText(/좌표제공 API 승인키가 필요/)).toBeTruthy();
+  await userEvent.setup().click(screen.getByRole('button',{name:'설정 확인'}));expect(request).toHaveBeenCalledWith('state',undefined,'token');
+  expect(request.mock.calls.some(([endpoint])=>endpoint==='coordinates')).toBe(false);
+});
+it('coordinates collection uses the limit, refresh option and CSRF without saving selection',async()=>{
+  function Map({coordinatePoints}){return <div>지도 좌표 {coordinatePoints.length}개</div>;}
+  const ready={...state,coordinateKeyReady:true,stats:{count:0,pendingCoordinates:1,coordinateRevision:'v1'}};
+  const request=vi.fn(async endpoint=>endpoint==='coordinate-points'?{points:[{apartment:'저장 아파트'}]}:ready);
+  const user=userEvent.setup();render(<Admin initialState={ready} initialBoundaries={{}} initialAdminBoundaries={{}} request={request} MapComponent={Map}/>);
+  await screen.findByText('지도 좌표 1개');await user.clear(screen.getByRole('spinbutton',{name:'이번 좌표 조회 건수'}));await user.type(screen.getByRole('spinbutton',{name:'이번 좌표 조회 건수'}),'25');
+  await user.click(screen.getByRole('checkbox',{name:'기존 조회 결과도 다시 확인'}));await user.click(screen.getByRole('button',{name:'좌표 조회·저장'}));
+  expect(request).toHaveBeenCalledWith('coordinates',{limit:25,refresh:true},'token');expect(request.mock.calls.some(([endpoint])=>endpoint==='favorites')).toBe(false);
+});

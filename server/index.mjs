@@ -7,11 +7,12 @@ import {pathToFileURL} from 'node:url';
 import {ROOT,paths,initialize,connect,regions,savedIds,saveFavorites,serviceKey} from './storage.mjs';
 import {collectMonth,monthsBetween,collectionTasks,currentMonth} from './collector.mjs';
 import {addressKey,collectAddresses,pendingAddresses} from './addresses.mjs';
+import {coordinateKey,collectCoordinates,pendingCoordinates,coordinateStats,coordinatePoints} from './coordinates.mjs';
 import {exportData} from './export.mjs';
 import {checkPublic} from '../scripts/check-public.mjs';
 import {buildCatalog} from '../src/domain.mjs';
 
-export function createAdminServer({files=paths,staticRoot=path.join(ROOT,'admin-dist'),fetcher,addressFetcher}={}) {
+export function createAdminServer({files=paths,staticRoot=path.join(ROOT,'admin-dist'),fetcher,addressFetcher,coordinateFetcher}={}) {
   const token=randomBytes(32).toString('hex');
   let job={status:'idle',completed:0,total:0,rows:0},controller;
   const busy=()=>job.status==='running';
@@ -21,7 +22,7 @@ export function createAdminServer({files=paths,staticRoot=path.join(ROOT,'admin-
     const catalog=regions(db).filter(r=>!['suji','gwanggyo','bundang'].includes(r.region_id));
     // Expand historical group favorites against the full catalog, if needed.
     const saved=savedIds(files.favorites,regions(db));
-    return {app:'home-records-local-admin',csrf:token,catalog,saved,job,keyReady:Boolean(serviceKey(files.env)),addressKeyReady:Boolean(addressKey(files.env)),currentMonth:currentMonth(),stats:{count:db.prepare('SELECT count(*) AS n FROM trades').get().n,roadAddresses:db.prepare('SELECT count(*) AS n FROM road_addresses').get().n,pendingAddresses:db.prepare("SELECT count(*) AS n FROM (SELECT DISTINCT region_code,dong,jibun FROM trades WHERE trim(jibun)!='') t LEFT JOIN address_lookups a USING(region_code,dong,jibun) WHERE a.region_code IS NULL").get().n,districts:db.prepare('SELECT region_code,count(*) AS count,min(deal_month) AS start,max(deal_month) AS end FROM trades GROUP BY region_code').all()},history:db.prepare('SELECT * FROM collection_runs ORDER BY id DESC LIMIT 100').all()};
+    return {app:'home-records-local-admin',csrf:token,catalog,saved,job,keyReady:Boolean(serviceKey(files.env)),addressKeyReady:Boolean(addressKey(files.env)),coordinateKeyReady:Boolean(coordinateKey(files.env)),currentMonth:currentMonth(),stats:{...coordinateStats(db),count:db.prepare('SELECT count(*) AS n FROM trades').get().n,roadAddresses:db.prepare('SELECT count(*) AS n FROM road_addresses').get().n,pendingAddresses:db.prepare("SELECT count(*) AS n FROM (SELECT DISTINCT region_code,dong,jibun FROM trades WHERE trim(jibun)!='') t LEFT JOIN address_lookups a USING(region_code,dong,jibun) WHERE a.region_code IS NULL").get().n,districts:db.prepare('SELECT region_code,count(*) AS count,min(deal_month) AS start,max(deal_month) AS end FROM trades GROUP BY region_code').all()},history:db.prepare('SELECT * FROM collection_runs ORDER BY id DESC LIMIT 100').all()};
   });
   const server=http.createServer(async(req,res)=>{
     const port=server.address()?.port,hosts=new Set([`127.0.0.1:${port}`,`localhost:${port}`]);
@@ -32,6 +33,7 @@ export function createAdminServer({files=paths,staticRoot=path.join(ROOT,'admin-
     let pathname;try{pathname=decodeURIComponent(new URL(req.url,`http://${req.headers.host}`).pathname);}catch{return json(res,400,{error:'잘못된 경로'});}
     try {
       if(pathname==='/api/state'&&req.method==='GET')return json(res,200,state());
+      if(pathname==='/api/coordinate-points'&&req.method==='GET')return json(res,200,{points:withDb(coordinatePoints)});
       if(pathname.startsWith('/api/')) {
         if(req.method!=='POST')return json(res,405,{error:'허용되지 않은 요청'});
         const supplied=Buffer.from(req.headers['x-admin-csrf']||'');
@@ -78,6 +80,25 @@ export function createAdminServer({files=paths,staticRoot=path.join(ROOT,'admin-
               job.status='completed';job.message='수집 완료. 공개 데이터 내보내기를 실행하세요.';
             } catch(e){job.status=active.signal.aborted?'cancelled':'failed';job.message=active.signal.aborted?'수집을 중단했습니다. 완료한 월은 보존됩니다.':/^(API |공공 API |수집 중 |거래 필드)/.test(e.message)?e.message:'수집 실패. API 승인, 연결 및 응답을 확인하세요.';}
             finally {db.close();job.finishedAt=new Date().toISOString();if(controller===active)controller=null;}
+          })();
+          return json(res,202,{job});
+        }
+        if(pathname==='/api/coordinates') {
+          const limit=Number(input.limit ?? 100),refresh=input.refresh===true;
+          if(!Number.isInteger(limit)||limit<1||limit>1000)throw new Error('좌표 조회 건수를 확인하세요.');
+          const key=coordinateKey(files.env);if(!key)throw new Error('.env에 JUSO_COORDINATE_SEARCH_KEY를 설정하세요.');
+          const total=withDb(db=>pendingCoordinates(db,limit,{refresh}).length);
+          controller=new AbortController();const active=controller;
+          job={kind:'coordinates',status:'running',completed:0,total,rows:0,startedAt:new Date().toISOString(),message:'아파트 주소의 좌표를 조회하고 있습니다.'};
+          (async()=>{
+            const db=connect(files.db);
+            try {
+              const result=await collectCoordinates(db,key,{limit,refresh,signal:active.signal,fetcher:coordinateFetcher||fetch,onProgress:counts=>{
+                job.completed=counts.completed;job.rows=counts.exact;job.message=`좌표 저장 ${counts.exact}건 · 미확정 ${counts.unresolved}건`;
+              }});
+              job.status='completed';job.message=`좌표 조회 완료: 저장 ${result.exact}건 · 미확정 ${result.unresolved}건. 확인된 아파트를 지도에 표시합니다.`;
+            }catch(e){job.status=active.signal.aborted?'cancelled':'failed';job.message=active.signal.aborted?'좌표 조회를 중단했습니다. 완료한 좌표는 보존됩니다.':/^(공식 좌표|좌표 조회|JUSO_COORDINATE_SEARCH_KEY)/.test(e.message)?e.message:'좌표 저장 실패. 로컬 DB 상태를 확인하세요.';}
+            finally{db.close();job.finishedAt=new Date().toISOString();if(controller===active)controller=null;}
           })();
           return json(res,202,{job});
         }

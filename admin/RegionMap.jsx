@@ -3,7 +3,7 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
 export function dongStyle(code,selected,styles) {return {color:selected?'#b77912':(styles[code]?.region_color||'#64748b'),weight:selected?2.7:0.75,fillColor:styles[code]?.region_color||'#739a99',fillOpacity:selected?0.4:0.1,opacity:selected?1:0.85};}
-export default function RegionMap({boundaries,adminBoundaries,catalog,draft,saved,visibleIds,onToggle,disabled=false,saveLabel='업데이트'}) {
+export default function RegionMap({boundaries,adminBoundaries,catalog,draft,saved,visibleIds,onToggle,disabled=false,saveLabel='업데이트',coordinatePoints=[]}) {
   const container=useRef(null),mapRef=useRef(null),layers=useRef(new Map()),popupRef=useRef(null);
   const latest=useRef({draft,saved,onToggle,disabled});latest.current={draft,saved,onToggle,disabled};
   const [tileError,setTileError]=useState(false);
@@ -48,5 +48,23 @@ export default function RegionMap({boundaries,adminBoundaries,catalog,draft,save
     for(const [id,layer] of layers.current){if(visible.has(id)){if(!map.hasLayer(layer))layer.addTo(map);bounds.extend(layer.getBounds());}else if(map.hasLayer(layer))map.removeLayer(layer);}
     if(bounds.isValid())map.fitBounds(bounds,{padding:[15,15],maxZoom:13,animate:false});
   },[visibleIds]);
-  return <div className="map-wrap"><div ref={container} className="region-map" aria-label="서울 경기 법정동 수집 지역 지도"/>{tileError&&<div className="tile-warning">배경 지도 일부를 불러오지 못했습니다. 경계와 선택은 유지됩니다.</div>}<div className="map-legend"><strong>지역 경계</strong><span><i className="city-line"/>시·군: 굵은 실선 / 지역별 색</span><span><i className="gu-line"/>구: 점선 / 지역별 색</span><span><i className="dong-line"/>동·읍·면: 가는 실선</span><span><i className="selected-swatch"/>수집 대상: 진한 채움 + 금색 테두리</span></div></div>;
+  useEffect(()=>{
+    const map=mapRef.current;if(!map)return;
+    if(!coordinatePoints.length)return;
+    const visibleRegions=catalog.filter(r=>visibleIds.includes(r.region_id));
+    const byCode=new Map();for(const r of visibleRegions){const scope=byCode.get(r.region_code)||{all:false,dongs:new Set()};if(!r.dongs.length)scope.all=true;r.dongs.forEach(d=>scope.dongs.add(d));byCode.set(r.region_code,scope);}
+    const group=L.layerGroup().addTo(map);
+    for(const point of coordinatePoints){
+      const scope=byCode.get(point.region_code);
+      if(!scope||(!scope.all&&!scope.dongs.has(point.dong)))continue;
+      const marker=L.marker([point.latitude,point.longitude],{icon:L.divIcon({className:'apartment-map-icon',html:'<span aria-hidden="true">▥</span>',iconSize:[22,22],iconAnchor:[11,11]}),title:point.apartment,keyboard:true});
+      const box=document.createElement('div');box.className='apartment-popup';
+      const title=document.createElement('strong');title.textContent=point.apartment;
+      const address=document.createElement('p');address.textContent=point.road_address;
+      const note=document.createElement('small');note.textContent='도로명주소 출입구 위치 · 주소정보누리집';box.append(title,address,note);
+      marker.bindPopup(box);marker.bindTooltip(point.apartment,{direction:'top'});marker.addTo(group);
+    }
+    return ()=>{group.remove();};
+  },[coordinatePoints,visibleIds,catalog,boundaries,adminBoundaries]);
+  return <div className="map-wrap"><div ref={container} className="region-map" aria-label="서울 경기 법정동 수집 지역 지도"/>{tileError&&<div className="tile-warning">배경 지도 일부를 불러오지 못했습니다. 경계와 선택은 유지됩니다.</div>}<div className="map-legend"><strong>지역 경계</strong>{coordinatePoints.length>0&&<span><i className="apartment-swatch">▥</i>좌표가 확인된 아파트</span>}<span><i className="city-line"/>시·군: 굵은 실선 / 지역별 색</span><span><i className="gu-line"/>구: 점선 / 지역별 색</span><span><i className="dong-line"/>동·읍·면: 가는 실선</span><span><i className="selected-swatch"/>수집 대상: 진한 채움 + 금색 테두리</span></div></div>;
 }

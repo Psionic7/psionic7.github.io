@@ -13,13 +13,18 @@
     "admin:build": "vite build --config vite.admin.config.js",
     "admin": "pnpm admin:build && node server/index.mjs",
     "data:export": "node scripts/export-data.mjs",
-    "test:server": "node --test tests/server.test.mjs tests/automation.test.mjs",
-    "automation:setup": "node scripts/setup-automation.mjs"
+    "test:server": "node --test tests/server.test.mjs tests/automation.test.mjs tests/coordinates.test.mjs tests/apartment-map.test.mjs",
+    "automation:setup": "node scripts/setup-automation.mjs",
+    "data:map": "node scripts/export-apartment-map.mjs"
   },
   "dependencies": {
+    "@turf/boolean-point-in-polygon": "7.4.0",
+    "@turf/point-to-polygon-distance": "7.4.0",
     "fast-xml-parser": "5.11.2",
     "leaflet": "1.9.4",
     "lucide-react": "1.49.0",
+    "osmtogeojson": "3.0.0-beta.5",
+    "proj4": "2.22.0",
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "recharts": "3.10.1"
