@@ -1,17 +1,14 @@
 import React, {useState} from 'react';
 import {afterEach, describe, expect, it, vi} from 'vitest';
-import {cleanup, fireEvent, render, screen, within} from '@testing-library/react';
+import {cleanup, render, screen, within} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import ApartmentPage from '../src/ApartmentPage.jsx';
-import TransactionFilters from '../src/TransactionFilters.jsx';
-import {useTransactionFilters} from '../src/transaction-filters.js';
 
 const region={region_id:'area_41465',label:'경기도 용인시 수지구 전체',region_name:'경기도 용인시 수지구',region_code:'41465',dongs:[]};
 const makeRow=(overrides={})=>({id:1,region_code:'41465',deal_month:'202601',deal_date:'2026-01-05',apartment:'동일아파트',dong:'풍덕천동',jibun:'1',price_man:100000,area_m2:85,floor:10,build_year:2000,cancelled:0,raw:{dealingGbn:'중개거래'},...overrides});
 function ApartmentHarness({rows}) {
   const [selectedKey,onSelect]=useState('');
-  const filters=useTransactionFilters({months:['202601','202602','202603','202604'],published_at:'2026-04-30T12:00:00Z'},{day:'2026-04-27',period:{mode:'custom',month:'2026-04',start:'2026-01-01',end:'2026-04-30'},minArea:'',maxArea:'',areaBands:[],areaUnit:'m2'});
-  return <><TransactionFilters filters={filters}/><ApartmentPage rows={rows} region={region} filters={filters} selectedKey={selectedKey} onSelect={onSelect}/></>;
+  return <ApartmentPage rows={rows} region={region} start="202601" end="202604" selectedKey={selectedKey} onSelect={onSelect}/>;
 }
 const renderApartments=rows=>render(<ApartmentHarness rows={rows}/>);
 afterEach(()=>{cleanup();vi.restoreAllMocks();window.localStorage.clear();});
@@ -41,11 +38,10 @@ describe('Apartment transaction detail',()=>{
     await user.click(within(detail).getByText('단지 월별 수치 보기'));
     const emptyMonth=within(detail).getByRole('cell',{name:'2026.04'}).closest('tr');
     expect(emptyMonth.textContent).toContain('0건');expect(emptyMonth.textContent).toContain('—억 원');
-    fireEvent.change(screen.getByRole('spinbutton',{name:'최소 전용면적 (㎡)'}),{target:{value:'85'}});
-    fireEvent.change(screen.getByRole('spinbutton',{name:'최대 전용면적 (㎡)'}),{target:{value:'85'}});
+    await user.selectOptions(within(detail).getByRole('combobox',{name:'단지 전용면적'}),'85');
     expect(within(metrics).getByText('2')).toBeTruthy();expect(within(metrics).getByText('최저 거래금액').parentElement.querySelector('strong').textContent).toBe('10.00억 원');
     await user.click(screen.getByRole('button',{name:'평 (전용)',exact:true}));
-    expect(Number(screen.getByRole('spinbutton',{name:'최소 전용면적 (평)'}).value)).toBeCloseTo(25.7125,4);
+    expect(within(detail).getByRole('combobox',{name:'단지 전용면적'}).value).toBe('85');
     expect(within(metrics).getByText('2')).toBeTruthy();
     table=within(detail).getByRole('region',{name:'선택 아파트 실거래 내역'});
     expect(within(table).getAllByRole('cell',{name:'25.71평',exact:true})).toHaveLength(2);
@@ -79,8 +75,7 @@ describe('Apartment transaction detail',()=>{
     expect(within(table).queryByText('7.70억 원')).toBeNull();
     await user.click(screen.getByRole('button',{name:'단지 거래 다음 페이지'}));
     expect(within(table).getAllByRole('row')).toHaveLength(3);expect(within(table).getByText('7.70억 원')).toBeTruthy();
-    fireEvent.change(screen.getByRole('spinbutton',{name:'최소 전용면적 (㎡)'}),{target:{value:'60'}});
-    fireEvent.change(screen.getByRole('spinbutton',{name:'최대 전용면적 (㎡)'}),{target:{value:'60'}});
+    await user.selectOptions(screen.getByRole('combobox',{name:'단지 전용면적'}),'60');
     table=within(detail).getByRole('region',{name:'선택 아파트 실거래 내역'});
     expect(within(table).getAllByRole('row')).toHaveLength(2);
     expect(screen.getByRole('button',{name:'단지 거래 이전 페이지'}).disabled).toBe(true);
