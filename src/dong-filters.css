@@ -25,6 +25,13 @@
 .area-card .dong-filter-heading>.area-unit{margin-left:auto;gap:0}
 .area-card .area-unit>span{display:none}
 .area-card .unit-buttons button{padding:7px 8px;font-size:10px}
+.area-band-picker{padding:12px;border:1px solid #dce8e1;border-radius:9px;background:#fff}
+.area-band-caption{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;font-size:10px;color:#829388;margin-bottom:9px}
+.area-band-caption strong{color:#416c59;font-size:11px}
+.area-band-buttons{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+.area-band-buttons button{min-height:40px;padding:9px 3px;font-size:11px;color:#5d8171;background:#f8fbf9;border-color:#dce8e1}
+.area-band-buttons button[aria-pressed=true]{background:#178779;border-color:#178779;color:#fff;font-weight:600}
+.area-band-picker p{margin:9px 0 0;font-size:10px;line-height:1.7;color:#829388}
 .area-card .area-range{margin:22px 0 20px}
 .area-card .weekly-area-filter{grid-template-columns:repeat(2,minmax(0,1fr));margin:0;gap:12px}
 .area-card .weekly-area-filter input{background:#fff}

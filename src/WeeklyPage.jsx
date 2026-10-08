@@ -1,6 +1,6 @@
 import React, {useEffect, useMemo, useRef, useState} from 'react';
 import {CalendarDays, ChevronLeft, ChevronRight, Search, X, MapPin, SlidersHorizontal} from 'lucide-react';
-import {apartmentAddress, areaInputValue, areaM2, areaUnitLabel, areaValue, formatNumber, hierarchy, priceEok, stats} from './domain.mjs';
+import {PYEONG_M2, apartmentAddress, areaInputValue, areaM2, areaUnitLabel, areaValue, formatNumber, hierarchy, priceEok, stats} from './domain.mjs';
 import {periodBounds,publishedDay,weeklyRows} from './weekly.mjs';
 import {Empty,Loading} from './ViewState.jsx';
 import AreaUnit from './AreaUnit.jsx';
@@ -11,6 +11,8 @@ import {areaPreference,textPreference,unitPreference,useStoredState} from './pre
 
 const unique=values=>[...new Set(values)].sort((a,b)=>a.localeCompare(b,'ko'));
 const optionalArea=value=>value==='' || areaPreference(value);
+const areaBands=[10,20,30];
+const validAreaBands=value=>Array.isArray(value) && value.length<=areaBands.length && new Set(value).size===value.length && value.every(band=>areaBands.includes(band));
 export default function WeeklyPage({manifest, catalog, selectedIds, onChange, day, onDayChange,period,onPeriodChange,districtLoader}) {
   const locations=catalog.map(hierarchy);
   const [province,setProvince]=useStoredState('weekly','province','',value=>value==='' || locations.some(item=>item.province===value));
@@ -21,9 +23,11 @@ export default function WeeklyPage({manifest, catalog, selectedIds, onChange, da
   // Store exact square metres; unit changes only affect the input display.
   const [minArea,setMinArea]=useStoredState('weekly','minArea','',optionalArea);
   const [maxArea,setMaxArea]=useStoredState('weekly','maxArea','',optionalArea);
+  const [selectedBands,setSelectedBands]=useStoredState('weekly','areaBands',[],validAreaBands);
   const [includeCancelled,setIncludeCancelled]=useStoredState('weekly','includeCancelled',true,value=>typeof value==='boolean');
   const setArea=(setter,value)=>setter(value===''?'':areaM2(Math.max(0,Number(value)),areaUnit));
-  const areaFiltered=minArea!=='' || maxArea!=='';
+  const areaFiltered=minArea!=='' || maxArea!=='' || selectedBands.length>0;
+  const toggleBand=band=>setSelectedBands(previous=>previous.includes(band)?previous.filter(value=>value!==band):[...previous,band].sort((a,b)=>a-b));
   const invalidArea=minArea!=='' && maxArea!=='' && minArea>maxArea;
   const unit=areaUnitLabel(areaUnit);
   const [datasets,setDatasets]=useState({}), [retry,setRetry]=useState(0);
@@ -69,12 +73,17 @@ export default function WeeklyPage({manifest, catalog, selectedIds, onChange, da
         <PeriodPicker period={period} onChange={onPeriodChange} day={day} onDayChange={onDayChange} range={week} earliestDay={earliestDay} latestDay={latestDay} error={periodError}/>
         <section className="dong-filter-card area-card" aria-label="조회 면적 설정">
           <div className="dong-filter-heading"><span className="filter-step">02</span><h3><SlidersHorizontal size={16}/>전용면적</h3><AreaUnit value={areaUnit} onChange={setAreaUnit}/></div>
+          <div className="area-band-picker" role="group" aria-label="전용평대 빠른 선택">
+            <div className="area-band-caption"><strong>평대 빠른 선택</strong><span>여러 구간 선택 가능</span></div>
+            <div className="area-band-buttons"><button aria-pressed={!selectedBands.length} onClick={()=>setSelectedBands([])}>전체 평대</button>{areaBands.map(band=><button key={band} aria-pressed={selectedBands.includes(band)} onClick={()=>toggleBand(band)}>{band}평대</button>)}</div>
+            <p>전용평 기준 · 10평대는 10평 이상~20평 미만입니다. 최소·최대 면적 조건도 함께 적용됩니다.</p>
+          </div>
           <AreaRange minArea={minArea} maxArea={maxArea} ceilingM2={sliderCeiling} unit={areaUnit} onMinChange={setMinArea} onMaxChange={setMaxArea}/>
           <div className="weekly-area-filter" role="group" aria-label="주간 전용면적 필터">
             <label>최소 전용면적 ({unit})<input type="number" min="0" step="any" placeholder="제한 없음" value={minArea===''?'':areaInputValue(minArea,areaUnit)} onChange={event=>setArea(setMinArea,event.target.value)}/></label>
             <label>최대 전용면적 ({unit})<input type="number" min="0" step="any" placeholder="제한 없음" value={maxArea===''?'':areaInputValue(maxArea,areaUnit)} onChange={event=>setArea(setMaxArea,event.target.value)}/></label>
           </div>
-          <div className="area-card-footer"><span>전용평 = ㎡ ÷ 3.305785</span><button className="text-button" disabled={!areaFiltered} onClick={()=>{setMinArea('');setMaxArea('');}}>면적 필터 초기화</button></div>
+          <div className="area-card-footer"><span>전용평 = ㎡ ÷ 3.305785</span><button className="text-button" disabled={!areaFiltered} onClick={()=>{setMinArea('');setMaxArea('');setSelectedBands([]);}}>면적 필터 초기화</button></div>
           {invalidArea&&<p className="notice error" role="alert">최소 전용면적은 최대 전용면적보다 클 수 없습니다.</p>}
         </section>
       </div>
@@ -94,14 +103,14 @@ export default function WeeklyPage({manifest, catalog, selectedIds, onChange, da
     </section>
     {!!selected.length&&week&&<div className="weekly-results-context"><strong>조회 결과 · {selected.length}개 동</strong><span>{week.start} — {week.end}</span><small>{period.mode==='week'?'주간':period.mode==='month'?'월간':'직접 지정'} · {includeCancelled?'해제 포함':'유효 거래만'}</small></div>}
     {!selected.length ? <section className="panel"><Empty title="주간 실거래가를 볼 동을 선택해 주세요.">서로 다른 시·구의 동도 함께 선택할 수 있습니다.</Empty></section>
-      : week&&<div className="weekly-stack">{selected.map(region=><DongWeek key={region.region_id} region={region} week={week} dataset={datasets[region.region_code]} collected={!!manifest.districts[region.region_code]} areaUnit={areaUnit} minArea={minArea} maxArea={maxArea} includeCancelled={includeCancelled} mode={period.mode} onRemove={()=>toggle(region.region_id)} onRetry={()=>setRetry(value=>value+1)}/>)}</div>}
+      : week&&<div className="weekly-stack">{selected.map(region=><DongWeek key={region.region_id} region={region} week={week} dataset={datasets[region.region_code]} collected={!!manifest.districts[region.region_code]} areaUnit={areaUnit} minArea={minArea} maxArea={maxArea} selectedBands={selectedBands} includeCancelled={includeCancelled} mode={period.mode} onRemove={()=>toggle(region.region_id)} onRetry={()=>setRetry(value=>value+1)}/>)}</div>}
   </div>;
 }
 
-function DongWeek({region,week,dataset,collected,areaUnit,minArea,maxArea,includeCancelled,mode,onRemove,onRetry}) {
-  const rows=useMemo(()=>weeklyRows(dataset?.rows||[],region,week,includeCancelled).filter(row=>(minArea==='' || row.area_m2>=minArea) && (maxArea==='' || row.area_m2<=maxArea)),[dataset?.rows,region,week.start,week.end,minArea,maxArea,includeCancelled]);
+function DongWeek({region,week,dataset,collected,areaUnit,minArea,maxArea,selectedBands,includeCancelled,mode,onRemove,onRetry}) {
+  const rows=useMemo(()=>weeklyRows(dataset?.rows||[],region,week,includeCancelled).filter(row=>(minArea==='' || row.area_m2>=minArea) && (maxArea==='' || row.area_m2<=maxArea) && (!selectedBands.length || selectedBands.some(band=>row.area_m2>=band*PYEONG_M2 && row.area_m2<(band+10)*PYEONG_M2))),[dataset?.rows,region,week.start,week.end,minArea,maxArea,selectedBands,includeCancelled]);
   const periodLabel=mode==='week'?'주간':'기간별',timeLabel=mode==='week'?'이 주':'선택 기간';
-  const areaFiltered=minArea!=='' || maxArea!=='';
+  const areaFiltered=minArea!=='' || maxArea!=='' || selectedBands.length>0;
   const summary=useMemo(()=>stats(rows.filter(row=>row.cancelled===0)),[rows]);
   const [page,setPage]=useState(1);
   useEffect(()=>setPage(1),[rows]);

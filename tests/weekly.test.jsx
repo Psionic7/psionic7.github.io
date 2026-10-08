@@ -4,6 +4,7 @@ import {cleanup,fireEvent,render,screen,waitFor,within} from '@testing-library/r
 import userEvent from '@testing-library/user-event';
 import App from '../src/App.jsx';
 import {readPreferences} from '../src/preferences.js';
+import {PYEONG_M2} from '../src/domain.mjs';
 
 const a={region_id:'dong_41465101',label:'경기도 용인시 수지구 풍덕천동',region_name:'경기도 용인시 수지구',region_code:'41465',dongs:['풍덕천동']};
 const b={region_id:'dong_11110101',label:'서울특별시 종로구 풍덕천동',region_name:'서울특별시 종로구',region_code:'11110',dongs:['풍덕천동']};
@@ -92,6 +93,53 @@ describe('Dong weekly transaction tab',()=>{
     first.unmount();render(<App initialManifest={manifest} districtLoader={loader}/>);
     await screen.findByRole('region',{name:`${a.label} 주간 거래 내역`});
     expect(screen.getByRole('checkbox',{name:'해제 거래 포함'}).checked).toBe(false);
+  });
+  it('combines nonadjacent pyeong bands without filling gaps, respects boundaries and numeric limits, and restores selections',async()=>{
+    const user=userEvent.setup();
+    window.history.replaceState(null,'',`/?tab=weekly&dong=${a.region_id}&dong=${b.region_id}`);
+    const pyeongs=[9.9999,10,19.9999,20,29.9999,30,39.9999,40];
+    const loader=vi.fn((_,code)=>Promise.resolve([
+      ...pyeongs.map((area,index)=>row(index+1,{region_code:code,area_m2:area*PYEONG_M2,apartment:`전용${area}평단지`,price_man:(index+1)*10000})),
+      row(99,{region_code:code,area_m2:12*PYEONG_M2,apartment:'해제평대단지',cancelled:1,price_man:990000})
+    ]));
+    const first=render(<App initialManifest={manifest} districtLoader={loader}/>);
+    await screen.findByRole('region',{name:`${b.label} 주간 거래 내역`});
+    const picker=()=>within(screen.getByRole('group',{name:'전용평대 빠른 선택'}));
+    await user.click(picker().getByRole('button',{name:'10평대',exact:true}));
+    await user.click(picker().getByRole('button',{name:'30평대',exact:true}));
+    for(const region of [a,b]){
+      const table=screen.getByRole('region',{name:`${region.label} 주간 거래 내역`});
+      expect(within(table).getAllByRole('row')).toHaveLength(6);
+      for(const area of [10,19.9999,30,39.9999])expect(within(table).getByText(`전용${area}평단지`)).toBeTruthy();
+      for(const area of [9.9999,20,29.9999,40])expect(within(table).queryByText(`전용${area}평단지`)).toBeNull();
+      const metrics=screen.getByLabelText(`${region.label} 주간 통계`);
+      expect(within(metrics).getByText('유효 거래').parentElement.textContent).toBe('유효 거래4건');
+      expect(within(metrics).getByText('최저 거래금액').parentElement.textContent).toBe('최저 거래금액2.00억 원');
+      expect(within(metrics).getByText('최고 거래금액').parentElement.textContent).toBe('최고 거래금액7.00억 원');
+    }
+    fireEvent.change(screen.getByRole('spinbutton',{name:'최대 전용면적 (㎡)'}),{target:{value:'100'}});
+    expect(within(screen.getByRole('region',{name:`${a.label} 주간 거래 내역`})).getAllByRole('row')).toHaveLength(5);
+    await user.click(screen.getByRole('button',{name:'평 (전용)',exact:true}));
+    expect(readPreferences('weekly')).toMatchObject({areaBands:[10,30],maxArea:100});
+    expect(loader).toHaveBeenCalledTimes(2);
+    first.unmount();window.history.replaceState(null,'','/');
+    render(<App initialManifest={manifest} districtLoader={loader}/>);
+    await screen.findByRole('region',{name:`${b.label} 주간 거래 내역`});
+    expect(picker().getByRole('button',{name:'10평대',exact:true}).getAttribute('aria-pressed')).toBe('true');
+    expect(picker().getByRole('button',{name:'20평대',exact:true}).getAttribute('aria-pressed')).toBe('false');
+    expect(picker().getByRole('button',{name:'30평대',exact:true}).getAttribute('aria-pressed')).toBe('true');
+    const table=()=>screen.getByRole('region',{name:`${a.label} 주간 거래 내역`});
+    expect(within(table()).getAllByRole('row')).toHaveLength(5);
+    await user.click(picker().getByRole('button',{name:'10평대',exact:true}));
+    expect(within(table()).getAllByRole('row')).toHaveLength(2);
+    await user.click(picker().getByRole('button',{name:'전체 평대',exact:true}));
+    expect(readPreferences('weekly')).toMatchObject({areaBands:[],maxArea:100});
+    expect(within(table()).getAllByRole('row')).toHaveLength(8);
+    await user.click(picker().getByRole('button',{name:'20평대',exact:true}));
+    expect(within(table()).getAllByRole('row')).toHaveLength(3);
+    await user.click(screen.getByRole('button',{name:'면적 필터 초기화'}));
+    expect(readPreferences('weekly')).toMatchObject({areaBands:[],minArea:'',maxArea:''});
+    expect(within(table()).getAllByRole('row')).toHaveLength(10);
   });
   it('connects both slider handles to the filters, prevents crossing and supports unbounded endpoints',async()=>{
     window.history.replaceState(null,'',`/?tab=weekly&dong=${a.region_id}`);
