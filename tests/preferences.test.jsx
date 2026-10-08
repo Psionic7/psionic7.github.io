@@ -33,8 +33,8 @@ describe('Browser selection persistence',()=>{
     window.history.replaceState(null,'','/?region=area_41465&tab=apartments');
     const first=open();
     await screen.findByRole('combobox',{name:'조회 아파트'},{timeout:5000});
-    await user.selectOptions(screen.getByRole('combobox',{name:'시작 계약월'}),'202602');
-    await user.selectOptions(screen.getByRole('combobox',{name:'종료 계약월'}),'202602');
+    await user.click(screen.getByRole('button',{name:'월간',exact:true}));
+    fireEvent.change(screen.getByLabelText('조회 월'),{target:{value:'2026-02'}});
     await user.selectOptions(screen.getByRole('combobox',{name:'시도'}),'경기도');
     await user.selectOptions(screen.getByRole('combobox',{name:'시'}),'용인시');
     await user.selectOptions(screen.getByRole('combobox',{name:'구'}),'수지구');
@@ -42,14 +42,14 @@ describe('Browser selection persistence',()=>{
     await user.type(screen.getByRole('searchbox',{name:'아파트 검색'}),'기억');
     const key=JSON.stringify(['풍덕천동','1','기억단지']);
     await user.selectOptions(screen.getByRole('combobox',{name:'조회 아파트'}),key);
-    await user.selectOptions(screen.getByRole('combobox',{name:'단지 전용면적'}),'60');
+    fireEvent.change(screen.getByRole('spinbutton',{name:'최소 전용면적 (㎡)'}),{target:{value:'60'}});
+    fireEvent.change(screen.getByRole('spinbutton',{name:'최대 전용면적 (㎡)'}),{target:{value:'60'}});
     await user.click(screen.getByRole('button',{name:'평 (전용)',exact:true}));
     first.unmount();window.history.replaceState(null,'','/');open();
     await screen.findByRole('heading',{name:'기억단지'});
     expect(screen.getByRole('combobox',{name:'조회 아파트'}).value).toBe(key);
-    expect(screen.getByRole('combobox',{name:'단지 전용면적'}).value).toBe('60');
-    expect(screen.getByRole('combobox',{name:'시작 계약월'}).value).toBe('202602');
-    expect(screen.getByRole('combobox',{name:'종료 계약월'}).value).toBe('202602');
+    expect(Number(screen.getByRole('spinbutton',{name:'최소 전용면적 (평)'}).value)).toBeCloseTo(18.15,2);
+    expect(screen.getByLabelText('조회 월').value).toBe('2026-02');
     expect(screen.getByRole('combobox',{name:'시도'}).value).toBe('경기도');
     expect(screen.getByRole('searchbox',{name:'지역 검색'}).value).toBe('수지');
     expect(screen.getByRole('searchbox',{name:'아파트 검색'}).value).toBe('기억');
@@ -57,7 +57,7 @@ describe('Browser selection persistence',()=>{
     expect(within(screen.getByRole('region',{name:'선택 아파트 실거래 내역'})).getAllByRole('row')).toHaveLength(2);
   });
 
-  it('retains favorite dashboard filters separately from weekly filters',async()=>{
+  it('shares dashboard filters with weekly and apartment filters across revisits',async()=>{
     const user=userEvent.setup();window.history.replaceState(null,'','/?tab=dashboard');
     const first=open();await screen.findByText('즐겨찾기한 아파트가 없습니다.');
     fireEvent.change(screen.getByRole('spinbutton',{name:'최대 전용면적 (㎡)'}),{target:{value:'70'}});
@@ -67,8 +67,8 @@ describe('Browser selection persistence',()=>{
     expect(screen.getByRole('button',{name:'10평대',exact:true}).getAttribute('aria-pressed')).toBe('true');
     await user.click(screen.getByRole('button',{name:'동별 주간 실거래가',exact:true}));
     await screen.findByText('주간 실거래가를 볼 동을 선택해 주세요.');
-    expect(screen.getByRole('spinbutton',{name:'최대 전용면적 (㎡)'}).value).toBe('');
-    expect(screen.getByRole('button',{name:'10평대',exact:true}).getAttribute('aria-pressed')).toBe('false');
+    expect(screen.getByRole('spinbutton',{name:'최대 전용면적 (㎡)'}).value).toBe('70');
+    expect(screen.getByRole('button',{name:'10평대',exact:true}).getAttribute('aria-pressed')).toBe('true');
   });
 
   it('restores weekly dongs in selection order with the week and search',async()=>{
@@ -90,8 +90,8 @@ describe('Browser selection persistence',()=>{
     window.history.replaceState(null,'','/?tab=apartments&region=area_11110&start=202602&end=202609');open();
     await screen.findByText('이 조건에 조회할 아파트가 없습니다.');
     expect(screen.getByRole('combobox',{name:'조회 지역'}).value).toBe('area_11110');
-    expect(screen.getByRole('combobox',{name:'시작 계약월'}).value).toBe('202602');
-    expect(screen.getByRole('combobox',{name:'종료 계약월'}).value).toBe('202609');
+    expect(screen.getByLabelText('조회 시작일').value).toBe('2026-02-01');
+    expect(screen.getByLabelText('조회 종료일').value).toBe('2026-09-30');
     expect(screen.getByRole('combobox',{name:'시도'}).value).toBe('');
   });
 

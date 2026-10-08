@@ -120,7 +120,7 @@ describe('Dong weekly transaction tab',()=>{
     fireEvent.change(screen.getByRole('spinbutton',{name:'최대 전용면적 (㎡)'}),{target:{value:'100'}});
     expect(within(screen.getByRole('region',{name:`${a.label} 주간 거래 내역`})).getAllByRole('row')).toHaveLength(5);
     await user.click(screen.getByRole('button',{name:'평 (전용)',exact:true}));
-    expect(readPreferences('weekly')).toMatchObject({areaBands:[10,30],maxArea:100});
+    expect(readPreferences('transactionFilters').value).toMatchObject({areaBands:[10,30],maxArea:100});
     expect(loader).toHaveBeenCalledTimes(2);
     first.unmount();window.history.replaceState(null,'','/');
     render(<App initialManifest={manifest} districtLoader={loader}/>);
@@ -133,12 +133,12 @@ describe('Dong weekly transaction tab',()=>{
     await user.click(picker().getByRole('button',{name:'10평대',exact:true}));
     expect(within(table()).getAllByRole('row')).toHaveLength(2);
     await user.click(picker().getByRole('button',{name:'전체 평대',exact:true}));
-    expect(readPreferences('weekly')).toMatchObject({areaBands:[],maxArea:100});
+    expect(readPreferences('transactionFilters').value).toMatchObject({areaBands:[],maxArea:100});
     expect(within(table()).getAllByRole('row')).toHaveLength(8);
     await user.click(picker().getByRole('button',{name:'20평대',exact:true}));
     expect(within(table()).getAllByRole('row')).toHaveLength(3);
     await user.click(screen.getByRole('button',{name:'면적 필터 초기화'}));
-    expect(readPreferences('weekly')).toMatchObject({areaBands:[],minArea:'',maxArea:''});
+    expect(readPreferences('transactionFilters').value).toMatchObject({areaBands:[],minArea:'',maxArea:''});
     expect(within(table()).getAllByRole('row')).toHaveLength(10);
   });
   it('connects both slider handles to the filters, prevents crossing and supports unbounded endpoints',async()=>{
@@ -160,7 +160,7 @@ describe('Dong weekly transaction tab',()=>{
     expect(upper.value).toBe('85');
     fireEvent.change(lower,{target:{value:'0'}});
     fireEvent.change(upper,{target:{value:upper.max}});
-    expect(readPreferences('weekly')).toMatchObject({minArea:'',maxArea:''});
+    expect(readPreferences('transactionFilters').value).toMatchObject({minArea:'',maxArea:''});
     fireEvent.change(screen.getByRole('spinbutton',{name:'최대 전용면적 (㎡)'}),{target:{value:'400'}});
     expect(Number(upper.max)).toBeGreaterThanOrEqual(400);expect(upper.value).toBe('400');
   });
@@ -192,7 +192,7 @@ describe('Dong weekly transaction tab',()=>{
     }
     await user.click(screen.getByRole('button',{name:'평 (전용)',exact:true}));
     expect(screen.getByRole('spinbutton',{name:'최소 전용면적 (평)'}).value).toBe('18.15');
-    expect(readPreferences('weekly')).toMatchObject({minArea:60,maxArea:85});
+    expect(readPreferences('transactionFilters').value).toMatchObject({minArea:60,maxArea:85});
     expect(within(screen.getByRole('region',{name:`${a.label} 주간 거래 내역`})).getAllByRole('row')).toHaveLength(3);
     expect(loader).toHaveBeenCalledTimes(2);
     first.unmount();window.history.replaceState(null,'','/');

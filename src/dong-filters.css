@@ -58,3 +58,5 @@
 @media(max-width:560px){.region-card .weekly-location>label:first-child{grid-column:1/-1}}
 
 .favorite-apartment-list{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}.favorite-apartment-list button{display:block;text-align:left;color:#285d52;font-size:12px;background:#edf7f2;max-width:100%;white-space:normal;overflow-wrap:anywhere}.favorite-apartment-list small{display:block;font-size:10px;font-weight:400;color:#739184;margin-top:4px}.watch-card-actions{display:flex;gap:8px;flex-wrap:wrap}.region-card .dong-filter-heading>button{margin-left:auto;font-size:11px}@media(max-width:560px){.region-card .dong-filter-heading{flex-wrap:wrap}.region-card .dong-filter-heading>button{padding:8px}.weekly-dong .section-title h2{overflow-wrap:anywhere}}
+
+.apartment-location-panel{grid-template-columns:minmax(180px,.8fr) minmax(260px,1.4fr)}@media(max-width:760px){.apartment-location-panel{grid-template-columns:1fr}}

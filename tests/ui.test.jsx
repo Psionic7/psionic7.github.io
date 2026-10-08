@@ -27,7 +27,7 @@ describe('React transaction explorer',()=>{
     await user.click(screen.getByRole('button',{name:/첫 아파트.*아파트 상세 보기/}));
     await screen.findByRole('heading',{name:'첫 아파트'});
     expect(screen.getByRole('combobox',{name:'조회 지역'}).value).toBe('area_41465');
-    expect(screen.getByRole('combobox',{name:'시작 계약월'}).value).toBe('202601');
+    expect(screen.getByLabelText('조회 월').value).toBe('2026-01');
     expect(screen.getByRole('button',{name:/첫 아파트.*즐겨찾기 해제/}).getAttribute('aria-pressed')).toBe('true');
   });
   it('loads the apartment tab directly from its public URL without dashboard detail',async()=>{
