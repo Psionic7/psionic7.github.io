@@ -53,6 +53,6 @@ it('public stars use favorite labels and update the popup and colors without mov
  expect(screen.getByRole('region',{name:'서울 경기 법정동 지역 지도'})).toBeTruthy();expect(screen.getByText(/이 브라우저에 자동 저장됩니다/)).toBeTruthy();expect(screen.queryByText(/업데이트 버튼/)).toBeNull();
  await userEvent.setup().click(screen.getByRole('button',{name:'서울특별시 종로구 청운동 즐겨찾기 추가'}));expect(screen.getByRole('button',{name:'서울특별시 종로구 청운동 즐겨찾기 해제'}).getAttribute('aria-pressed')).toBe('true');
  expect(mock.maps).toHaveLength(1);expect(mock.tiles).toHaveLength(1);expect(mock.popup).toBe(popup);expect(mock.maps[0].fitBounds.mock.calls.length).toBe(fits);
- expect(mock.dongs[0].setStyle).toHaveBeenLastCalledWith(expect.objectContaining({color:'#b77912',weight:2.7}));
+ expect(mock.dongs[0].setStyle).toHaveBeenLastCalledWith(expect.objectContaining({color:'#b77912',weight:3.2}));
  await userEvent.setup().click(screen.getByRole('button',{name:'서울특별시 종로구 청운동 즐겨찾기 해제'}));expect(mock.popup).toBe(popup);
 });

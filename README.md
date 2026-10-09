@@ -294,3 +294,7 @@ pnpm check:publish
 ## 아파트·동 실거래가 화면 통합 (2026-10-10)
 
 공통 필터/결과 구현은 `src/TransactionPage.jsx`와 `src/transactions/TransactionResults.jsx`를 사용합니다. 아파트 선택은 `src/transactions/ApartmentSelector.jsx`, 동 선택은 `src/weekly/DongSelector.jsx`, 선택·이전 링크 복원은 `src/apartment-query.js`로 분리했습니다. 분석·계획·결과는 [통합 작업 기록](project-notes/APARTMENT_TRANSACTION_UNIFICATION_2026-10-10.md)에 남깁니다.
+
+## 지역 지도 동 경계 구분 개선 (2026-10-10)
+
+공개 지역 지도에서는 동별 고정 파스텔 채움과 진한 동 경계를 사용하며, 배경 지도를 옅게 표시합니다. 즐겨찾기한 동은 금색 채움과 굵은 금색 경계로 구분합니다. 시·군/구 경계와 기존 별표 저장 기능은 유지합니다. 작업 기록: [동 경계 구분 개선](project-notes/REGION_BOUNDARY_VISIBILITY_2026-10-10.md).

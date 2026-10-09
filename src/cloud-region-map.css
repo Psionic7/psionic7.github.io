@@ -16,3 +16,5 @@
 .cloud-region-map .tile-warning{position:absolute;z-index:500;top:12px;left:60px;right:25px;background:#fff6de;padding:10px;border-radius:5px;font-size:12px}
 .cloud-admin .cloud-map-filters{grid-template-columns:repeat(3,minmax(0,1fr));margin-bottom:12px}
 @media(max-width:600px){.cloud-region-map .region-map{height:440px}.cloud-region-map .map-legend{font-size:10px;padding:8px;gap:4px}.cloud-admin .cloud-map-filters{grid-template-columns:1fr 1fr}.cloud-map-filters label:first-child{grid-column:1/-1}}
+
+.cloud-region-map .favorite-region-map .leaflet-tile-pane{opacity:.72}.cloud-region-map .favorite-region-map~.map-legend .dong-line{border-top:2px solid #475569}.cloud-region-map .favorite-region-map~.map-legend .selected-swatch{background:#f1c85b;border-width:3px}

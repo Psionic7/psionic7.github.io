@@ -2,7 +2,11 @@ import React,{useEffect,useRef,useState} from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
-export function dongStyle(code,selected,styles) {return {color:selected?'#b77912':(styles[code]?.region_color||'#64748b'),weight:selected?2.7:0.75,fillColor:styles[code]?.region_color||'#739a99',fillOpacity:selected?0.4:0.1,opacity:selected?1:0.85};}
+const dongColors=['#8eb7df','#7ec9c0','#b5a2d8','#dca4bb','#9bc18b','#9fcbd6'];
+export function dongStyle(code,selected,styles,legalCode) {
+  if(legalCode)return {color:selected?'#b77912':'#475569',weight:selected?3.2:1.6,fillColor:selected?'#f1c85b':dongColors[Number(legalCode)%dongColors.length],fillOpacity:selected?0.42:0.23,opacity:1};
+  return {color:selected?'#b77912':(styles[code]?.region_color||'#64748b'),weight:selected?2.7:0.75,fillColor:styles[code]?.region_color||'#739a99',fillOpacity:selected?0.4:0.1,opacity:selected?1:0.85};
+}
 export default function RegionMap({boundaries,adminBoundaries,catalog,draft,saved,visibleIds,onToggle,disabled=false,saveLabel='업데이트',coordinatePoints=[],favoriteMode=false}) {
   const container=useRef(null),mapRef=useRef(null),layers=useRef(new Map()),popupRef=useRef(null);
   const latest=useRef({draft,saved,onToggle,disabled});latest.current={draft,saved,onToggle,disabled};
@@ -18,7 +22,7 @@ export default function RegionMap({boundaries,adminBoundaries,catalog,draft,save
     const byId=new Map(catalog.map(r=>[r.region_id,r]));
     for(const feature of boundaries.features) {
       const id='dong_'+feature.properties.EMD_CD,r=byId.get(id);if(!r)continue;
-      const layer=L.geoJSON(feature,{style:()=>dongStyle(r.region_code,latest.current.draft.includes(id),adminBoundaries.styles)});
+      const layer=L.geoJSON(feature,{style:()=>dongStyle(r.region_code,latest.current.draft.includes(id),adminBoundaries.styles,favoriteMode?feature.properties.EMD_CD:undefined)});
       layer.bindTooltip(r.label,{sticky:true,direction:'top'});
       layer.on('click',event=>{
         const box=document.createElement('div');box.className='region-popup';
@@ -39,10 +43,10 @@ export default function RegionMap({boundaries,adminBoundaries,catalog,draft,save
   },[boundaries,adminBoundaries,catalog,favoriteMode]);
   useEffect(()=>{
     const selected=new Set(draft);
-    for(const [id,layer] of layers.current) layer.setStyle(dongStyle(id.slice(5,10),selected.has(id),adminBoundaries.styles));
+    for(const [id,layer] of layers.current) layer.setStyle(dongStyle(id.slice(5,10),selected.has(id),adminBoundaries.styles,favoriteMode?id.slice(5):undefined));
     popupRef.current?.update();
     // Do not recreate the map, tile layer, popup or viewport when stars change.
-  },[draft,adminBoundaries,disabled]);
+  },[draft,adminBoundaries,disabled,favoriteMode]);
   useEffect(()=>{
     const map=mapRef.current;if(!map)return;const visible=new Set(visibleIds),bounds=L.latLngBounds([]);
     for(const [id,layer] of layers.current){if(visible.has(id)){if(!map.hasLayer(layer))layer.addTo(map);bounds.extend(layer.getBounds());}else if(map.hasLayer(layer))map.removeLayer(layer);}
@@ -66,5 +70,5 @@ export default function RegionMap({boundaries,adminBoundaries,catalog,draft,save
     }
     return ()=>{group.remove();};
   },[coordinatePoints,visibleIds,catalog,boundaries,adminBoundaries]);
-  return <div className="map-wrap"><div ref={container} className="region-map" role="region" aria-label={favoriteMode?"서울 경기 법정동 지역 지도":"서울 경기 법정동 수집 지역 지도"}/>{tileError&&<div className="tile-warning">배경 지도 일부를 불러오지 못했습니다. 경계와 선택은 유지됩니다.</div>}<div className="map-legend"><strong>지역 경계</strong>{coordinatePoints.length>0&&<span><i className="apartment-swatch">▥</i>좌표가 확인된 아파트</span>}<span><i className="city-line"/>시·군: 굵은 실선 / 지역별 색</span><span><i className="gu-line"/>구: 점선 / 지역별 색</span><span><i className="dong-line"/>동·읍·면: 가는 실선</span><span><i className="selected-swatch"/>{favoriteMode?'즐겨찾기 지역':'수집 대상'}: 진한 채움 + 금색 테두리</span></div></div>;
+  return <div className="map-wrap"><div ref={container} className={favoriteMode?"region-map favorite-region-map":"region-map"} role="region" aria-label={favoriteMode?"서울 경기 법정동 지역 지도":"서울 경기 법정동 수집 지역 지도"}/>{tileError&&<div className="tile-warning">배경 지도 일부를 불러오지 못했습니다. 경계와 선택은 유지됩니다.</div>}<div className="map-legend"><strong>지역 경계</strong>{coordinatePoints.length>0&&<span><i className="apartment-swatch">▥</i>좌표가 확인된 아파트</span>}<span><i className="city-line"/>시·군: 굵은 실선 / 지역별 색</span><span><i className="gu-line"/>구: 점선 / 지역별 색</span><span><i className="dong-line"/>{favoriteMode?'동·읍·면: 진한 실선 / 동별 색':'동·읍·면: 가는 실선'}</span><span><i className="selected-swatch"/>{favoriteMode?'즐겨찾기 지역: 금색 채움 + 굵은 테두리':'수집 대상: 진한 채움 + 금색 테두리'}</span></div></div>;
 }
