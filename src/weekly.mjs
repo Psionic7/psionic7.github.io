@@ -46,8 +46,8 @@ export function publishedDay(timestamp) {
   return `${value('year')}-${value('month')}-${value('day')}`;
 }
 
-export function weeklyRows(rows, region, week, includeCancelled = false) {
+export function weeklyRows(rows, region, week, includeCancelled = false, matches) {
   if (!week) return [];
-  return rows.filter(row=>row.region_code===region.region_code && region.dongs.includes(row.dong) && (includeCancelled || row.cancelled===0) && row.deal_date>=week.start && row.deal_date<=week.end)
+  return rows.filter(row=>row.region_code===region.region_code && region.dongs.includes(row.dong) && (includeCancelled || row.cancelled===0) && row.deal_date>=week.start && row.deal_date<=week.end && (!matches || matches(row)))
     .sort((a,b)=>b.deal_date.localeCompare(a.deal_date)||b.id-a.id);
 }

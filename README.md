@@ -152,8 +152,7 @@ SQLite 다운로드는 데이터 안내 화면의 링크를 사용합니다. `.g
 ## 테스트
 
 ```powershell
-node --test tests/domain.test.mjs tests/weekly.test.mjs tests/server.test.mjs
-pnpm test
+pnpm test:all            # 전체 Node + React 회귀 테스트
 pnpm admin:build
 pnpm build
 pnpm check:publish
@@ -254,3 +253,9 @@ JUSO_COORDINATE_SEARCH_KEY=좌표제공_승인키
 필지 경계는 건축물대장이 지정한 대표·부속 필지에 대응하는 V-World 연속지적도입니다. 건물 외곽선은 별도 GIS 건물통합정보 레이어에서 가져와 구분 표시합니다. 단지 담장과 법적 경계는 서로 다를 수 있습니다. 같은 필지를 공유하는 단지는 지도 팝업에서 각각 선택할 수 있습니다. 선택 지역 전체의 대장 페이지를 확인하면 수집한 아파트 목록을 지도 자료로 내보냅니다. 이름·주소·좌표·경계 검토 항목이 남아도 확인된 단지를 숨기지 않습니다. 이름이 비어 있으면 주소와 미확인 표기를 사용하고, 좌표가 없는 항목은 별도 목록으로 표시합니다. 필수 정보와 검토 항목을 모두 확인한 경우에만 수집 완료로 표시합니다. 지역 대장 수집 자체가 미완료면 기존 지도 파일을 보존합니다.
 
 공식 출처: [건축HUB 건축물대장](https://www.data.go.kr/data/15134735/openapi.do), [브이월드 데이터 API 안내](https://www.vworld.kr/dev/v4dv_2ddataguide2_s002.do?svcIde=cadastral), [공간정보 오픈플랫폼 WMS/WFS](https://www.data.go.kr/data/15058805/openapi.do), [GIS 건물통합정보 설명](https://www.data.go.kr/data/15083092/fileData.do). 지적 자료는 국토교통부/V-World 출처를 표시합니다.
+
+## 구조 분석 및 리팩토링 기록
+
+2026-10-09: [분석](project-notes/refactoring-2026-10-09/ANALYSIS.md) · [계획](project-notes/refactoring-2026-10-09/PLAN.md) · [결과](project-notes/refactoring-2026-10-09/RESULTS.md) · [요약](project-notes/refactoring-2026-10-09/SUMMARY.md).
+
+주간 조회의 요청/캐시는 `src/weekly/useDistrictDatasets.js`, 결과 카드는 `src/weekly/WeeklyResults.jsx`, 최종 필터는 `src/weekly/query.mjs`가 담당합니다. 로컬 수집의 DB 연결부터 종료 정리까지는 `server/job-runner.mjs`에서 처리합니다.

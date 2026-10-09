@@ -8,16 +8,18 @@
     "build": "vite build && node scripts/finish-build.mjs",
     "preview": "vite preview --host 127.0.0.1",
     "test": "vitest run",
-    "test:domain": "node --test tests/domain.test.mjs tests/weekly.test.mjs",
+    "test:domain": "node --test tests/domain.test.mjs tests/weekly.test.mjs tests/weekly-query.test.mjs",
     "check:publish": "node scripts/check-public.mjs",
     "admin:build": "vite build --config vite.admin.config.js",
     "admin": "pnpm admin:build && node server/index.mjs",
     "data:export": "node scripts/export-data.mjs",
-    "test:server": "node --test tests/server.test.mjs tests/automation.test.mjs tests/coordinates.test.mjs tests/apartment-map.test.mjs tests/apartment-master.test.mjs",
+    "test:server": "node --test tests/server.test.mjs tests/automation.test.mjs tests/coordinates.test.mjs tests/apartment-map.test.mjs tests/apartment-master.test.mjs tests/job-runner.test.mjs",
     "automation:setup": "node scripts/setup-automation.mjs",
     "data:map": "node scripts/export-apartment-map.mjs",
     "data:apartments": "node scripts/collect-apartment-master.mjs",
-    "data:apartments:vworld": "node scripts/collect-apartment-master-vworld.mjs"
+    "data:apartments:vworld": "node scripts/collect-apartment-master-vworld.mjs",
+    "test:node": "node --test tests/*.test.mjs",
+    "test:all": "pnpm test:node && pnpm test"
   },
   "dependencies": {
     "@turf/boolean-point-in-polygon": "7.4.0",

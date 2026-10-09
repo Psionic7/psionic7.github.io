@@ -14,6 +14,7 @@ import {masterStats,masterCollectionRunning} from './apartment-master.mjs';
 import {registryKey} from './building-registry.mjs';
 import {vworldKey} from './apartment-master-enrichment.mjs';
 import {checkPublic} from '../scripts/check-public.mjs';
+import {runDatabaseJob} from './job-runner.mjs';
 import {buildCatalog} from '../src/domain.mjs';
 
 export function createAdminServer({files=paths,staticRoot=path.join(ROOT,'admin-dist'),fetcher,addressFetcher,coordinateFetcher,masterCollector=collectApartmentMaster}={}) {
@@ -22,6 +23,14 @@ export function createAdminServer({files=paths,staticRoot=path.join(ROOT,'admin-
   const busy=()=>job.status==='running'||withDb(masterCollectionRunning);
   const json=(res,status,data)=>{res.writeHead(status,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'});res.end(JSON.stringify(data));};
   const withDb=callback=>{const db=connect(files.db);try{return callback(db);}finally{db.close();}};
+  const startDatabaseJob = (initial, options) => {
+    const active = new AbortController();
+    controller = active;
+    const current = {...initial, status:'running', completed:0, rows:0, startedAt:new Date().toISOString()};
+    job = current;
+    runDatabaseJob({openDatabase:()=>connect(files.db), job:current, signal:active.signal, ...options})
+      .then(()=>{ if(controller===active) controller=null; });
+  };
   const state=()=>withDb(db=>{
     const catalog=regions(db).filter(r=>!['suji','gwanggyo','bundang'].includes(r.region_id));
     // Expand historical group favorites against the full catalog, if needed.
@@ -74,27 +83,27 @@ export function createAdminServer({files=paths,staticRoot=path.join(ROOT,'admin-
           if(!selected.length)throw new Error('저장한 수집 지역이 없습니다. 먼저 업데이트하세요.');
           const key=serviceKey(files.env);if(!key)throw new Error('.env에 MOLIT_SERVICE_KEY를 설정하세요.');
           const tasks=collectionTasks(selected,months);
-          controller=new AbortController();const active=controller;
-          job={kind:'collect',status:'running',completed:0,total:tasks.length,rows:0,startedAt:new Date().toISOString(),message:'수집을 시작합니다.'};
-          // One async worker; each completed month is committed atomically.
-          (async()=>{
-            const db=connect(files.db);
-            try {
-              for(const task of tasks){active.signal.throwIfAborted();job.message=`${task.name} · ${task.month}`;const n=await collectMonth(db,key,task.code,task.month,task.name,{signal:active.signal,fetcher});job.completed++;job.rows+=n;}
+          startDatabaseJob({kind:'collect',total:tasks.length,message:'수집을 시작합니다.'}, {
+            run: async(db,job,signal) => {
+              // Each completed month is committed atomically by collectMonth.
+              for(const task of tasks){signal.throwIfAborted();job.message=`${task.name} · ${task.month}`;const n=await collectMonth(db,key,task.code,task.month,task.name,{signal,fetcher});job.completed++;job.rows+=n;}
               job.status='completed';job.message='수집 완료. 공개 데이터 내보내기를 실행하세요.';
-            } catch(e){job.status=active.signal.aborted?'cancelled':'failed';job.message=active.signal.aborted?'수집을 중단했습니다. 완료한 월은 보존됩니다.':/^(API |공공 API |수집 중 |거래 필드)/.test(e.message)?e.message:'수집 실패. API 승인, 연결 및 응답을 확인하세요.';}
-            finally {db.close();job.finishedAt=new Date().toISOString();if(controller===active)controller=null;}
-          })();
+            },
+            failureMessage:e=>/^(API |공공 API |수집 중 |거래 필드)/.test(e.message)?e.message:'수집 실패. API 승인, 연결 및 응답을 확인하세요.',
+            cancelledMessage:'수집을 중단했습니다. 완료한 월은 보존됩니다.',
+          });
           return json(res,202,{job});
         }
         if(pathname==='/api/apartment-master') {
           if(!registryKey(files.env)||!coordinateKey(files.env)||!vworldKey(files.env))throw new Error('.env에 건축물대장·주소 좌표·브이월드 API 키를 설정하세요.');
-          controller=new AbortController();const active=controller;
-          job={kind:'apartment-master',status:'running',completed:0,total:1,rows:0,startedAt:new Date().toISOString(),message:'선택 지역의 전체 건축물대장을 조회합니다.'};
-          (async()=>{const db=connect(files.db);try{
-            const result=await masterCollector(db,{favorites:files.favorites,secretsFile:files.env,signal:active.signal,refresh:input.refresh===true,onProgress:p=>{job.completed=p.completed||0;job.total=p.total||1;job.message=p.stage==='registry'?(p.region+' · '+(p.dataset||'전체 대장 조회')):(p.kind==='parcels'?'공식 필지 경계 수집':'출입구 좌표 수집');}});
-            job.rows=result.stats.complexes;job.status=result.stats.complete?'completed':'needs_review';job.message=result.stats.complete?('전체 아파트 DB 필수 정보 확인 완료: '+result.stats.complexes+'개 단지. 지도 내보내기·빌드를 실행하세요.'):('지역 목록 수집 완료. 필수 정보·용도 확인이 필요한 항목이 있습니다. 전체 구축 완료 상태가 아닙니다.');
-          }catch(e){job.status=active.signal.aborted?'cancelled':'failed';job.message=active.signal.aborted?'수집 중단. 완료된 지역 목록과 자료를 보존합니다.':/^(건축물|브이월드|주소 좌표|JUSO_|BUILDING_|전체 아파트|공식)/.test(e.message)?e.message:'아파트 마스터 구성 실패. 로컬 DB와 공식 자료를 확인하세요.';}finally{db.close();job.finishedAt=new Date().toISOString();if(controller===active)controller=null;}})();
+          startDatabaseJob({kind:'apartment-master',total:1,message:'선택 지역의 전체 건축물대장을 조회합니다.'}, {
+            run: async(db,job,signal) => {
+              const result=await masterCollector(db,{favorites:files.favorites,secretsFile:files.env,signal,refresh:input.refresh===true,onProgress:p=>{job.completed=p.completed||0;job.total=p.total||1;job.message=p.stage==='registry'?(p.region+' · '+(p.dataset||'전체 대장 조회')):(p.kind==='parcels'?'공식 필지 경계 수집':'출입구 좌표 수집');}});
+              job.rows=result.stats.complexes;job.status=result.stats.complete?'completed':'needs_review';job.message=result.stats.complete?('전체 아파트 DB 필수 정보 확인 완료: '+result.stats.complexes+'개 단지. 지도 내보내기·빌드를 실행하세요.'):('지역 목록 수집 완료. 필수 정보·용도 확인이 필요한 항목이 있습니다. 전체 구축 완료 상태가 아닙니다.');
+            },
+            failureMessage:e=>/^(건축물|브이월드|주소 좌표|JUSO_|BUILDING_|전체 아파트|공식)/.test(e.message)?e.message:'아파트 마스터 구성 실패. 로컬 DB와 공식 자료를 확인하세요.',
+            cancelledMessage:'수집 중단. 완료된 지역 목록과 자료를 보존합니다.',
+          });
           return json(res,202,{job});
         }
         if(pathname==='/api/coordinates') {
@@ -102,18 +111,16 @@ export function createAdminServer({files=paths,staticRoot=path.join(ROOT,'admin-
           if(!Number.isInteger(limit)||limit<1||limit>1000)throw new Error('좌표 조회 건수를 확인하세요.');
           const key=coordinateKey(files.env);if(!key)throw new Error('.env에 JUSO_COORDINATE_SEARCH_KEY를 설정하세요.');
           const total=withDb(db=>pendingCoordinates(db,limit,{refresh}).length);
-          controller=new AbortController();const active=controller;
-          job={kind:'coordinates',status:'running',completed:0,total,rows:0,startedAt:new Date().toISOString(),message:'아파트 주소의 좌표를 조회하고 있습니다.'};
-          (async()=>{
-            const db=connect(files.db);
-            try {
-              const result=await collectCoordinates(db,key,{limit,refresh,signal:active.signal,fetcher:coordinateFetcher||fetch,onProgress:counts=>{
+          startDatabaseJob({kind:'coordinates',total,message:'아파트 주소의 좌표를 조회하고 있습니다.'}, {
+            run: async(db,job,signal) => {
+              const result=await collectCoordinates(db,key,{limit,refresh,signal,fetcher:coordinateFetcher||fetch,onProgress:counts=>{
                 job.completed=counts.completed;job.rows=counts.exact;job.message=`좌표 저장 ${counts.exact}건 · 미확정 ${counts.unresolved}건`;
               }});
               job.status='completed';job.message=`좌표 조회 완료: 저장 ${result.exact}건 · 미확정 ${result.unresolved}건. 확인된 아파트를 지도에 표시합니다.`;
-            }catch(e){job.status=active.signal.aborted?'cancelled':'failed';job.message=active.signal.aborted?'좌표 조회를 중단했습니다. 완료한 좌표는 보존됩니다.':/^(공식 좌표|좌표 조회|JUSO_COORDINATE_SEARCH_KEY)/.test(e.message)?e.message:'좌표 저장 실패. 로컬 DB 상태를 확인하세요.';}
-            finally{db.close();job.finishedAt=new Date().toISOString();if(controller===active)controller=null;}
-          })();
+            },
+            failureMessage:e=>/^(공식 좌표|좌표 조회|JUSO_COORDINATE_SEARCH_KEY)/.test(e.message)?e.message:'좌표 저장 실패. 로컬 DB 상태를 확인하세요.',
+            cancelledMessage:'좌표 조회를 중단했습니다. 완료한 좌표는 보존됩니다.',
+          });
           return json(res,202,{job});
         }
         if(pathname==='/api/addresses') {
@@ -121,18 +128,16 @@ export function createAdminServer({files=paths,staticRoot=path.join(ROOT,'admin-
           if(!Number.isInteger(limit)||limit<1||limit>1000)throw new Error('주소 조회 건수를 확인하세요.');
           const key=addressKey(files.env);if(!key)throw new Error('.env에 JUSO_ADDRESS_SEARCH_KEY를 설정하세요.');
           const total=withDb(db=>pendingAddresses(db,limit,{refresh}).length);
-          controller=new AbortController();const active=controller;
-          job={kind:'addresses',status:'running',completed:0,total,rows:0,startedAt:new Date().toISOString(),message:'도로명주소를 조회하고 있습니다.'};
-          (async()=>{
-            const db=connect(files.db);
-            try {
-              const result=await collectAddresses(db,key,{limit,refresh,signal:active.signal,fetcher:addressFetcher||fetch,onProgress:counts=>{
+          startDatabaseJob({kind:'addresses',total,message:'도로명주소를 조회하고 있습니다.'}, {
+            run: async(db,job,signal) => {
+              const result=await collectAddresses(db,key,{limit,refresh,signal,fetcher:addressFetcher||fetch,onProgress:counts=>{
                 job.completed=counts.completed;job.rows=counts.exact;job.message=`도로명주소 확인 ${counts.exact}건 · 미확정 ${counts.unresolved}건`;
               }});
               job.status='completed';job.message=`도로명주소 조회 완료: 정확히 일치 ${result.exact}건 · 미확정 ${result.unresolved}건. 공개 데이터 내보내기를 실행하세요.`;
-            }catch(e){job.status=active.signal.aborted?'cancelled':'failed';job.message=active.signal.aborted?'주소 조회를 중단했습니다. 완료한 주소는 보존됩니다.':e.message;}
-            finally{db.close();job.finishedAt=new Date().toISOString();if(controller===active)controller=null;}
-          })();
+            },
+            failureMessage:e=>e.message,
+            cancelledMessage:'주소 조회를 중단했습니다. 완료한 주소는 보존됩니다.',
+          });
           return json(res,202,{job});
         }
         if(pathname==='/api/export') {
