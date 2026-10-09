@@ -19,7 +19,8 @@
     "data:apartments": "node scripts/collect-apartment-master.mjs",
     "data:apartments:vworld": "node scripts/collect-apartment-master-vworld.mjs",
     "test:node": "node --test tests/*.test.mjs",
-    "test:all": "pnpm test:node && pnpm test"
+    "test:all": "pnpm test:node && pnpm test",
+    "data:apartments:rebuild": "node scripts/rebuild-apartment-master.mjs"
   },
   "dependencies": {
     "@turf/boolean-point-in-polygon": "7.4.0",

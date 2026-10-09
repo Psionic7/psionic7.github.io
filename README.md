@@ -259,3 +259,19 @@ JUSO_COORDINATE_SEARCH_KEY=좌표제공_승인키
 2026-10-09: [분석](project-notes/refactoring-2026-10-09/ANALYSIS.md) · [계획](project-notes/refactoring-2026-10-09/PLAN.md) · [결과](project-notes/refactoring-2026-10-09/RESULTS.md) · [요약](project-notes/refactoring-2026-10-09/SUMMARY.md).
 
 주간 조회의 요청/캐시는 `src/weekly/useDistrictDatasets.js`, 결과 카드는 `src/weekly/WeeklyResults.jsx`, 최종 필터는 `src/weekly/query.mjs`가 담당합니다. 로컬 수집의 DB 연결부터 종료 정리까지는 `server/job-runner.mjs`에서 처리합니다.
+
+## 주거 지도 표시 보완 (2026-10-09)
+
+공식 건축물대장에 노인복지주택으로 확인된 주건축물은 `senior_housing` 유형으로 지도에 포함합니다. 노유자시설 전체나 부속 경로당·주차장은 주거동으로 분류하지 않습니다. 팝업에 주거 유형을 표시하며, 세대수 필드가 0인 노인복지주택은 주거동 표제부의 확인된 호수 합계를 `주거 호수`로 표시합니다.
+
+출입구는 기존 ▥ 아이콘과 클릭 처리로 표시합니다. 새 SVG 핀·숫자 배지·동일 입구 묶음·추가 위치 보정은 사용자 요청으로 원복했습니다. 공식 단지 ID·지번·즐겨찾기·거래 연결과 노인복지주택 반영은 유지합니다.
+
+기존에 저장한 대장에서 새 지원 유형을 반영하려면 다음 명령을 사용합니다. 작업 DB를 `local/before-housing-map-*.sqlite3`로 먼저 백업하며, 실거래 원문은 바꾸지 않습니다. `--enrich-new`는 새로 추가한 단지와 보강이 끝나지 않은 노인복지주택의 공식 좌표·필지를 조회합니다. 저장된 API 키를 사용하며 출력하지 않습니다.
+
+```powershell
+pnpm data:apartments:rebuild --enrich-new
+pnpm build
+pnpm check:publish
+```
+
+상세 결과: [주거 지도 표시 수정 기록](project-notes/MAP_HOUSING_FIX_2026-10-09.md).

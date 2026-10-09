@@ -34,9 +34,11 @@ export async function fetchMasterEntrances(key,codes,{signal,fetcher,pause=2000}
  const u=new URL('https://business.juso.go.kr/addrlink/addrCoordApi.do');u.search=new URLSearchParams({confmKey:key,...codes,resultType:'json'}).toString();
  for(let n=0;n<4;n++){const payload=await readJson(u,{signal,fetcher,label:'주소 좌표 API'});if(String(payload?.results?.common?.errorCode)!=='E0007')return parseMasterEntrances(payload,codes);if(n===3)throw new Error('주소 좌표 API 요청 제한이 지속됩니다. 완료된 자료를 유지합니다.');await delay(pause*2**n,undefined,{signal});}
 }
-export async function enrichApartmentMaster(db,{coordinateKey,vworldKey:geoKey,domain,signal,coordinateFetcher=fetchMasterEntrances,parcelFetcher=fetchParcelGeometry,onProgress,pause=1000,refresh=false}={}){
+export async function enrichApartmentMaster(db,{coordinateKey,vworldKey:geoKey,domain,signal,coordinateFetcher=fetchMasterEntrances,parcelFetcher=fetchParcelGeometry,onProgress,pause=1000,refresh=false,apartmentIds}={}){
  if(!coordinateKey||!geoKey)throw new Error('JUSO_COORDINATE_SEARCH_KEY와 VWORLD_API_KEY가 필요합니다.');
- const buildings=db.prepare('SELECT b.*,i.region_id FROM apartment_buildings b JOIN apartment_building_inventory i USING(building_id) JOIN apartment_complexes c USING(apartment_id) WHERE i.active=1 AND c.active=1 ORDER BY b.building_id').all(),parcels=db.prepare('SELECT DISTINCT p.pnu FROM apartment_parcels p JOIN apartment_complexes c USING(apartment_id) WHERE c.active=1 ORDER BY p.pnu').all();
+ if(apartmentIds!==undefined&&(!Array.isArray(apartmentIds)||apartmentIds.some(id=>typeof id!=='string'||!id.startsWith('hub:'))))throw new Error('주거 단지 선택이 올바르지 않습니다.');
+ const selected=apartmentIds===undefined?null:new Set(apartmentIds);
+ const buildings=db.prepare('SELECT b.*,i.region_id FROM apartment_buildings b JOIN apartment_building_inventory i USING(building_id) JOIN apartment_complexes c USING(apartment_id) WHERE i.active=1 AND c.active=1 ORDER BY b.building_id').all().filter(b=>!selected||selected.has(b.apartment_id)),parcelRows=db.prepare('SELECT DISTINCT p.apartment_id,p.pnu FROM apartment_parcels p JOIN apartment_complexes c USING(apartment_id) WHERE c.active=1 ORDER BY p.pnu').all(),parcels=[...new Set(parcelRows.filter(p=>!selected||selected.has(p.apartment_id)).map(p=>p.pnu))].map(pnu=>({pnu}));
  const groups=new Map();for(const b of buildings){const codes=JSON.parse(b.coordinate_codes_json||'null');if(!codes)continue;if(!groups.has(b.coordinate_codes_json))groups.set(b.coordinate_codes_json,[]);groups.get(b.coordinate_codes_json).push(b);}
  let completed=0,total=groups.size+parcels.length;const step=(kind,label)=>{completed++;onProgress?.({kind,label,completed,total});};
  const save=db.prepare('INSERT INTO apartment_entrances VALUES(?,?,?,?,?,?,?,?)');

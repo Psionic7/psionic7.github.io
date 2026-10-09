@@ -141,3 +141,59 @@ test('scanned master exports every apartment despite missing fields and preserve
  assert.equal(mapVisibleApartments(apartments,{query:'삼성 1차 아파트'}).length,1);
  assert(!JSON.stringify(apartments).includes('privatefixturepartialkey'));
 });
+
+test('senior housing is a distinct residential class; care centers and ancillary facilities stay excluded',()=>{
+ assert.equal(buildingClassification(title('senior','수지광교산아이파크',{mainPurpsCd:'11000',mainPurpsCdNm:'노유자시설',etcPurps:'노유자시설(노인복지주택)'})),'senior_housing');
+ assert.equal(buildingClassification(title('care','요양원',{mainPurpsCd:'11000',mainPurpsCdNm:'노유자시설',etcPurps:'노인요양시설'})),'other');
+ assert.equal(buildingClassification(title('guard','경비실',{mainAtchGbCd:'1',mainPurpsCd:'11000',etcPurps:'노인복지주택 부속시설'})),'other');
+});
+
+test('legacy inventory constraint upgrades without changing source rows or identifiers',()=>{
+ const db=new DatabaseSync(':memory:');
+ try{
+  db.exec("CREATE TABLE apartment_building_inventory(building_id TEXT PRIMARY KEY,region_id TEXT NOT NULL,legal_code TEXT NOT NULL,parent_id TEXT,classification TEXT NOT NULL CHECK(classification IN ('apartment','other','review')),record_json TEXT NOT NULL,active INTEGER NOT NULL DEFAULT 1,run_id INTEGER NOT NULL)");
+  db.prepare('INSERT INTO apartment_building_inventory VALUES(?,?,?,?,?,?,?,?)').run('old',scope.region_id,scope.legal_code,'root','other','{"original":"kept"}',1,12);
+  const before=db.prepare('SELECT * FROM apartment_building_inventory').get();
+  initializeApartmentMaster(db);
+  assert.deepEqual(db.prepare('SELECT * FROM apartment_building_inventory').get(),before);
+  db.prepare("UPDATE apartment_building_inventory SET classification='senior_housing'").run();
+  initializeApartmentMaster(db);
+  assert.equal(db.prepare('SELECT classification FROM apartment_building_inventory').get().classification,'senior_housing');
+  assert.throws(()=>db.prepare("UPDATE apartment_building_inventory SET classification='arbitrary'").run());
+ }finally{db.close();}
+});
+
+test('cached senior records rebuild into a labeled map entry without reclassifying unrelated mixed-use apartments',()=>{
+ const db=fixture();
+ try{
+  const senior=title('senior','수지광교산아이파크',{mainPurpsCd:'11000',mainPurpsCdNm:'노유자시설',etcPurps:'노유자시설(노인복지주택)',bun:'1238',hhldCnt:'0',hoCnt:'32'});
+  const mixed=title('mixed','복합아파트',{mainPurpsCd:'03000',mainPurpsCdNm:'근린생활시설',etcPurps:'',bun:'0002'});
+  populate(db,snapshot([senior,mixed],[],[],[],[{mgmBldrgstPk:'mixed',mainPurpsCd:'02001',mainPurpsCdNm:'아파트'}]));
+  // Emulate a cache created before senior housing was supported.
+  db.prepare("UPDATE apartment_building_inventory SET classification='other' WHERE building_id='senior'").run();
+  rebuildApartmentMaster(db);
+  const data=masterMapData(db,[scope],[scope.region_id]);
+  const item=data.apartments.find(p=>p.master_id==='hub:senior');
+  assert.equal(item.housing_type,'senior_housing');assert.equal(item.housing_type_label,'노인복지주택');
+  assert.equal(item.dwelling_unit_count,32);assert.equal(item.household_count,0);assert.equal(item.apartment,'수지광교산아이파크');assert.equal(item.location_status,'missing');
+  assert.equal(db.prepare("SELECT classification FROM apartment_building_inventory WHERE building_id='mixed'").get().classification,'apartment');
+  assert.equal(data.apartments.length,2);
+  assert.deepEqual(item.trade_keys,[]);
+ }finally{db.close();}
+});
+
+test('targeted enrichment requests only the selected complex and an empty selection does no work',async()=>{
+ const db=fixture();
+ try{
+  populate(db,snapshot([title('b1','하나'),title('b2','둘',{bun:'0002',naMainBun:'2'})]));
+  const calls=[];
+  const options={coordinateKey:'test',vworldKey:'test',pause:0,
+   coordinateFetcher:async(_key,codes)=>{calls.push('address:'+codes.buldMnnm);return[{latitude:37.005,longitude:127.005,entX:950000,entY:1950000}];},
+   parcelFetcher:async(_key,pnu)=>{calls.push('parcel:'+pnu);return polygon;}};
+  await enrichApartmentMaster(db,{...options,apartmentIds:['hub:b2']});
+  assert.deepEqual(calls,['address:2','parcel:4111710200100020000']);
+  assert.equal(db.prepare("SELECT coordinate_status FROM apartment_buildings WHERE building_id='b1'").get().coordinate_status,'pending');
+  assert.equal(db.prepare('SELECT count(*) AS n FROM apartment_entrances').get().n,1);
+  calls.length=0;await enrichApartmentMaster(db,{...options,apartmentIds:[]});assert.deepEqual(calls,[]);
+ }finally{db.close();}
+});

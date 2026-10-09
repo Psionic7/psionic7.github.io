@@ -1,3 +1,5 @@
+export const BUILDING_INVENTORY_SCHEMA = `CREATE TABLE IF NOT EXISTS apartment_building_inventory (
+ building_id TEXT PRIMARY KEY,region_id TEXT NOT NULL,legal_code TEXT NOT NULL,parent_id TEXT,classification TEXT NOT NULL CHECK(classification IN ('apartment','senior_housing','other','review')),record_json TEXT NOT NULL,active INTEGER NOT NULL DEFAULT 1,run_id INTEGER NOT NULL);`;
 export const APARTMENT_MASTER_SCHEMA = `
 CREATE TABLE IF NOT EXISTS apartment_inventory_runs (
  id INTEGER PRIMARY KEY,started_at TEXT NOT NULL,finished_at TEXT,status TEXT NOT NULL,scope_json TEXT NOT NULL,owner_pid INTEGER,owner_host TEXT,error TEXT NOT NULL DEFAULT '');
@@ -5,8 +7,7 @@ CREATE TABLE IF NOT EXISTS apartment_inventory_regions (
  region_id TEXT PRIMARY KEY,legal_code TEXT NOT NULL,dong TEXT NOT NULL,status TEXT NOT NULL,run_id INTEGER,source_counts_json TEXT NOT NULL DEFAULT '{}',fetched_at TEXT,error TEXT NOT NULL DEFAULT '');
 CREATE TABLE IF NOT EXISTS apartment_inventory_pages (
  run_id INTEGER NOT NULL,region_id TEXT NOT NULL,dataset TEXT NOT NULL,page INTEGER NOT NULL,total_count INTEGER NOT NULL,items_json TEXT NOT NULL,PRIMARY KEY(run_id,region_id,dataset,page));
-CREATE TABLE IF NOT EXISTS apartment_building_inventory (
- building_id TEXT PRIMARY KEY,region_id TEXT NOT NULL,legal_code TEXT NOT NULL,parent_id TEXT,classification TEXT NOT NULL CHECK(classification IN ('apartment','other','review')),record_json TEXT NOT NULL,active INTEGER NOT NULL DEFAULT 1,run_id INTEGER NOT NULL);
+${BUILDING_INVENTORY_SCHEMA}
 CREATE TABLE IF NOT EXISTS apartment_complexes (
  apartment_id TEXT PRIMARY KEY,registry_root_id TEXT NOT NULL,region_code TEXT NOT NULL,legal_code TEXT NOT NULL,dong TEXT NOT NULL,name TEXT,jibun TEXT NOT NULL DEFAULT '',road_address TEXT NOT NULL DEFAULT '',approval_date TEXT,build_year INTEGER,household_count INTEGER,building_count INTEGER,max_floors INTEGER,structure TEXT,active INTEGER NOT NULL DEFAULT 1,source TEXT NOT NULL DEFAULT '건축HUB 건축물대장',fetched_at TEXT NOT NULL,inventory_run_id INTEGER NOT NULL);
 CREATE TABLE IF NOT EXISTS apartment_buildings (

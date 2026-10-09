@@ -1,9 +1,21 @@
 import os from 'node:os';
-import {APARTMENT_MASTER_SCHEMA} from './apartment-master-schema.mjs';
-import {approvalDate,buildingClassification,numeric,parcel,registryCoordinateCodes,text} from './building-registry.mjs';
+import {APARTMENT_MASTER_SCHEMA,BUILDING_INVENTORY_SCHEMA} from './apartment-master-schema.mjs';
+import {approvalDate,buildingClassification,isResidentialClassification,numeric,parcel,registryCoordinateCodes,text} from './building-registry.mjs';
 import {normalizeApartmentName} from './apartment-boundaries.mjs';
 import {makeApartmentFavorite} from '../src/apartment-favorites.js';
-export function initializeApartmentMaster(db){db.exec(APARTMENT_MASTER_SCHEMA);const fields=db.prepare('PRAGMA table_info(apartment_inventory_runs)').all().map(p=>p.name);if(!fields.includes('owner_pid'))db.exec('ALTER TABLE apartment_inventory_runs ADD COLUMN owner_pid INTEGER');if(!fields.includes('owner_host'))db.exec('ALTER TABLE apartment_inventory_runs ADD COLUMN owner_host TEXT');const parcelFields=db.prepare('PRAGMA table_info(apartment_parcels)').all().map(p=>p.name);if(!parcelFields.includes('attributes_json'))db.exec('ALTER TABLE apartment_parcels ADD COLUMN attributes_json TEXT');if(!parcelFields.includes('spatial_status'))db.exec("ALTER TABLE apartment_parcels ADD COLUMN spatial_status TEXT NOT NULL DEFAULT 'pending'");if(!parcelFields.includes('spatial_fetched_at'))db.exec('ALTER TABLE apartment_parcels ADD COLUMN spatial_fetched_at TEXT');}
+export function initializeApartmentMaster(db){db.exec(APARTMENT_MASTER_SCHEMA);migrateHousingClassification(db);const fields=db.prepare('PRAGMA table_info(apartment_inventory_runs)').all().map(p=>p.name);if(!fields.includes('owner_pid'))db.exec('ALTER TABLE apartment_inventory_runs ADD COLUMN owner_pid INTEGER');if(!fields.includes('owner_host'))db.exec('ALTER TABLE apartment_inventory_runs ADD COLUMN owner_host TEXT');const parcelFields=db.prepare('PRAGMA table_info(apartment_parcels)').all().map(p=>p.name);if(!parcelFields.includes('attributes_json'))db.exec('ALTER TABLE apartment_parcels ADD COLUMN attributes_json TEXT');if(!parcelFields.includes('spatial_status'))db.exec("ALTER TABLE apartment_parcels ADD COLUMN spatial_status TEXT NOT NULL DEFAULT 'pending'");if(!parcelFields.includes('spatial_fetched_at'))db.exec('ALTER TABLE apartment_parcels ADD COLUMN spatial_fetched_at TEXT');}
+// Extend the existing CHECK constraint transactionally; identifiers and raw rows
+// are copied unchanged. No table references the inventory through a foreign key.
+function migrateHousingClassification(db) {
+ const schema=db.prepare("SELECT sql FROM sqlite_master WHERE name='apartment_building_inventory'").get().sql;
+ if(schema.includes("'senior_housing'"))return;
+ db.exec('BEGIN IMMEDIATE');
+ try {
+  db.exec(BUILDING_INVENTORY_SCHEMA.replace('apartment_building_inventory','apartment_building_inventory_next'));
+  db.exec('INSERT INTO apartment_building_inventory_next SELECT * FROM apartment_building_inventory');
+  db.exec('DROP TABLE apartment_building_inventory; ALTER TABLE apartment_building_inventory_next RENAME TO apartment_building_inventory; COMMIT');
+ }catch(error){db.exec('ROLLBACK');throw error;}
+}
 export function masterScopes(catalog,ids){
  return ids.map(id=>{const r=catalog.find(r=>r.region_id===id);if(!r||!/^dong_\d{8}$/.test(id)||r.dongs.length!==1)throw new Error('전체 아파트 수집에는 공식 법정동 코드를 가진 지역을 선택하세요.');return{region_id:id,legal_code:id.slice(5)+'00',region_code:r.region_code,region_name:r.region_name,dong:r.dongs[0]};});
 }
@@ -30,15 +42,18 @@ export function masterIssue(db,{region_id,apartment_id=null,building_id=null,cod
  const key=JSON.stringify([region_id,apartment_id,building_id,code]);db.prepare(`INSERT INTO apartment_master_issues VALUES(?,?,?,?,?,?,?) ON CONFLICT(issue_key) DO UPDATE SET detail=excluded.detail,updated_at=excluded.updated_at`).run(key,region_id,apartment_id,building_id,code,detail,new Date().toISOString());
 }
 export function rebuildApartmentMaster(db){
+ initializeApartmentMaster(db);
  const inventory=db.prepare('SELECT * FROM apartment_building_inventory WHERE active=1 ORDER BY region_id,building_id').all().map(p=>({...p,...JSON.parse(p.record_json)})),groups=new Map();
- for(const p of inventory){const id='hub:'+p.root_id;if(!groups.has(id))groups.set(id,[]);groups.get(id).push(p);}
+ for(const p of inventory){if(buildingClassification(p.title)==='senior_housing')p.classification='senior_housing';const id='hub:'+p.root_id;if(!groups.has(id))groups.set(id,[]);groups.get(id).push(p);}
  const at=new Date().toISOString();db.exec('BEGIN IMMEDIATE');try{
+ const updateClassification=db.prepare('UPDATE apartment_building_inventory SET classification=? WHERE building_id=?');
+ for(const p of inventory.filter(p=>p.classification==='senior_housing'))updateClassification.run(p.classification,p.building_id);
  db.prepare('UPDATE apartment_complexes SET active=0').run();db.prepare('DELETE FROM apartment_master_issues').run();
  for(const p of inventory.filter(p=>p.classification==='review'))masterIssue(db,{region_id:p.region_id,building_id:p.building_id,code:'use_review',detail:'공동주택 용도만 확인되어 아파트·연립·다세대 구분이 필요합니다.'});
  const complex=db.prepare(`INSERT INTO apartment_complexes VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,1,?,?,?) ON CONFLICT(apartment_id) DO UPDATE SET registry_root_id=excluded.registry_root_id,region_code=excluded.region_code,legal_code=excluded.legal_code,dong=excluded.dong,name=excluded.name,jibun=excluded.jibun,road_address=excluded.road_address,approval_date=excluded.approval_date,build_year=excluded.build_year,household_count=excluded.household_count,building_count=excluded.building_count,max_floors=excluded.max_floors,structure=excluded.structure,active=1,fetched_at=excluded.fetched_at,inventory_run_id=excluded.inventory_run_id`);
  const building=db.prepare(`INSERT INTO apartment_buildings(building_id,apartment_id,legal_code,name,dong_name,jibun,road_address,main_use_code,main_use_name,other_use,approval_date,build_year,households,floors_above,floors_below,structure,gross_area_m2,site_area_m2,coordinate_codes_json) VALUES(${Array(19).fill('?').join(',')}) ON CONFLICT(building_id) DO UPDATE SET apartment_id=excluded.apartment_id,legal_code=excluded.legal_code,name=excluded.name,dong_name=excluded.dong_name,jibun=excluded.jibun,road_address=excluded.road_address,main_use_code=excluded.main_use_code,main_use_name=excluded.main_use_name,other_use=excluded.other_use,approval_date=excluded.approval_date,build_year=excluded.build_year,households=excluded.households,floors_above=excluded.floors_above,floors_below=excluded.floors_below,structure=excluded.structure,gross_area_m2=excluded.gross_area_m2,site_area_m2=excluded.site_area_m2,coordinate_codes_json=excluded.coordinate_codes_json`);
  const saveParcel=db.prepare(`INSERT INTO apartment_parcels(apartment_id,pnu,legal_code,jibun,relation) VALUES(?,?,?,?,?) ON CONFLICT(apartment_id,pnu) DO UPDATE SET legal_code=excluded.legal_code,jibun=excluded.jibun,relation=excluded.relation`),alias=db.prepare('INSERT OR IGNORE INTO apartment_aliases VALUES(?,?,?)');
- for(const [id,all] of groups){const apt=all.filter(p=>p.classification==='apartment');if(!apt.length)continue;const first=apt[0],recap=all.find(p=>p.recap)?.recap||{},titles=apt.map(p=>p.title),name=text(recap.bldNm)||text(titles.find(t=>text(t.bldNm))?.bldNm)||null;
+ for(const [id,all] of groups){const apt=all.filter(p=>isResidentialClassification(p.classification));if(!apt.length)continue;const first=apt[0],recap=all.find(p=>p.recap)?.recap||{},titles=apt.map(p=>p.title),name=text(recap.bldNm)||text(titles.find(t=>text(t.bldNm))?.bldNm)||null;
  const approved=approvalDate(recap.useAprDay)||titles.map(t=>approvalDate(t.useAprDay)).filter(Boolean).sort()[0]||null,years=approved?Number(approved.slice(0,4)):null;
  const households=numeric(recap.hhldCnt)??(titles.every(t=>numeric(t.hhldCnt)!==null)?titles.reduce((n,t)=>n+numeric(t.hhldCnt),0):null),floors=titles.map(t=>numeric(t.grndFlrCnt)).filter(p=>p!==null),primary=parcel(first.title);
  complex.run(id,first.root_id,first.scope.region_code,first.legal_code,first.scope.dong,name,primary?.jibun||'',text(recap.newPlatPlc)||text(first.title.newPlatPlc),approved,years,households,numeric(recap.mainBldCnt)??all.filter(p=>text(p.title.mainAtchGbCd)==='0').length,floors.length?Math.max(...floors):null,text(first.title.strctCdNm)||null,'건축HUB 건축물대장',at,first.run_id);
@@ -89,7 +104,7 @@ export function masterMapData(db,catalog,scopeIds){
  const apartments=[],features=[];
  for(const c of db.prepare('SELECT * FROM apartment_complexes WHERE active=1 ORDER BY apartment_id').all().filter(c=>scoped.has(c.apartment_id))){
   const entries=db.prepare('SELECT e.*,b.legal_code,b.road_address,b.jibun,i.region_id,i.classification FROM apartment_entrances e JOIN apartment_buildings b USING(building_id) JOIN apartment_building_inventory i USING(building_id) WHERE b.apartment_id=? AND i.active=1 ORDER BY b.building_id,e.entrance_index').all(c.apartment_id);
-  const e=entries.find(e=>selected.has(e.region_id)&&e.classification==='apartment')||entries.find(e=>selected.has(e.region_id))||entries[0];
+  const e=entries.find(e=>selected.has(e.region_id)&&isResidentialClassification(e.classification))||entries.find(e=>selected.has(e.region_id))||entries[0];
   const legalCode=e?.legal_code||c.legal_code,regionCode=legalCode.slice(0,5);
   const dong=stats.regions.find(r=>r.legal_code===legalCode)?.dong||c.dong;
   const regionName=catalog.find(r=>r.region_code===regionCode)?.region_name||'';
@@ -101,7 +116,12 @@ export function masterMapData(db,catalog,scopeIds){
   const tradeKeys=trades.map(t=>JSON.stringify([t.dong,t.jibun,t.trade_name]));
   const nameAliases=[...new Set([...db.prepare('SELECT name FROM apartment_aliases WHERE apartment_id=?').all(c.apartment_id).map(a=>a.name),...trades.map(t=>t.trade_name)].filter(Boolean))];
   const favorite=makeApartmentFavorite({master_id:c.apartment_id,trade_keys:tradeKeys,apartment:displayName,dong,jibun:e?.jibun||c.jibun,road_address:e?.road_address||c.road_address},{region_code:regionCode,region_name:regionName});
-  const p={...favorite,official_name:c.name||null,name_status:c.name?'confirmed':'missing',name_aliases:nameAliases,location_status:e?'confirmed':'missing',latitude:e?.latitude??null,longitude:e?.longitude??null,build_year:c.build_year,approval_date:c.approval_date,household_count:c.household_count,building_count:c.building_count,max_floors:c.max_floors,structure:c.structure,source:c.source,position_source:e?.source||null,boundary_kind:'cadastral_parcels',land_price_per_m2:numeric(parcelAttrs.jiga),land_price_year:text(parcelAttrs.gosi_year),land_price_month:text(parcelAttrs.gosi_month),zoning_names:zoningNames,building_footprint_count:db.prepare('SELECT count(DISTINCT footprint_id) AS n FROM apartment_footprint_links WHERE apartment_id=?').get(c.apartment_id).n,fetched_at:c.fetched_at};
+  const housingRecords=db.prepare("SELECT i.classification,json_extract(i.record_json,'$.title.hoCnt') AS units FROM apartment_building_inventory i JOIN apartment_buildings b USING(building_id) WHERE b.apartment_id=? AND i.active=1").all(c.apartment_id);
+  const classifications=housingRecords.map(r=>r.classification);
+  const senior=classifications.includes('senior_housing')&&!classifications.includes('apartment');
+  const seniorBuildings=housingRecords.filter(r=>r.classification==='senior_housing');
+  const dwellingUnits=senior&&seniorBuildings.every(r=>numeric(r.units)!==null)?seniorBuildings.reduce((sum,r)=>sum+numeric(r.units),0):null;
+  const p={...favorite,dwelling_unit_count:dwellingUnits,housing_type:senior?'senior_housing':'apartment',housing_type_label:senior?'노인복지주택':'아파트',official_name:c.name||null,name_status:c.name?'confirmed':'missing',name_aliases:nameAliases,location_status:e?'confirmed':'missing',latitude:e?.latitude??null,longitude:e?.longitude??null,build_year:c.build_year,approval_date:c.approval_date,household_count:c.household_count,building_count:c.building_count,max_floors:c.max_floors,structure:c.structure,source:c.source,position_source:e?.source||null,boundary_kind:'cadastral_parcels',land_price_per_m2:numeric(parcelAttrs.jiga),land_price_year:text(parcelAttrs.gosi_year),land_price_month:text(parcelAttrs.gosi_month),zoning_names:zoningNames,building_footprint_count:db.prepare('SELECT count(DISTINCT footprint_id) AS n FROM apartment_footprint_links WHERE apartment_id=?').get(c.apartment_id).n,fetched_at:c.fetched_at};
   apartments.push(p);
   for(const parcel of db.prepare("SELECT * FROM apartment_parcels WHERE apartment_id=? AND boundary_status='exact' AND geometry_json IS NOT NULL").all(c.apartment_id))features.push({type:'Feature',id:c.apartment_id+'/'+parcel.pnu,geometry:JSON.parse(parcel.geometry_json),properties:{name:displayName,source:'V-World 연속지적도',boundary_kind:'cadastral_parcels',pnu:parcel.pnu,apartment_ids:[p.id]}});
   for(const item of db.prepare('SELECT f.footprint_id,f.geometry_json,f.properties_json,l.pnu FROM apartment_footprint_links l JOIN apartment_building_footprints f USING(footprint_id) WHERE l.apartment_id=? GROUP BY f.footprint_id').all(c.apartment_id))features.push({type:'Feature',id:item.footprint_id,geometry:JSON.parse(item.geometry_json),properties:{name:text(JSON.parse(item.properties_json).bld_nm)||displayName,source:'V-World GIS 건물통합정보',boundary_kind:'building_footprint',pnu:item.pnu,building_attributes:JSON.parse(item.properties_json),apartment_ids:[p.id]}});

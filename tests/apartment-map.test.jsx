@@ -63,3 +63,10 @@ it('keeps an unlocated master apartment visible in a separate list without passi
  await userEvent.setup().click(screen.getByRole('button',{name:/위치 미확인 단지.*즐겨찾기 추가/}));
  expect(onToggle.mock.calls[0][0].master_id).toBe('hub:missing');
 });
+
+it('senior housing displays confirmed residential units instead of a misleading zero household count',()=>{
+ const senior={...one,housing_type:'senior_housing',housing_type_label:'노인복지주택',household_count:0,dwelling_unit_count:537};
+ render(<ApartmentMapPopup apartments={[senior]} favorites={[]}/>);
+ expect(screen.getByText('주거 호수')).toBeTruthy();expect(screen.getByText('537호')).toBeTruthy();
+ expect(screen.queryByText('0세대')).toBeNull();
+});
