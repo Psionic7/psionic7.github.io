@@ -17,7 +17,7 @@ import ApartmentMapPage from '../src/ApartmentMapPage.jsx';
 import ApartmentMapPopup from '../src/ApartmentMapPopup.jsx';
 import {mapApartment} from '../server/apartment-boundaries.mjs';
 import {useStoredState,readPreferences,restoreExplorer} from '../src/preferences.js';
-import {validApartmentFavorites} from '../src/apartment-favorites.js';
+import {validApartmentFavorites,makeApartmentFavorite} from '../src/apartment-favorites.js';
 import {buildCatalog} from '../src/domain.mjs';
 const one=mapApartment({region_code:'41117',apartment:'단지 하나',dong:'영통동',jibun:'1',road_address:'도로명주소 1',longitude:127.001,latitude:37.001},'경기도 수원시 영통구',2000);
 const two=mapApartment({...one,apartment:'단지 둘',jibun:'2',dong:'다른동',road_address:'도로명주소 2'},one.region_name);
@@ -51,4 +51,15 @@ it('popup switches basic apartment information within one boundary',async()=>{
 });
 it('map tab restores from shared URL and browser preference',()=>{
  expect(restoreExplorer(manifest,buildCatalog(manifest.regions),new URLSearchParams('tab=map')).tab).toBe('map');
+});
+
+it('keeps an unlocated master apartment visible in a separate list without passing null coordinates to Leaflet',async()=>{
+ const missing={...makeApartmentFavorite({...one,master_id:'hub:missing',apartment:'위치 미확인 단지'},one),latitude:null,longitude:null,location_status:'missing',build_year:1990};
+ const loader=async()=>({...data,apartments:[one,missing],manifest:{data_mode:'registry_master',coverage:{complete:false,mapUnlocated:1,mapUnnamed:0}}});
+ const onToggle=vi.fn();render(<ApartmentMapPage manifest={manifest} mapLoader={loader} favorites={[]} onToggleFavorite={onToggle}/>);
+ const list=await screen.findByRole('region',{name:'위치 미확인 아파트'});
+ expect(list.textContent).toContain('위치 미확인 단지');expect(mock.markers.length).toBe(1);
+ expect(mock.maps[0].fitBounds.mock.calls.at(-1)[0]).toEqual([[one.latitude,one.longitude]]);
+ await userEvent.setup().click(screen.getByRole('button',{name:/위치 미확인 단지.*즐겨찾기 추가/}));
+ expect(onToggle.mock.calls[0][0].master_id).toBe('hub:missing');
 });

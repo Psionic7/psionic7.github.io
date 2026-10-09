@@ -8,3 +8,5 @@
 .apartment-info-popup{position:relative}.map-popup-favorite{position:absolute;top:0;right:6px}.map-popup-favorite .apartment-favorite-button.compact{display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;min-height:40px;padding:8px;border:0;border-radius:8px;background:transparent}.map-popup-favorite .apartment-favorite-button svg{width:22px;height:22px}.map-popup-favorite .apartment-favorite-button:hover{background:#fff8e7}.apartment-info-popup .map-popup-eyebrow,.apartment-info-popup .map-popup-select{margin-right:52px!important}.apartment-info-popup h3{margin-right:52px}
 
 .map-popup-building-age{color:#758995;white-space:nowrap}
+
+.map-unlocated{margin-top:20px;padding:18px;border:1px solid #dce6ed;border-radius:10px;background:#f8fbfc}.map-unlocated h3{font-size:15px;margin:0 0 8px}.map-unlocated article{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 0;border-top:1px solid #dce6ed}.map-unlocated article p{font-size:12px;color:#536c7b;margin:6px 0}.map-unlocated article span{font-size:12px;color:#758995}

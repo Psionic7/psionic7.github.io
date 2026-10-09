@@ -3,6 +3,7 @@ import {createPortal} from 'react-dom';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import ApartmentMapPopup from './ApartmentMapPopup.jsx';
+import {hasMapPosition} from './apartment-map-data.js';
 import {sameApartmentFavorite} from './apartment-favorites.js';
 export const boundaryStyle=(ids,saved,kind='cadastral_parcels')=>({color:ids.some(id=>saved.has(id))?'#b87916':kind==='building_footprint'?'#6251bd':'#12877f',weight:kind==='building_footprint'?1.5:2,fillColor:ids.some(id=>saved.has(id))?'#e8bb54':kind==='building_footprint'?'#9c8fe8':'#2fa99b',fillOpacity:kind==='building_footprint'?.38:.23});
 export default function ApartmentMapCanvas({data,visible,filters,favorites,onToggleFavorite}){
@@ -32,7 +33,7 @@ export default function ApartmentMapCanvas({data,visible,filters,favorites,onTog
       const label=document.createElement('span');label.textContent=[...new Set(apartments.map(p=>p.apartment))].join(' · ');polygon.bindTooltip(label,{sticky:true});
       polygon.on('click',event=>open(apartments,event.latlng,feature.properties.name,feature.properties.source,feature.properties.boundary_kind,feature.properties.building_attributes||null));layersRef.current.push({ids,polygon,kind:feature.properties.boundary_kind});
     }
-    if(filters.showPoints)for(const apartment of visible){
+    if(filters.showPoints)for(const apartment of visible.filter(hasMapPosition)){
       const icon=L.divIcon({className:'public-apartment-icon'+(saved.has(apartment.id)?' favorite':''),html:'<span aria-hidden="true">▥</span>',iconSize:[20,20],iconAnchor:[10,10]});
       const marker=L.marker([apartment.latitude,apartment.longitude],{icon,title:apartment.apartment,keyboard:true}).addTo(group);
       const label=document.createElement('span');label.textContent=apartment.apartment;marker.bindTooltip(label,{direction:'top'});
@@ -42,7 +43,7 @@ export default function ApartmentMapCanvas({data,visible,filters,favorites,onTog
     return()=>{group.remove();layersRef.current=[];};
   },[data,visible,filters.showBoundaries,filters.showPoints]);
   useEffect(()=>{
-    const map=mapRef.current;if(map&&visible.length)map.fitBounds(L.latLngBounds(visible.map(p=>[p.latitude,p.longitude])),{padding:[30,30],maxZoom:16,animate:false});
+    const map=mapRef.current,located=visible.filter(hasMapPosition);if(map&&located.length)map.fitBounds(L.latLngBounds(located.map(p=>[p.latitude,p.longitude])),{padding:[30,30],maxZoom:16,animate:false});
   },[visible]);
   useEffect(()=>{
     if(!selection)return;

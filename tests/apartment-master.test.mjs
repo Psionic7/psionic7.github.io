@@ -1,5 +1,5 @@
 import fs from 'node:fs';import os from 'node:os';import path from 'node:path';
-import {exportApartmentMap} from '../server/export-apartment-map.mjs';import {validateApartmentMap,mapCollectedApartments} from '../src/apartment-map-data.js';
+import {exportApartmentMap} from '../server/export-apartment-map.mjs';import {validateApartmentMap,mapCollectedApartments,mapVisibleApartments} from '../src/apartment-map-data.js';
 import test from 'node:test';import assert from 'node:assert/strict';import {DatabaseSync} from 'node:sqlite';
 import {parseRegistryPage,readRegistryRegion,fetchRegistryPage,REGISTRY_DATASETS,buildingClassification,parcel} from '../server/building-registry.mjs';
 import {initializeApartmentMaster,startMasterRun,saveRegistrySnapshot,rebuildApartmentMaster,masterStats,linkMasterTrades,masterMapData} from '../server/apartment-master.mjs';
@@ -120,4 +120,24 @@ test('V-World enriches apartment parcels in restartable batches before loading b
   assert.equal(data.boundaries.features.length,3);
   assert.ok(data.boundaries.features.some(feature=>feature.properties.boundary_kind==='building_footprint'));
  }finally{db.close();}
+});
+test('scanned master exports every apartment despite missing fields and preserves verified search aliases',t=>{
+ const root=fs.mkdtempSync(path.join(os.tmpdir(),'home-master-partial-'));
+ t.after(()=>{const resolved=path.resolve(root);assert(resolved.startsWith(path.resolve(os.tmpdir())+path.sep)&&path.basename(resolved).startsWith('home-master-partial-'));fs.rmSync(resolved,{recursive:true,force:true});});
+ const source=path.join(root,'master.sqlite3'),target=path.join(root,'map'),favorites=path.join(root,'regions.json'),secretsFile=path.join(root,'.env');
+ fs.writeFileSync(favorites,JSON.stringify({version:1,regions:[{region_id:scope.region_id}]}));fs.writeFileSync(secretsFile,'VWORLD_API_KEY=privatefixturepartialkey');
+ const db=new DatabaseSync(source);initializeApartmentMaster(db);
+ db.exec('CREATE TABLE regions(region_id TEXT,label TEXT,region_code TEXT,region_name TEXT,dongs_json TEXT,lat REAL,lon REAL); CREATE TABLE trades(region_code TEXT,dong TEXT,jibun TEXT,apartment TEXT,build_year INTEGER)');
+ db.prepare('INSERT INTO regions VALUES(?,?,?,?,?,?,?)').run(scope.region_id,'원천동',scope.region_code,scope.region_name,JSON.stringify([scope.dong]),37,127);
+ populate(db,snapshot([title('b1','삼성아파트'),title('b2','',{bun:'0002'})]));
+ db.prepare('INSERT INTO apartment_entrances VALUES(?,?,?,?,?,?,?,?)').run('b1',0,37.005,127.005,950000,1950000,'test','today');
+ db.prepare('INSERT INTO trades VALUES(?,?,?,?,?)').run(scope.region_code,scope.dong,'1','삼성1',2000);linkMasterTrades(db);db.close();
+ const result=exportApartmentMap({source,target,favorites,secretsFile});
+ assert.equal(result.count,2);assert.equal(result.coverage.complete,false);
+ const apartments=JSON.parse(fs.readFileSync(path.join(target,result.apartments.file))),boundaries=JSON.parse(fs.readFileSync(path.join(target,result.boundaries.file)));
+ assert.equal(validateApartmentMap({apartments,boundaries}).apartments.length,2);
+ const missing=apartments.find(p=>p.master_id==='hub:b2');assert.equal(missing.location_status,'missing');assert.equal(missing.latitude,null);assert.equal(missing.name_status,'missing');assert.match(missing.apartment,/단지명 미확인/);
+ assert.equal(result.coverage.mapUnlocated,1);assert.equal(result.coverage.mapUnnamed,1);
+ assert.equal(mapVisibleApartments(apartments,{query:'삼성 1차 아파트'}).length,1);
+ assert(!JSON.stringify(apartments).includes('privatefixturepartialkey'));
 });

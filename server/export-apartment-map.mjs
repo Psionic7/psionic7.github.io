@@ -11,16 +11,20 @@ export function exportApartmentMap({source=paths.db,target=path.join(ROOT,'publi
   try {
     const catalog=regions(db);scopeIds=savedIds(favorites,catalog);
     const coverage=masterStats(db,scopeIds);
-    if(coverage.complete)master=masterMapData(db,catalog,scopeIds);
-    else if(coverage.regions.length)return null; // Preserve the published snapshot while mandatory master information needs review.
+    if(coverage.regions.length){
+      if(coverage.regions.length!==scopeIds.length||coverage.regions.some(r=>r.status!=='scanned'))return null;
+      master=masterMapData(db,catalog,scopeIds);
+    }
     if(!master&&!db.prepare("SELECT name FROM sqlite_master WHERE name='parcel_coordinates'").get())return null;
     const selected=catalog.filter(r=>scopeIds.includes(r.region_id));
     const year=master?null:db.prepare('SELECT min(build_year) AS year FROM trades WHERE region_code=? AND dong=? AND jibun=? AND apartment=?');
     if(!master)apartments=coordinatePoints(db).filter(p=>selected.some(r=>r.region_code===p.region_code&&(!r.dongs.length||r.dongs.includes(p.dong)))).map(p=>mapApartment(p,catalog.find(r=>r.region_code===p.region_code)?.region_name||'',year.get(p.region_code,p.dong,p.jibun,p.apartment).year));
     if(db.prepare("SELECT name FROM sqlite_master WHERE name='apartment_boundary_sources'").get())boundarySources=db.prepare('SELECT response_json FROM apartment_boundary_sources ORDER BY id').all();
   }finally{db.close();}
-  // Cloud state may predate the local coordinate collection. Preserve the independently versioned map master.
-  if(!master&&!apartments.length&&fs.existsSync(path.join(target,'manifest.json')))return null;
+  // An older cloud transaction DB must not replace an independently collected registry map.
+  const manifestPath=path.join(target,'manifest.json');
+  const prior=fs.existsSync(manifestPath)?JSON.parse(fs.readFileSync(manifestPath,'utf8')):null;
+  if(!master&&(prior?.version===2&&prior.data_mode==='registry_master'||!apartments.length&&prior))return null;
   if(master)apartments=master.apartments;
   const features=new Map();for(const row of boundarySources)for(const f of osmBoundaryFeatures(JSON.parse(row.response_json)))features.set(f.id,f);
   const boundaries=master?.boundaries||matchApartmentBoundaries(apartments,[...features.values()]),secrets=secretValues(secretsFile);
