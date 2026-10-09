@@ -59,14 +59,14 @@ describe('Personal apartment watchlist',()=>{
     second.unmount();render(<App initialManifest={manifest} districtLoader={loader}/>);
     await screen.findByText('즐겨찾기한 아파트가 없습니다.');
   });
-  it('adds favorites from weekly rows without duplicates, restores them, and preserves empty or failed favorites',async()=>{
+  it('keeps weekly rows free of favorite buttons and preserves saved favorites across failures and empty periods',async()=>{
     const user=userEvent.setup();window.history.replaceState(null,'',`/?tab=weekly&dong=${region.region_id}`);
+    savePreferences('viewer',{apartments:[favorite]});
     let fail=false;
     const loader=vi.fn(()=>fail?Promise.reject(new Error('offline')):Promise.resolve([row(1),row(2)]));
     const first=render(<App initialManifest={manifest} districtLoader={loader}/>);
     const trades=await screen.findByRole('region',{name:region.label+' 주간 거래 내역'});
-    await user.click(within(trades).getAllByRole('button',{name:/즐겨찾기 추가/})[0]);
-    expect(within(trades).getAllByRole('button',{name:/즐겨찾기 해제/})).toHaveLength(2);
+    expect(within(trades).queryAllByRole('button')).toHaveLength(0);
     expect(readPreferences('viewer').apartments).toHaveLength(1);
     first.unmount();fail=true;window.history.replaceState(null,'','/?tab=dashboard');
     render(<App initialManifest={manifest} districtLoader={loader}/>);

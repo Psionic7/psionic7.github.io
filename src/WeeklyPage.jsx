@@ -16,7 +16,7 @@ const unique=values=>[...new Set(values)].sort((a,b)=>a.localeCompare(b,'ko'));
 const optionalArea=value=>value==='' || areaPreference(value);
 const areaBands=[10,20,30];
 const validAreaBands=value=>Array.isArray(value) && value.length<=areaBands.length && new Set(value).size===value.length && value.every(band=>areaBands.includes(band));
-export default function WeeklyPage({manifest, catalog, selectedIds=[], onChange, day, onDayChange,period,onPeriodChange,districtLoader,favoritesView=false,favoriteApartments=[],onRemoveFavorite,onOpenApartment,onAddApartments,onToggleFavorite}) {
+export default function WeeklyPage({manifest, catalog, selectedIds=[], onChange, day, onDayChange,period,onPeriodChange,districtLoader,favoritesView=false,favoriteApartments=[],onRemoveFavorite,onOpenApartment,onAddApartments}) {
   const filterScope=favoritesView?'favoriteDashboard':'weekly';
   const locations=catalog.map(hierarchy);
   const [province,setProvince]=useStoredState(filterScope,'province','',value=>value==='' || locations.some(item=>item.province===value));
@@ -97,6 +97,6 @@ export default function WeeklyPage({manifest, catalog, selectedIds=[], onChange,
     </section>
     {!!selected.length&&week&&<div className="weekly-results-context"><strong>조회 결과 · {selected.length}{favoritesView?'개 아파트':'개 동'}</strong><span>{week.start} — {week.end}</span><small>{period.mode==='week'?'주간':period.mode==='month'?'월간':'직접 지정'} · {includeCancelled?'해제 포함':'유효 거래만'}</small></div>}
     {!selected.length ? <section className="panel"><Empty title={favoritesView?'즐겨찾기한 아파트가 없습니다.':'주간 실거래가를 볼 동을 선택해 주세요.'}>{favoritesView?'아파트별 실거래가에서 아파트를 선택한 뒤 즐겨찾기를 추가하세요.':'서로 다른 시·구의 동도 함께 선택할 수 있습니다.'}</Empty></section>
-      : week&&<div className="weekly-stack">{selected.map(region=><WeeklyResults key={region.region_id} region={region} week={week} dataset={datasets[region.region_code]} collected={!!manifest.districts[region.region_code]} areaUnit={areaUnit} minArea={minArea} maxArea={maxArea} selectedBands={selectedBands} includeCancelled={includeCancelled} mode={period.mode} favoriteApartments={favoriteApartments} onToggleFavorite={onToggleFavorite} onOpenApartment={favoritesView?()=>onOpenApartment(region,week):undefined} onRemove={()=>favoritesView?onRemoveFavorite(region.id):toggle(region.region_id)} onRetry={()=>setRetry(value=>value+1)}/>)}</div>}
+      : week&&<div className="weekly-stack">{selected.map(region=><WeeklyResults key={region.region_id} region={region} week={week} dataset={datasets[region.region_code]} collected={!!manifest.districts[region.region_code]} areaUnit={areaUnit} minArea={minArea} maxArea={maxArea} selectedBands={selectedBands} includeCancelled={includeCancelled} mode={period.mode} onOpenApartment={favoritesView?()=>onOpenApartment(region,week):undefined} onRemove={()=>favoritesView?onRemoveFavorite(region.id):toggle(region.region_id)} onRetry={()=>setRetry(value=>value+1)}/>)}</div>}
   </div>;
 }

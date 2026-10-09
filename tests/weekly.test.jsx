@@ -235,7 +235,7 @@ describe('Dong weekly transaction tab',()=>{
     expect(screen.queryByRole('checkbox',{name:/풍덕천동.*용인시/})).toBeNull();
     expect(screen.getByRole('region',{name:`${a.label} 주간 실거래가`})).toBeTruthy();
     await user.click(screen.getByRole('button',{name:'평 (전용)',exact:true}));
-    expect(within(tableA).getAllByRole('cell',{name:'25.71평'})).toHaveLength(2);
+    expect(within(tableA).getAllByRole('cell',{name:'25.7평'})).toHaveLength(2);
     await user.click(screen.getByRole('button',{name:`${b.label} 조회 제거`}));
     expect(screen.queryByRole('region',{name:`${b.label} 주간 실거래가`})).toBeNull();
     expect(window.location.search).toContain('week=2026-09-28');
