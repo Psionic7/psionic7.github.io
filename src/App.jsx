@@ -10,7 +10,7 @@ const ApartmentMapPage = lazy(() => import('./ApartmentMapPage.jsx'));
 const Dashboard = lazy(() => import('./Dashboard.jsx'));
 const ApartmentPage = lazy(() => import('./ApartmentPage.jsx'));
 const WeeklyPage = lazy(() => import('./WeeklyPage.jsx'));
-const tabs = [['dashboard', '대시보드', ChartNoAxesCombined], ['apartments', '아파트별 실거래가', Building2], ['weekly', '동별 주간 실거래가', CalendarDays], ['map', '아파트 지도', Map], ['about', '데이터 안내', Info]];
+const tabs = [['dashboard', '대시보드', ChartNoAxesCombined], ['apartments', '아파트별 실거래가', Building2], ['weekly', '동 별 실거래가', CalendarDays], ['map', '아파트 지도', Map], ['about', '데이터 안내', Info]];
 const unique = values => [...new Set(values)].sort((a, b) => a.localeCompare(b, 'ko'));
 const timestamp = value => new Date(value).toLocaleString('ko-KR', {timeZone: 'Asia/Seoul', dateStyle: 'medium', timeStyle: 'short'});
 

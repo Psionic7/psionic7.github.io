@@ -1,11 +1,11 @@
 import React from 'react';
 import {CalendarDays,ChevronLeft,ChevronRight} from 'lucide-react';
+import FilterGroup from './weekly/FilterGroup.jsx';
 import {recentRange,shiftMonth,shiftWeek,weekBounds} from './weekly.mjs';
 
 export default function PeriodPicker({period,onChange,day,onDayChange,range,earliestDay,latestDay,error}) {
   const week=weekBounds(day),monthMin=earliestDay?.slice(0,7),monthMax=latestDay?.slice(0,7);
-  return <section className="dong-filter-card period-card" aria-label="조회 기간 설정">
-    <div className="dong-filter-heading"><span className="filter-step">01</span><h3><CalendarDays size={16}/>조회 기간</h3><span className="filter-caption">계약일 기준</span></div>
+  return <FilterGroup number="01" title="조회 기간" label="조회 기간 설정" icon={CalendarDays} caption="계약일 기준" className="period-card">
     <div className="period-tabs" role="group" aria-label="조회 기간 기준">{[['week','주간'],['month','월간'],['custom','직접 지정']].map(([mode,label])=><button type="button" key={mode} aria-pressed={period.mode===mode} onClick={()=>onChange({...period,mode})}>{label}</button>)}</div>
     <div className="period-fields">
       {period.mode==='week'&&<><label>조회 주 기준 날짜<input type="date" value={day} min={earliestDay} max={latestDay||undefined} onChange={event=>onDayChange(event.target.value)}/></label><div className="period-stepper"><button aria-label="이전 주" disabled={!week||!!earliestDay&&shiftWeek(day,-1)<weekBounds(earliestDay).start} onClick={()=>onDayChange(shiftWeek(day,-1))}><ChevronLeft size={16}/></button><span>월요일 — 일요일</span><button aria-label="다음 주" disabled={!week||!!latestDay&&shiftWeek(day,1)>latestDay} onClick={()=>onDayChange(shiftWeek(day,1))}><ChevronRight size={16}/></button></div></>}
@@ -16,5 +16,5 @@ export default function PeriodPicker({period,onChange,day,onDayChange,range,earl
     <div className={`period-summary ${error?'invalid':''}`}><span>적용 기간</span><strong>{range?`${range.start} — ${range.end}`:'날짜를 확인해 주세요'}</strong></div>
     {error&&<p className="notice error" role="alert">{error}</p>}
     <p className="small-note">자료 기준일 {latestDay||'미상'} · 최근 기간은 자료 기준일까지 계산합니다.</p>
-  </section>;
+  </FilterGroup>;
 }

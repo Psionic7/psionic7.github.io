@@ -63,10 +63,11 @@ describe('Browser selection persistence',()=>{
     fireEvent.change(screen.getByRole('spinbutton',{name:'최대 전용면적 (㎡)'}),{target:{value:'70'}});
     await user.click(screen.getByRole('button',{name:'10평대',exact:true}));
     first.unmount();open();await screen.findByText('즐겨찾기한 아파트가 없습니다.');
-    expect(screen.getByRole('spinbutton',{name:'최대 전용면적 (㎡)'}).value).toBe('70');
+    expect(screen.getByRole('spinbutton',{name:'최대 전용면적 (㎡)'}).value).toBe('66.1157');
+    expect(screen.getByRole('spinbutton',{name:'최소 전용면적 (㎡)'}).value).toBe('33.0579');
     expect(screen.getByRole('button',{name:'10평대',exact:true}).getAttribute('aria-pressed')).toBe('true');
-    await user.click(screen.getByRole('button',{name:'동별 주간 실거래가',exact:true}));
-    await screen.findByText('주간 실거래가를 볼 동을 선택해 주세요.');
+    await user.click(screen.getByRole('button',{name:'동 별 실거래가',exact:true}));
+    await screen.findByText('실거래가를 볼 동을 선택해 주세요.');
     expect(screen.getByRole('spinbutton',{name:'최대 전용면적 (㎡)'}).value).toBe('');
     expect(screen.getByRole('button',{name:'10평대',exact:true}).getAttribute('aria-pressed')).toBe('false');
   });
