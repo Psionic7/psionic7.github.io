@@ -114,6 +114,6 @@ describe('Browser selection persistence',()=>{
     savePreferences('explorer',{regionId:'area_41465',tab:'about'});savePreferences('display',{areaUnit:'pyeong'});
     open();await user.click(screen.getByRole('button',{name:'이 브라우저의 조회 설정 초기화'}));
     await screen.findByText('즐겨찾기한 아파트가 없습니다.');
-    expect(readPreferences('display')).toEqual({areaUnit:'m2'});expect(readPreferences('viewer').apartments).toEqual([]);expect(window.localStorage.getItem('unrelated')).toBe('keep');
+    expect(readPreferences('display')).toEqual({areaUnit:'m2'});expect(readPreferences('viewer').apartments).toEqual([]);expect(readPreferences('viewer').regions).toEqual([]);expect(window.localStorage.getItem('unrelated')).toBe('keep');
   });
 });

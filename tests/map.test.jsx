@@ -43,3 +43,16 @@ it('apartment markers follow dong filters, use safe text and update without recr
   expect(mock.markers[0].options.title).toBe(point.apartment);
   view.rerender(<RegionMap {...props} visibleIds={[]}/>);expect(mock.groups[0].remove).toHaveBeenCalled();expect(mock.markers).toHaveLength(1);expect(mock.maps).toHaveLength(1);
 });
+
+it('public stars use favorite labels and update the popup and colors without moving or recreating the map',async()=>{
+ vi.stubGlobal('ResizeObserver',class {observe(){}disconnect(){}});
+ const boundaries={features:[{type:'Feature',properties:{EMD_CD:'11110101'},geometry:{type:'Polygon',coordinates:[]}}]},adminBoundaries={cities:{type:'FeatureCollection',features:[]},districts:{type:'FeatureCollection',features:[]},styles:{}};
+ const catalog=[{region_id:'dong_11110101',label:'서울특별시 종로구 청운동',region_code:'11110',region_name:'서울특별시 종로구',dongs:['청운동']}],visible=['dong_11110101'];
+ function Harness(){const [favorites,setFavorites]=useState([]);return <RegionMap favoriteMode boundaries={boundaries} adminBoundaries={adminBoundaries} catalog={catalog} draft={favorites} saved={favorites} visibleIds={visible} onToggle={id=>setFavorites(previous=>previous.includes(id)?[]:[id])}/>;}
+ render(<Harness/>);act(()=>mock.dongs[0].click({latlng:[37.5,127]}));const popup=mock.popup,fits=mock.maps[0].fitBounds.mock.calls.length;
+ expect(screen.getByRole('region',{name:'서울 경기 법정동 지역 지도'})).toBeTruthy();expect(screen.getByText(/이 브라우저에 자동 저장됩니다/)).toBeTruthy();expect(screen.queryByText(/업데이트 버튼/)).toBeNull();
+ await userEvent.setup().click(screen.getByRole('button',{name:'서울특별시 종로구 청운동 즐겨찾기 추가'}));expect(screen.getByRole('button',{name:'서울특별시 종로구 청운동 즐겨찾기 해제'}).getAttribute('aria-pressed')).toBe('true');
+ expect(mock.maps).toHaveLength(1);expect(mock.tiles).toHaveLength(1);expect(mock.popup).toBe(popup);expect(mock.maps[0].fitBounds.mock.calls.length).toBe(fits);
+ expect(mock.dongs[0].setStyle).toHaveBeenLastCalledWith(expect.objectContaining({color:'#b77912',weight:2.7}));
+ await userEvent.setup().click(screen.getByRole('button',{name:'서울특별시 종로구 청운동 즐겨찾기 해제'}));expect(mock.popup).toBe(popup);
+});
