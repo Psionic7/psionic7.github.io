@@ -1,5 +1,5 @@
 import {fetchJson} from './data.js';
-import {validApartmentFavorites} from './apartment-favorites.js';
+import {validApartmentFavorites,sameApartmentFavorite} from './apartment-favorites.js';
 export function validateApartmentMap(data) {
   if(!data||!Array.isArray(data.apartments)||data.apartments.length>50000||new Set(data.apartments.map(p=>p.id)).size!==data.apartments.length||data.apartments.some(p=>!validApartmentFavorites([p]))||data.apartments.some(p=>!Number.isFinite(p.latitude)||!Number.isFinite(p.longitude)||p.latitude<28||p.latitude>40||p.longitude<122||p.longitude>135)||data.boundaries?.type!=='FeatureCollection'||!Array.isArray(data.boundaries.features))throw new Error('아파트 지도 자료 형식이 올바르지 않습니다.');
   const validGeometry=geometry=>{
@@ -18,10 +18,10 @@ export async function loadApartmentMap() {
 }
 export const mapVisibleApartments=(apartments,{regionCode='',dong='',query='',favoriteOnly=false},favorites=[])=>{
   const saved=new Set(favorites.map(p=>p.id)),text=query.trim().toLocaleLowerCase();
-  return apartments.filter(p=>(!regionCode||p.region_code===regionCode)&&(!dong||p.dong===dong)&&(!favoriteOnly||saved.has(p.id))&&(!text||[p.apartment,p.road_address,p.region_name,p.dong].some(s=>s.toLocaleLowerCase().includes(text))));
+  return apartments.filter(p=>(!regionCode||p.region_code===regionCode)&&(!dong||p.dong===dong)&&(!favoriteOnly||favorites.some(f=>sameApartmentFavorite(f,p)))&&(!text||[p.apartment,p.road_address,p.region_name,p.dong].some(s=>s.toLocaleLowerCase().includes(text))));
 };
 
 export function mapCollectedApartments(apartments,manifest){
   const regions=Array.isArray(manifest.favorite_region_ids)?manifest.regions.filter(r=>manifest.favorite_region_ids.includes(r.region_id)):manifest.regions;
-  return apartments.filter(p=>manifest.districts[p.region_code]&&regions.some(r=>r.region_code===p.region_code&&(!r.dongs.length||r.dongs.includes(p.dong))));
+  return apartments.filter(p=>(p.master_id||manifest.districts[p.region_code])&&regions.some(r=>r.region_code===p.region_code&&(!r.dongs.length||r.dongs.includes(p.dong))));
 }

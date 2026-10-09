@@ -9,20 +9,24 @@ import {collectMonth,monthsBetween,collectionTasks,currentMonth} from './collect
 import {addressKey,collectAddresses,pendingAddresses} from './addresses.mjs';
 import {coordinateKey,collectCoordinates,pendingCoordinates,coordinateStats,coordinatePoints} from './coordinates.mjs';
 import {exportData} from './export.mjs';
+import {collectApartmentMaster} from './collect-apartment-master.mjs';
+import {masterStats,masterCollectionRunning} from './apartment-master.mjs';
+import {registryKey} from './building-registry.mjs';
+import {vworldKey} from './apartment-master-enrichment.mjs';
 import {checkPublic} from '../scripts/check-public.mjs';
 import {buildCatalog} from '../src/domain.mjs';
 
-export function createAdminServer({files=paths,staticRoot=path.join(ROOT,'admin-dist'),fetcher,addressFetcher,coordinateFetcher}={}) {
+export function createAdminServer({files=paths,staticRoot=path.join(ROOT,'admin-dist'),fetcher,addressFetcher,coordinateFetcher,masterCollector=collectApartmentMaster}={}) {
   const token=randomBytes(32).toString('hex');
   let job={status:'idle',completed:0,total:0,rows:0},controller;
-  const busy=()=>job.status==='running';
+  const busy=()=>job.status==='running'||withDb(masterCollectionRunning);
   const json=(res,status,data)=>{res.writeHead(status,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'});res.end(JSON.stringify(data));};
   const withDb=callback=>{const db=connect(files.db);try{return callback(db);}finally{db.close();}};
   const state=()=>withDb(db=>{
     const catalog=regions(db).filter(r=>!['suji','gwanggyo','bundang'].includes(r.region_id));
     // Expand historical group favorites against the full catalog, if needed.
     const saved=savedIds(files.favorites,regions(db));
-    return {app:'home-records-local-admin',csrf:token,catalog,saved,job,keyReady:Boolean(serviceKey(files.env)),addressKeyReady:Boolean(addressKey(files.env)),coordinateKeyReady:Boolean(coordinateKey(files.env)),currentMonth:currentMonth(),stats:{...coordinateStats(db),count:db.prepare('SELECT count(*) AS n FROM trades').get().n,roadAddresses:db.prepare('SELECT count(*) AS n FROM road_addresses').get().n,pendingAddresses:db.prepare("SELECT count(*) AS n FROM (SELECT DISTINCT region_code,dong,jibun FROM trades WHERE trim(jibun)!='') t LEFT JOIN address_lookups a USING(region_code,dong,jibun) WHERE a.region_code IS NULL").get().n,districts:db.prepare('SELECT region_code,count(*) AS count,min(deal_month) AS start,max(deal_month) AS end FROM trades GROUP BY region_code').all()},history:db.prepare('SELECT * FROM collection_runs ORDER BY id DESC LIMIT 100').all()};
+    return {app:'home-records-local-admin',csrf:token,catalog,saved,job:job.status==='running'||!masterCollectionRunning(db)?job:{kind:'apartment-master',external:true,status:'running',completed:db.prepare("SELECT count(*) AS n FROM apartment_inventory_regions WHERE status='scanned'").get().n,total:saved.length,rows:0,message:'터미널에서 지역 전체 아파트 DB를 수집하고 있습니다.'},keyReady:Boolean(serviceKey(files.env)),addressKeyReady:Boolean(addressKey(files.env)),coordinateKeyReady:Boolean(coordinateKey(files.env)),buildingRegistryKeyReady:Boolean(registryKey(files.env)),vworldKeyReady:Boolean(vworldKey(files.env)),currentMonth:currentMonth(),stats:{...coordinateStats(db),apartmentMaster:masterStats(db,saved),count:db.prepare('SELECT count(*) AS n FROM trades').get().n,roadAddresses:db.prepare('SELECT count(*) AS n FROM road_addresses').get().n,pendingAddresses:db.prepare("SELECT count(*) AS n FROM (SELECT DISTINCT region_code,dong,jibun FROM trades WHERE trim(jibun)!='') t LEFT JOIN address_lookups a USING(region_code,dong,jibun) WHERE a.region_code IS NULL").get().n,districts:db.prepare('SELECT region_code,count(*) AS count,min(deal_month) AS start,max(deal_month) AS end FROM trades GROUP BY region_code').all()},history:db.prepare('SELECT * FROM collection_runs ORDER BY id DESC LIMIT 100').all()};
   });
   const server=http.createServer(async(req,res)=>{
     const port=server.address()?.port,hosts=new Set([`127.0.0.1:${port}`,`localhost:${port}`]);
@@ -81,6 +85,16 @@ export function createAdminServer({files=paths,staticRoot=path.join(ROOT,'admin-
             } catch(e){job.status=active.signal.aborted?'cancelled':'failed';job.message=active.signal.aborted?'수집을 중단했습니다. 완료한 월은 보존됩니다.':/^(API |공공 API |수집 중 |거래 필드)/.test(e.message)?e.message:'수집 실패. API 승인, 연결 및 응답을 확인하세요.';}
             finally {db.close();job.finishedAt=new Date().toISOString();if(controller===active)controller=null;}
           })();
+          return json(res,202,{job});
+        }
+        if(pathname==='/api/apartment-master') {
+          if(!registryKey(files.env)||!coordinateKey(files.env)||!vworldKey(files.env))throw new Error('.env에 건축물대장·주소 좌표·브이월드 API 키를 설정하세요.');
+          controller=new AbortController();const active=controller;
+          job={kind:'apartment-master',status:'running',completed:0,total:1,rows:0,startedAt:new Date().toISOString(),message:'선택 지역의 전체 건축물대장을 조회합니다.'};
+          (async()=>{const db=connect(files.db);try{
+            const result=await masterCollector(db,{favorites:files.favorites,secretsFile:files.env,signal:active.signal,refresh:input.refresh===true,onProgress:p=>{job.completed=p.completed||0;job.total=p.total||1;job.message=p.stage==='registry'?(p.region+' · '+(p.dataset||'전체 대장 조회')):(p.kind==='parcels'?'공식 필지 경계 수집':'출입구 좌표 수집');}});
+            job.rows=result.stats.complexes;job.status=result.stats.complete?'completed':'needs_review';job.message=result.stats.complete?('전체 아파트 DB 필수 정보 확인 완료: '+result.stats.complexes+'개 단지. 지도 내보내기·빌드를 실행하세요.'):('지역 목록 수집 완료. 필수 정보·용도 확인이 필요한 항목이 있습니다. 전체 구축 완료 상태가 아닙니다.');
+          }catch(e){job.status=active.signal.aborted?'cancelled':'failed';job.message=active.signal.aborted?'수집 중단. 완료된 지역 목록과 자료를 보존합니다.':/^(건축물|브이월드|주소 좌표|JUSO_|BUILDING_|전체 아파트|공식)/.test(e.message)?e.message:'아파트 마스터 구성 실패. 로컬 DB와 공식 자료를 확인하세요.';}finally{db.close();job.finishedAt=new Date().toISOString();if(controller===active)controller=null;}})();
           return json(res,202,{job});
         }
         if(pathname==='/api/coordinates') {

@@ -5,7 +5,7 @@ import { fetchJson, loadDistrict } from './data.js';
 import {Empty,Loading} from './ViewState.jsx';
 import {weekBounds} from './weekly.mjs';
 import {clearPreferences,restoreExplorer,savePreferences,useStoredState} from './preferences.js';
-import {validApartmentFavorites} from './apartment-favorites.js';
+import {validApartmentFavorites,sameApartmentFavorite} from './apartment-favorites.js';
 const ApartmentMapPage = lazy(() => import('./ApartmentMapPage.jsx'));
 const Dashboard = lazy(() => import('./Dashboard.jsx'));
 const ApartmentPage = lazy(() => import('./ApartmentPage.jsx'));
@@ -45,9 +45,9 @@ function Explorer({ manifest, districtLoader,onResetPreferences }) {
   const [tab, setTab] = useState(initial.tab);
   const isWeekly = tab === 'weekly',isApartment=tab==='apartments';
   const [apartmentFavorites,setApartmentFavorites]=useStoredState('viewer','apartments',[],validApartmentFavorites);
-  const toggleApartmentFavorite=item=>setApartmentFavorites(previous=>previous.some(saved=>saved.id===item.id)?previous.filter(saved=>saved.id!==item.id):[...previous,item]);
+  const toggleApartmentFavorite=item=>setApartmentFavorites(previous=>previous.some(saved=>sameApartmentFavorite(saved,item))?previous.filter(saved=>!sameApartmentFavorite(saved,item)):[...previous,item]);
   const openFavorite=(item,range)=>{
-    setRegionId('area_'+item.region_code);setProvince('');setCity('');setDistrict('');setSearch('');setSelectedApartment(item.key);
+    setRegionId('area_'+item.region_code);setProvince('');setCity('');setDistrict('');setSearch('');setSelectedApartment(item.master_id?(item.trade_keys[0]||item.key):item.key);
     const months=manifest.districts[item.region_code]?.months||manifest.months;
     const from=range?.start.replaceAll('-','').slice(0,6),to=range?.end.replaceAll('-','').slice(0,6);
     setStart(months.includes(from)?from:months[0]||'');setEnd(months.includes(to)?to:months.at(-1)||'');

@@ -4,6 +4,7 @@ import {fileURLToPath} from 'node:url';
 import {DatabaseSync, backup} from 'node:sqlite';
 import {parseEnv} from 'node:util';
 import {randomUUID} from 'node:crypto';
+import {APARTMENT_MASTER_SCHEMA} from './apartment-master-schema.mjs';
 
 export const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 export const paths = {db:path.join(ROOT,'local/my_real_estate.sqlite3'), favorites:path.join(ROOT,'local/collection_regions.json'), env:path.join(ROOT,'.env')};
@@ -83,7 +84,7 @@ export async function initialize({db=paths.db,favorites=paths.favorites,env=path
   if(firstRun) for(const [target,source] of [[favorites,path.join(legacy,'data/collection_regions.json')],[env,path.join(legacy,'.env')]]) if(!fs.existsSync(target)&&fs.existsSync(source)) atomicWrite(target,fs.readFileSync(source));
   const connection=connect(db);
   try {
-    connection.exec(PUBLIC_SCHEMA+LOCAL_SCHEMA);
+    connection.exec(PUBLIC_SCHEMA+LOCAL_SCHEMA+APARTMENT_MASTER_SCHEMA);
     const boundary=readJson(path.join(ROOT,'admin/assets/dong_boundaries.geojson'));
     const insert=connection.prepare('INSERT OR IGNORE INTO regions VALUES (?,?,?,?,?,?,?)');
     connection.exec('BEGIN');
@@ -94,7 +95,7 @@ export async function initialize({db=paths.db,favorites=paths.favorites,env=path
         const xs=coords.map(c=>c[0]),ys=coords.map(c=>c[1]);
         insert.run('dong_'+p.EMD_CD,p.FULL_NM,p.EMD_CD.slice(0,5),p.FULL_NM.slice(0,p.FULL_NM.lastIndexOf(' ')),JSON.stringify([p.EMD_KOR_NM]),(Math.min(...ys)+Math.max(...ys))/2,(Math.min(...xs)+Math.max(...xs))/2);
       }
-      connection.exec('PRAGMA user_version=4; COMMIT');
+      connection.exec('PRAGMA user_version=5; COMMIT');
     } catch(e) {connection.exec('ROLLBACK');throw e;}
     savedIds(favorites,regions(connection));
   } finally {connection.close();}

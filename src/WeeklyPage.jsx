@@ -6,6 +6,7 @@ import {Empty,Loading} from './ViewState.jsx';
 import AreaUnit from './AreaUnit.jsx';
 import AreaRange from './AreaRange.jsx';
 import ApartmentFavoriteButton from './ApartmentFavoriteButton.jsx';
+import {favoriteTradeMatches} from './apartment-favorites.js';
 import PeriodPicker from './PeriodPicker.jsx';
 import './dong-filters.css';
 import {areaPreference,textPreference,unitPreference,useStoredState} from './preferences.js';
@@ -35,7 +36,7 @@ export default function WeeklyPage({manifest, catalog, selectedIds=[], onChange,
   const [datasets,setDatasets]=useState({}), [retry,setRetry]=useState(0);
   const cache=useRef(new Map());
   const dongs=useMemo(()=>catalog.filter(region=>region.dongs.length===1),[catalog]);
-  const selected=useMemo(()=>favoritesView?favoriteApartments.map(item=>({...item,region_id:item.id,label:item.apartment+' · '+item.region_name+' '+item.dong+' · 지번 '+(item.jibun||'미상'),dongs:[item.dong]})):selectedIds.map(id=>dongs.find(region=>region.region_id===id)).filter(Boolean),[favoritesView,favoriteApartments,selectedIds,dongs]);
+  const selected=useMemo(()=>favoritesView?favoriteApartments.map(item=>({...item,region_id:item.id,label:item.apartment+' · '+item.region_name+' '+item.dong+' · 지번 '+(item.jibun||'미상'),dongs:item.master_id?[...new Set([item.dong,...item.trade_keys.map(k=>JSON.parse(k)[0])])]:[item.dong]})):selectedIds.map(id=>dongs.find(region=>region.region_id===id)).filter(Boolean),[favoritesView,favoriteApartments,selectedIds,dongs]);
   const codes=JSON.stringify([...new Set(selected.map(region=>region.region_code))].sort());
   const knownMaxArea=useMemo(()=>JSON.parse(codes).reduce((max,code)=>(datasets[code]?.rows||[]).reduce((value,row)=>Math.max(value,Number(row.area_m2)||0),max),300),[codes,datasets]);
   const sliderCeiling=Math.max(Math.ceil(knownMaxArea/50)*50,minArea||0,maxArea||0);
@@ -114,7 +115,7 @@ export default function WeeklyPage({manifest, catalog, selectedIds=[], onChange,
 }
 
 function DongWeek({region,week,dataset,collected,areaUnit,minArea,maxArea,selectedBands,includeCancelled,mode,favoriteApartments,onToggleFavorite,onOpenApartment,onRemove,onRetry}) {
-  const rows=useMemo(()=>weeklyRows(dataset?.rows||[],region,week,includeCancelled).filter(row=>(!region.key || apartmentKey(row)===region.key) && (minArea==='' || row.area_m2>=minArea) && (maxArea==='' || row.area_m2<=maxArea) && (!selectedBands.length || selectedBands.some(band=>row.area_m2>=band*PYEONG_M2 && row.area_m2<(band+10)*PYEONG_M2))),[dataset?.rows,region,week.start,week.end,minArea,maxArea,selectedBands,includeCancelled]);
+  const rows=useMemo(()=>weeklyRows(dataset?.rows||[],region,week,includeCancelled).filter(row=>(!region.key || favoriteTradeMatches(region,row)) && (minArea==='' || row.area_m2>=minArea) && (maxArea==='' || row.area_m2<=maxArea) && (!selectedBands.length || selectedBands.some(band=>row.area_m2>=band*PYEONG_M2 && row.area_m2<(band+10)*PYEONG_M2))),[dataset?.rows,region,week.start,week.end,minArea,maxArea,selectedBands,includeCancelled]);
   const periodLabel=mode==='week'?'주간':'기간별',timeLabel=mode==='week'?'이 주':'선택 기간';
   const areaFiltered=minArea!=='' || maxArea!=='' || selectedBands.length>0;
   const summary=useMemo(()=>stats(rows.filter(row=>row.cancelled===0)),[rows]);

@@ -3,7 +3,8 @@ import {createPortal} from 'react-dom';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import ApartmentMapPopup from './ApartmentMapPopup.jsx';
-export const boundaryStyle=(ids,saved)=>({color:ids.some(id=>saved.has(id))?'#b87916':'#12877f',weight:2,fillColor:ids.some(id=>saved.has(id))?'#e8bb54':'#2fa99b',fillOpacity:.23});
+import {sameApartmentFavorite} from './apartment-favorites.js';
+export const boundaryStyle=(ids,saved,kind='cadastral_parcels')=>({color:ids.some(id=>saved.has(id))?'#b87916':kind==='building_footprint'?'#6251bd':'#12877f',weight:kind==='building_footprint'?1.5:2,fillColor:ids.some(id=>saved.has(id))?'#e8bb54':kind==='building_footprint'?'#9c8fe8':'#2fa99b',fillOpacity:kind==='building_footprint'?.38:.23});
 export default function ApartmentMapCanvas({data,visible,filters,favorites,onToggleFavorite}){
   const container=useRef(null),mapRef=useRef(null),layersRef=useRef([]),latest=useRef({favorites}),popupRef=useRef(null);
   latest.current={favorites};
@@ -18,18 +19,18 @@ export default function ApartmentMapCanvas({data,visible,filters,favorites,onTog
   },[]);
   useEffect(()=>{
     const map=mapRef.current;if(!map)return;map.closePopup();setSelection(null);
-    const group=L.layerGroup().addTo(map),byId=new Map(visible.map(p=>[p.id,p])),saved=new Set(latest.current.favorites.map(p=>p.id));layersRef.current=[];
-    const open=(apartments,latlng,boundaryName='')=>{
+    const group=L.layerGroup().addTo(map),byId=new Map(visible.map(p=>[p.id,p])),saved=new Set(visible.filter(p=>latest.current.favorites.some(f=>sameApartmentFavorite(p,f))).map(p=>p.id));layersRef.current=[];
+    const open=(apartments,latlng,boundaryName='',boundarySource='OpenStreetMap',boundaryKind='',buildingAttributes=null)=>{
       const popupContainer=document.createElement('div');
       const popup=L.popup({maxWidth:340,minWidth:260,className:'apartment-leaflet-popup',autoPan:false,autoPanPaddingTopLeft:[15,15],autoPanPaddingBottomRight:[15,15]}).setLatLng(latlng).setContent(popupContainer);
-      map.closePopup();popupRef.current=popup;popup.openOn(map);setSelection({apartments,container:popupContainer,boundaryName});
+      map.closePopup();popupRef.current=popup;popup.openOn(map);setSelection({apartments,container:popupContainer,boundaryName,boundarySource,boundaryKind,buildingAttributes});
     };
     if(filters.showBoundaries)for(const feature of data.boundaries.features){
       const ids=feature.properties.apartment_ids.filter(id=>byId.has(id));if(!ids.length)continue;
       const apartments=ids.map(id=>byId.get(id));
-      const polygon=L.geoJSON(feature,{style:()=>boundaryStyle(ids,saved)}).addTo(group);
+      const polygon=L.geoJSON(feature,{style:()=>boundaryStyle(ids,saved,feature.properties.boundary_kind)}).addTo(group);
       const label=document.createElement('span');label.textContent=[...new Set(apartments.map(p=>p.apartment))].join(' · ');polygon.bindTooltip(label,{sticky:true});
-      polygon.on('click',event=>open(apartments,event.latlng,feature.properties.name));layersRef.current.push({ids,polygon});
+      polygon.on('click',event=>open(apartments,event.latlng,feature.properties.name,feature.properties.source,feature.properties.boundary_kind,feature.properties.building_attributes||null));layersRef.current.push({ids,polygon,kind:feature.properties.boundary_kind});
     }
     if(filters.showPoints)for(const apartment of visible){
       const icon=L.divIcon({className:'public-apartment-icon'+(saved.has(apartment.id)?' favorite':''),html:'<span aria-hidden="true">▥</span>',iconSize:[20,20],iconAnchor:[10,10]});
@@ -61,10 +62,10 @@ export default function ApartmentMapCanvas({data,visible,filters,favorites,onTog
     return()=>{observer.disconnect();cancelAnimationFrame(frame);};
   },[selection]);
   useEffect(()=>{
-    const saved=new Set(favorites.map(p=>p.id));
-    for(const record of layersRef.current){record.polygon?.setStyle(boundaryStyle(record.ids,saved));const icon=record.marker?.getElement();icon?.classList.toggle('favorite',record.ids.some(id=>saved.has(id)));}
-  },[favorites]);
-  return <div className={"public-apartment-map-wrap"+(selection?" popup-open":"")}><div ref={container} className="public-apartment-map" role="region" aria-label="아파트 단지 경계 지도"/>{tileError&&<p className="map-tile-warning">배경 지도 일부를 불러오지 못했습니다. 아파트 경계와 선택은 사용할 수 있습니다.</p>}<div className="public-map-legend"><span><i className="complex-swatch"/>확인된 단지 경계</span><span><i className="favorite-swatch"/>즐겨찾기 아파트</span><span>▥ 출입구 위치</span></div>
-    {selection&&createPortal(<ApartmentMapPopup key={selection.apartments.map(a=>a.id).join('|')} apartments={selection.apartments} boundaryName={selection.boundaryName} favorites={favorites} onToggleFavorite={onToggleFavorite}/>,selection.container)}
+    const saved=new Set(visible.filter(p=>favorites.some(f=>sameApartmentFavorite(p,f))).map(p=>p.id));
+    for(const record of layersRef.current){record.polygon?.setStyle(boundaryStyle(record.ids,saved,record.kind));const icon=record.marker?.getElement();icon?.classList.toggle('favorite',record.ids.some(id=>saved.has(id)));}
+  },[favorites,visible]);
+  return <div className={"public-apartment-map-wrap"+(selection?" popup-open":"")}><div ref={container} className="public-apartment-map" role="region" aria-label="아파트 단지 경계 지도"/>{tileError&&<p className="map-tile-warning">배경 지도 일부를 불러오지 못했습니다. 아파트 경계와 선택은 사용할 수 있습니다.</p>}<div className="public-map-legend"><span><i className="complex-swatch"/>필지 경계</span><span><i className="building-outline-swatch"/>건물 외곽선 · V-World</span><span><i className="favorite-swatch"/>즐겨찾기 아파트</span><span>▥ 출입구 위치</span></div>
+    {selection&&createPortal(<ApartmentMapPopup key={selection.apartments.map(a=>a.id).join('|')} apartments={selection.apartments} boundaryName={selection.boundaryName} boundarySource={selection.boundarySource} boundaryKind={selection.boundaryKind} buildingAttributes={selection.buildingAttributes} favorites={favorites} onToggleFavorite={onToggleFavorite}/>,selection.container)}
   </div>;
 }

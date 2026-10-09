@@ -1,6 +1,7 @@
 import React,{useEffect,useMemo,useRef,useState} from 'react';
 import {Star,House,Database,Download,Play,Square,Save,Undo2,MapPin,ExternalLink,Plus} from 'lucide-react';
 import RegionMap from './RegionMap.jsx';
+import ApartmentMasterPanel from './ApartmentMasterPanel.jsx';
 import RawExplorer from './RawExplorer.jsx';
 import {hierarchy,formatNumber} from '../src/domain.mjs';
 const unique=values=>[...new Set(values.filter(Boolean))].sort((a,b)=>a.localeCompare(b,'ko'));
@@ -65,6 +66,7 @@ export default function Admin({initialState,initialBoundaries,initialAdminBounda
         <details className="selection-list"><summary>편집 중인 수집 지역 {draft.length}곳</summary><div className="favorite-chips">{draft.map(id=>{const r=catalog.find(c=>c.region_id===id);return <button key={id} disabled={running||pending} onClick={()=>toggle(id)}><Star size={12} fill="currentColor"/>{r?.label||id} ×</button>;})}</div></details>
       </section>
       <section className="panel"><div className="panel-heading"><MapPin size={19}/><h2>도로명주소 조회</h2></div><p>실거래의 법정동·지번으로 공식 주소를 검색해 로컬 DB에 저장합니다. 정확히 일치하는 주소만 공개 화면에 표시합니다.</p><p className="small-note">확인된 도로명주소 {formatNumber(state.stats.roadAddresses)}곳 · 아직 조회하지 않은 지번 {formatNumber(state.stats.pendingAddresses)}곳</p>{!state.addressKeyReady&&<div className="notice error">프로젝트의 .env 파일에 JUSO_ADDRESS_SEARCH_KEY를 설정하세요.</div>}<div className="action-row"><label>이번 조회 건수 <input type="number" min="1" max="1000" value={addressLimit} onChange={event=>setAddressLimit(Number(event.target.value))}/></label><button disabled={running||pending||!state.addressKeyReady||!state.stats.pendingAddresses} onClick={()=>action('addresses',{limit:addressLimit})}><MapPin size={16}/>미조회 주소 검색·저장</button></div>{state.job.kind==='addresses'&&state.job.status!=='idle'&&<div className="job-status" role="status"><strong>{state.job.message}</strong><progress max={state.job.total||1} value={state.job.completed}/><small>{state.job.completed}/{state.job.total} 주소 · {state.job.status}</small></div>}</section>
+      <ApartmentMasterPanel state={state} pending={pending} running={running} action={action}/>
       <section id="apartment-coordinates" className="panel coordinate-panel"><div className="panel-heading"><MapPin size={19}/><h2>아파트 좌표 수집</h2><span className="badge">지도 표시 {formatNumber(coordinatePoints.length)}개 아파트</span></div>
         <p>확인된 도로명주소의 건물 코드로 출입구 좌표를 조회합니다. 한 지번의 좌표를 저장해 같은 주소의 아파트 거래에서 재사용합니다.</p>
         <div className="coordinate-counts"><span>좌표 확인 <strong>{formatNumber(state.stats.coordinates||0)}곳</strong></span><span>미조회 <strong>{formatNumber(state.stats.pendingCoordinates||0)}곳</strong></span><span>미확정 <strong>{formatNumber(state.stats.coordinateUnresolved||0)}곳</strong></span></div>

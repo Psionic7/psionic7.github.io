@@ -207,3 +207,50 @@ JUSO_COORDINATE_SEARCH_KEY=발급받은_좌표제공_API_승인키
 - 갱신: `pnpm data:map`. 새 Overpass 자료를 가져왔으면 `node scripts/export-apartment-map.mjs --input 경계응답.json`으로 캐시·내보내기를 갱신합니다. 기존 공개 데이터 내보내기도 좌표가 있는 DB에서 지도 자료를 갱신합니다.
 - 거래 JSON과 지도 마스터는 별도로 관리합니다. 좌표가 없는 이전 클라우드 DB를 복원해 빌드할 때는 저장소의 기존 지도 자료를 유지하고, 팝업의 아파트 기본 정보는 지도 마스터에서 읽습니다. 클라우드의 일일 경계 조회는 아직 활성화하지 않았습니다.
 - 경계 자료 출처: [OpenStreetMap contributors](https://www.openstreetmap.org/copyright), [ODbL 1.0](https://opendatacommons.org/licenses/odbl/1-0/). 경계 GeoJSON은 같은 라이선스로 제공하며, 사이트의 프로그램 코드는 별도입니다.
+
+## 실거래와 독립된 지역 전체 아파트 DB
+
+`pnpm data:apartments`는 저장한 법정동의 건축HUB 표제부·기본개요·총괄표제부·부속지번·층별개요를 전체 페이지로 수집합니다. 실거래 목록은 수집 대상 선정에 사용하지 않습니다. 기존 거래 DB에 독립 마스터 테이블을 추가하며 거래 원문을 변경하지 않습니다.
+
+현재 프로젝트 .env 설정:
+
+```dotenv
+BUILDING_REGISTER_SERVICE_KEY=건축HUB_건축물대장정보_활용승인된_키
+VWORLD_API_KEY=브이월드_데이터_API_키
+VWORLD_DOMAIN=https://psionic7.github.io
+JUSO_COORDINATE_SEARCH_KEY=좌표제공_승인키
+```
+
+건축물대장 승인이 된 MOLIT_SERVICE_KEY도 대체 키로 허용합니다. 키를 브라우저·공개 파일에 전달하지 않습니다. 브이월드 등록 URL과 VWORLD_DOMAIN이 같아야 합니다. 새 키의 GitHub Secrets 등록 및 예약 수집 설정은 별도 구성입니다.
+
+- 기본 수집: `pnpm data:apartments`
+- 실패 후 검증된 당일 페이지부터 재개: `pnpm data:apartments --resume`
+- V-World 공간정보는 필지 50개 단위로 이어받기: `pnpm data:apartments:vworld` (원하면 `--batch-size=20`처럼 조절)
+- 현황: `pnpm data:apartments --status`
+- 좌표·필지 경계도 다시 조회: `pnpm data:apartments --refresh`
+- 필수 정보 확인 후 지도 내보내기: `pnpm data:map`, 이어서 `pnpm build`
+
+로컬 관리자 `#apartment-master`에서도 수집 및 지역·필수 필드 상태를 확인할 수 있습니다. 프로세스 소유자를 기록하여 같은 DB의 동시 수집을 막고 중단된 작업을 복구합니다. API 전체 건수와 페이지 합계가 달라지거나 페이지가 반복되면 이전 목록을 유지합니다. HTTP 200 빈 응답도 오류로 취급해 재시도하며, 정상 페이지는 비공개 DB에 저장합니다.
+
+주요 테이블:
+
+| 테이블 | 내용 |
+|---|---|
+| apartment_complexes | 단지 ID, 공식 명칭, 법정동 코드, 지번·도로명주소, 사용승인일·건축년도, 세대수·건물 동수·층수·구조·출처 |
+| apartment_buildings | 건축물대장 PK, 단지 연결, 동명, 용도, 주소, 사용승인일, 세대·층·면적, 좌표 조회 코드·상태 |
+| apartment_parcels | 대표·부속 필지 PNU, 지번, 실제 지적 도형, 지목·개별공시지가·기준연월, 경계·공간자료 조회 상태 |
+| apartment_building_footprints / apartment_footprint_links | GIS 건물 외곽선, 건물명·용도 코드·층수·건축/연면적·높이·건폐율·용적률·사용승인일, 연결 단지와 필지 |
+| apartment_zoning_features / apartment_zoning_links | 필지와 겹치는 V-World 용도지역 경계·속성 |
+| apartment_region_boundaries / apartment_district_boundaries | 수집 법정동·시군구 V-World 행정경계와 속성 |
+| apartment_entrances | 도로명주소 출입구 전체 좌표, EPSG:5179 원본 및 WGS84 변환값 |
+| apartment_aliases | 공식 대장에 기록된 단지 이름·별칭 |
+| apartment_trade_links | 실거래의 동·지번·이름과 단지 ID 연결, 확정·다중 후보·미연결 상태 |
+| apartment_building_inventory | 지역 내 모든 표제부 건물의 아파트·기타·검토 분류 |
+| apartment_inventory_runs / regions / pages | 지역별 원천 전체 건수, 검증한 페이지, 실행 상태 및 원천 기준 시각 |
+| apartment_master_issues | 명칭·주소·용도·사용승인일·필지·좌표 등의 미확인 사유 |
+
+단지는 이름 유사도로 임의 병합하지 않고 공식 상위 대장 PK로 연결합니다. 층별 용도로 복합 건물의 아파트를 확인하고, 부속 경비실·주차장 등은 연결 건물로 보존합니다. 명칭이나 사용승인일이 비어 있으면 미확인 상태로 남기며 거래 건축년도를 채워 넣지 않습니다. 실거래 연결은 별도 수행하고, 다른 건축년도 또는 여러 단지 후보는 자동 연결하지 않습니다. 마스터 즐겨찾기는 단지 ID를 사용하며 확정 연결된 거래 별칭·부속 지번만 함께 조회합니다.
+
+필지 경계는 건축물대장이 지정한 대표·부속 필지에 대응하는 V-World 연속지적도입니다. 건물 외곽선은 별도 GIS 건물통합정보 레이어에서 가져와 구분 표시합니다. 단지 담장과 법적 경계는 서로 다를 수 있습니다. 같은 필지를 공유하는 단지는 지도 팝업에서 각각 선택할 수 있습니다. 이름·주소·위치·전체 필지 경계·건축년도와 전체 지역 목록이 확인되어야 완료로 표시하고 내보냅니다. 미완료일 때 기존 지도 파일을 보존하며, 실거래 기반 기존 지도에는 전체 목록이 아니라는 안내를 표시합니다.
+
+공식 출처: [건축HUB 건축물대장](https://www.data.go.kr/data/15134735/openapi.do), [브이월드 데이터 API 안내](https://www.vworld.kr/dev/v4dv_2ddataguide2_s002.do?svcIde=cadastral), [공간정보 오픈플랫폼 WMS/WFS](https://www.data.go.kr/data/15058805/openapi.do), [GIS 건물통합정보 설명](https://www.data.go.kr/data/15083092/fileData.do). 지적 자료는 국토교통부/V-World 출처를 표시합니다.

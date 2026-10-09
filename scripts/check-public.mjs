@@ -57,7 +57,8 @@ export function checkPublic(root=ROOT,secretsFile=paths.env,{checkIndex=true}={}
     if(sha256(apartments)!==info.apartments.sha256||sha256(boundaries)!==info.boundaries.sha256)throw new Error('아파트 지도 체크섬 오류');
     const data=validateApartmentMap({apartments:JSON.parse(apartments),boundaries:JSON.parse(boundaries)});
     if(data.apartments.length!==info.count||data.boundaries.features.length!==info.boundary_count)throw new Error('아파트 지도 건수 오류');
-    if(!info.attribution?.includes('OpenStreetMap')||!info.license?.includes('opendatacommons.org'))throw new Error('아파트 지도 출처 누락');
+    if(info.version===2){if(info.data_mode!=='registry_master'||!info.coverage?.complete||!info.attribution?.includes('V-World')||!info.license?.includes('kogl.or.kr'))throw new Error('아파트 마스터 수집 완전성 / 출처 오류');}
+    else if(!info.attribution?.includes('OpenStreetMap')||!info.license?.includes('opendatacommons.org'))throw new Error('아파트 지도 출처 누락');
   }
   if(!fs.existsSync(path.join(root,'docs/.nojekyll')))throw new Error('Pages .nojekyll 누락');
   if(!fs.readFileSync(path.join(root,'public/data/manifest.json')).equals(fs.readFileSync(path.join(root,'docs/data/manifest.json'))))throw new Error('공개 데이터를 내보낸 뒤 빌드를 다시 실행하세요.');
