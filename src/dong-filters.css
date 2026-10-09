@@ -71,3 +71,5 @@
 .filter-group:not(.expanded)>.dong-filter-heading{margin-bottom:0}
 .weekly-controls>.region-card,.weekly-controls>.other-card{margin-top:16px}
 .other-card .weekly-display-options{margin:0}
+
+.weekly-favorite-dongs{margin-bottom:18px;padding-bottom:18px;border-bottom:1px solid #e5ece7}.weekly-favorite-dongs .weekly-picker-title{margin-top:0}.weekly-favorite-dongs .weekly-picker-title strong{display:flex;align-items:center;gap:7px;font-size:11px;color:#416c59}.weekly-favorite-dongs .weekly-picker-title strong>svg{color:#b77912;flex-shrink:0}.weekly-favorite-dongs .small-note{margin:0}.weekly-favorite-dongs .weekly-dong-picker span{min-width:0;overflow-wrap:anywhere}

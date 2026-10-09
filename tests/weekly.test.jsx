@@ -3,7 +3,7 @@ import {afterEach,beforeEach,describe,expect,it,vi} from 'vitest';
 import {cleanup,fireEvent,render,screen,waitFor,within} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import App from '../src/App.jsx';
-import {readPreferences} from '../src/preferences.js';
+import {readPreferences,savePreferences} from '../src/preferences.js';
 import {PYEONG_M2} from '../src/domain.mjs';
 
 const a={region_id:'dong_41465101',label:'경기도 용인시 수지구 풍덕천동',region_name:'경기도 용인시 수지구',region_code:'41465',dongs:['풍덕천동']};
@@ -338,4 +338,41 @@ it('collapses each numbered filter group independently without clearing inputs, 
   expect(screen.getByRole('checkbox',{name:/풍덕천동.*용인시/}).checked).toBe(true);
   expect(readPreferences('weekly').includeCancelled).toBe(false);
   expect(loader).toHaveBeenCalledTimes(1);
+});
+
+
+it('selects personal favorite dongs independently of search, synchronizes both pickers and persists selections without changing favorites',async()=>{
+ const user=userEvent.setup();savePreferences('viewer',{regions:[b.region_id,a.region_id,uncollected.region_id,'dong_99999999']});
+ const loader=vi.fn(async(_,code)=>[row(1,{region_code:code})]);
+ let view=render(<App initialManifest={manifest} districtLoader={loader}/>);
+ const favorites=await screen.findByRole('group',{name:'즐겨찾기한 동 선택'});
+ expect(within(favorites).getAllByRole('checkbox').map(input=>input.closest('label').textContent)).toEqual([b,a,uncollected].map(region=>region.dongs[0]+region.region_name+(manifest.districts[region.region_code]?'':' · 미수집')));
+ expect(within(favorites).getAllByRole('checkbox').every(input=>!input.checked)).toBe(true);expect(loader).not.toHaveBeenCalled();
+ await user.type(screen.getByRole('searchbox',{name:'주간 동 검색'}),'동천');
+ const search=screen.getByRole('group',{name:'주간 조회할 동 선택'});expect(within(search).queryByRole('checkbox',{name:/풍덕천동/})).toBeNull();
+ await user.click(within(favorites).getByRole('checkbox',{name:/풍덕천동.*종로구/}));
+ await user.click(within(favorites).getByRole('checkbox',{name:/풍덕천동.*용인시/}));
+ await screen.findByRole('region',{name:a.label+' 주간 거래 내역'});
+ expect(new URLSearchParams(location.search).getAll('dong')).toEqual([b.region_id,a.region_id]);
+ await user.clear(screen.getByRole('searchbox',{name:'주간 동 검색'}));
+ expect(within(search).getByRole('checkbox',{name:/풍덕천동.*용인시/}).checked).toBe(true);
+ await user.click(within(search).getByRole('checkbox',{name:/풍덕천동.*용인시/}));
+ expect(within(favorites).getByRole('checkbox',{name:/풍덕천동.*용인시/}).checked).toBe(false);
+ await user.click(within(favorites).getByRole('checkbox',{name:/매탄동/}));
+ expect(screen.getByText('아직 수집된 자료가 없는 동입니다.')).toBeTruthy();expect(loader.mock.calls.map(call=>call[1]).sort()).toEqual(['11110','41465']);
+ expect(readPreferences('viewer').regions).toEqual([b.region_id,a.region_id,uncollected.region_id,'dong_99999999']);
+ view.unmount();window.history.replaceState(null,'','/');view=render(<App initialManifest={manifest} districtLoader={loader}/>);
+ const restored=await screen.findByRole('group',{name:'즐겨찾기한 동 선택'});
+ expect(within(restored).getByRole('checkbox',{name:/풍덕천동.*종로구/}).checked).toBe(true);expect(within(restored).getByRole('checkbox',{name:/매탄동/}).checked).toBe(true);
+ await user.click(screen.getByRole('button',{name:'선택 모두 해제'}));
+ expect(within(restored).getAllByRole('checkbox').every(input=>!input.checked)).toBe(true);expect(readPreferences('explorer').weeklyIds).toEqual([]);
+ expect(readPreferences('viewer').regions).toEqual([b.region_id,a.region_id,uncollected.region_id,'dong_99999999']);
+});
+
+it('shows how to add personal favorite dongs when none are saved, without importing administrator collection favorites',async()=>{
+ render(<App initialManifest={manifest}/>);
+ const favorites=await screen.findByRole('region',{name:'즐겨찾기한 동'});
+ expect(within(favorites).getByText('지역 지도에서 별표로 동을 즐겨찾기하면 여기에 표시됩니다.')).toBeTruthy();
+ expect(within(favorites).queryByRole('checkbox')).toBeNull();
+ expect(screen.getByRole('group',{name:'주간 조회할 동 선택'})).toBeTruthy();
 });

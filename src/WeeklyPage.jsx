@@ -1,5 +1,5 @@
 import React, {useMemo, useState} from 'react';
-import {CalendarDays, Search, X, MapPin, SlidersHorizontal, Settings2} from 'lucide-react';
+import {CalendarDays, Search, X, MapPin, SlidersHorizontal, Settings2, Star} from 'lucide-react';
 import {apartmentAddress, areaInputValue, areaM2, areaUnitLabel, formatNumber, hierarchy} from './domain.mjs';
 import {periodBounds,publishedDay} from './weekly.mjs';
 import {Empty} from './ViewState.jsx';
@@ -17,7 +17,7 @@ const unique=values=>[...new Set(values)].sort((a,b)=>a.localeCompare(b,'ko'));
 const optionalArea=value=>value==='' || areaPreference(value);
 const areaBands=[10,20,30];
 const validAreaBands=value=>Array.isArray(value) && value.length<=areaBands.length && new Set(value).size===value.length && value.every(band=>areaBands.includes(band));
-export default function WeeklyPage({manifest, catalog, selectedIds=[], onChange, day, onDayChange,period,onPeriodChange,districtLoader,favoritesView=false,favoriteApartments=[],onRemoveFavorite,onOpenApartment,onAddApartments}) {
+export default function WeeklyPage({manifest, catalog, favoriteRegions=[], selectedIds=[], onChange, day, onDayChange,period,onPeriodChange,districtLoader,favoritesView=false,favoriteApartments=[],onRemoveFavorite,onOpenApartment,onAddApartments}) {
   const filterScope=favoritesView?'favoriteDashboard':'weekly';
   const locations=catalog.map(hierarchy);
   const [province,setProvince]=useStoredState(filterScope,'province','',value=>value==='' || locations.some(item=>item.province===value));
@@ -42,6 +42,7 @@ export default function WeeklyPage({manifest, catalog, selectedIds=[], onChange,
   const unit=areaUnitLabel(areaUnit);
   const [retry,setRetry]=useState(0);
   const dongs=useMemo(()=>catalog.filter(region=>region.dongs.length===1),[catalog]);
+  const favoriteDongs=useMemo(()=>favoriteRegions.filter(region=>region.dongs.length===1),[favoriteRegions]);
   const selected=useMemo(()=>favoritesView?favoriteApartments.map(item=>({...item,region_id:item.id,label:item.apartment+' · '+item.region_name+' '+item.dong+' · 지번 '+(item.jibun||'미상'),dongs:item.master_id?[...new Set([item.dong,...item.trade_keys.map(k=>JSON.parse(k)[0])])]:[item.dong]})):selectedIds.map(id=>dongs.find(region=>region.region_id===id)).filter(Boolean),[favoritesView,favoriteApartments,selectedIds,dongs]);
   const codes=useMemo(()=>[...new Set(selected.map(region=>region.region_code))].sort(),[selected]);
   const datasets=useDistrictDatasets(manifest,codes,districtLoader,retry);
@@ -86,6 +87,10 @@ export default function WeeklyPage({manifest, catalog, selectedIds=[], onChange,
         <p className="small-note">아파트별 실거래가나 지도에서 즐겨찾기를 추가할 수 있습니다. 이 브라우저에 저장되며, 선택한 기간에 거래가 없어도 목록에 유지됩니다.</p>
         <div className="favorite-apartment-list">{selected.map(item=><button key={item.id} onClick={()=>onOpenApartment(item,week)}>{item.apartment}<small>{apartmentAddress(item,item.region_name)}</small></button>)}</div>
       </FilterGroup>:<FilterGroup number="03" title="조회할 동" label="조회 지역 설정" icon={MapPin} className="region-card" actions={<button className="text-button" disabled={!selectedIds.length} onClick={()=>onChange([])}>선택 모두 해제</button>}>
+        <section className="weekly-favorite-dongs" aria-label="즐겨찾기한 동">
+          <div className="weekly-picker-title"><strong><Star size={14} fill="currentColor"/>즐겨찾기한 동 <span className="badge">{formatNumber(favoriteDongs.length)}곳</span></strong><small>아래 검색 조건과 관계없이 선택할 수 있습니다.</small></div>
+          {favoriteDongs.length?<div className="weekly-dong-picker" role="group" aria-label="즐겨찾기한 동 선택">{favoriteDongs.map(region=><label key={region.region_id} className={selectedIds.includes(region.region_id)?'selected':''}><input type="checkbox" checked={selectedIds.includes(region.region_id)} onChange={()=>toggle(region.region_id)}/><span>{region.dongs[0]}<small>{region.region_name}{manifest.districts[region.region_code]?'':' · 미수집'}</small></span></label>)}</div>:<p className="small-note">지역 지도에서 별표로 동을 즐겨찾기하면 여기에 표시됩니다.</p>}
+        </section>
         <div className="weekly-location">
           <label>시도<select aria-label="주간 시도" value={province} onChange={event=>{setProvince(event.target.value);setCity('');setDistrict('');}}><option value="">전체 시도</option>{provinces.map(value=><option key={value}>{value}</option>)}</select></label>
           <label>시·군<select aria-label="주간 시" value={city} onChange={event=>{setCity(event.target.value);setDistrict('');}}><option value="">전체 시·군</option>{cities.map(value=><option key={value}>{value}</option>)}</select></label>

@@ -56,3 +56,23 @@ it('ignores malformed region favorites while retaining existing apartment favori
   const view=render(<App initialManifest={manifest}/>);await screen.findByRole('region',{name:'동 팝업 지도'});expect(map.props.draft).toEqual([]);expect(readPreferences('viewer').apartments).toEqual([apartment]);view.unmount();
  }
 });
+
+
+it('updates the weekly favorite dong picker after region-map stars change without changing the saved query selection',async()=>{
+ const user=userEvent.setup();render(<App initialManifest={manifest} districtLoader={async()=>[]}/>);
+ await screen.findByRole('region',{name:'동 팝업 지도'});
+ await user.click(within(popup()).getByRole('button',{name:a.label+' 즐겨찾기 추가'}));
+ await user.click(screen.getByRole('button',{name:'동 별 실거래가',exact:true}));
+ const favorites=await screen.findByRole('group',{name:'즐겨찾기한 동 선택'});
+ await user.click(within(favorites).getByRole('checkbox',{name:/풍덕천동/}));
+ expect(new URLSearchParams(location.search).getAll('dong')).toEqual([a.region_id]);
+ await user.click(screen.getByRole('button',{name:'지역 지도',exact:true}));
+ await screen.findByRole('region',{name:'동 팝업 지도'});
+ await user.click(within(popup()).getByRole('button',{name:a.label+' 즐겨찾기 해제'}));
+ await user.click(within(popup()).getByRole('button',{name:b.label+' 즐겨찾기 추가'}));
+ await user.click(screen.getByRole('button',{name:'동 별 실거래가',exact:true}));
+ const changed=await screen.findByRole('group',{name:'즐겨찾기한 동 선택'});
+ expect(within(changed).queryByRole('checkbox',{name:/풍덕천동/})).toBeNull();expect(within(changed).getByRole('checkbox',{name:/청운동/}).checked).toBe(false);
+ expect(within(screen.getByRole('group',{name:'주간 조회할 동 선택'})).getByRole('checkbox',{name:/풍덕천동/}).checked).toBe(true);
+ expect(readPreferences('viewer').regions).toEqual([b.region_id]);expect(readPreferences('explorer').weeklyIds).toEqual([a.region_id]);
+});
