@@ -11,50 +11,39 @@ const manifest={regions:[region,{region_id:'dong_11110101',label:'서울특별�
 beforeEach(()=>{window.localStorage.clear();window.history.replaceState(null,'','/?region=area_41465&tab=dashboard');});
 afterEach(()=>{cleanup();vi.restoreAllMocks();vi.unstubAllGlobals();});
 describe('React transaction explorer',()=>{
-  it('adds a personal favorite in apartment detail and shows its trades on the dashboard',async()=>{
-    const user=userEvent.setup();window.history.replaceState(null,'','/?region=area_41465&tab=apartments');
+  it('adds a personal apartment favorite through search while selecting multiple trades in the unified tab',async()=>{
+    const user=userEvent.setup();window.history.replaceState(null,'','/?region=area_41465&tab=apartments&period=month&month=2026-01');
     render(<App initialManifest={manifest} districtLoader={()=>Promise.resolve(rows)}/>);
-    await screen.findByRole('combobox',{name:'조회 아파트'},{timeout:5000});
-    await user.selectOptions(screen.getByRole('combobox',{name:'조회 아파트'}),JSON.stringify(['풍덕천동','1','첫 아파트']));
-    await user.click(screen.getByRole('button',{name:/첫 아파트.*즐겨찾기 추가/}));
-    await user.click(screen.getByRole('button',{name:'대시보드',exact:true}));
-    await screen.findByRole('heading',{name:'즐겨찾기 아파트 실거래가'});
-    expect(screen.queryByRole('combobox',{name:'조회 지역'})).toBeNull();
-    await user.click(screen.getByRole('button',{name:'월간',exact:true}));
-    fireEvent.change(screen.getByLabelText('조회 월'),{target:{value:'2026-01'}});
-    const table=await screen.findByRole('region',{name:/첫 아파트.*기간별 거래 내역/});
-    expect(within(table).getAllByRole('row')).toHaveLength(2);
-    expect(within(table).queryByText('두번째')).toBeNull();
-    await user.click(screen.getByRole('button',{name:/첫 아파트.*아파트 상세 보기/}));
-    await screen.findByRole('heading',{name:'첫 아파트'});
-    expect(screen.getByRole('combobox',{name:'조회 지역'}).value).toBe('area_41465');
-    expect(screen.getByRole('combobox',{name:'시작 계약월'}).value).toBe('202601');
-    expect(screen.getByRole('button',{name:/첫 아파트.*즐겨찾기 해제/}).getAttribute('aria-pressed')).toBe('true');
+    const search=await screen.findByRole('group',{name:'검색 아파트 선택'});
+    await user.click(within(search).getByRole('button',{name:/첫 아파트.*즐겨찾기 추가/}));
+    await user.click(within(search).getByRole('checkbox',{name:/첫 아파트/}));
+    const table=await screen.findByRole('region',{name:/첫 아파트.*기간별 거래 내역/});expect(within(table).getAllByRole('row')).toHaveLength(2);expect(within(table).queryByText('두번째')).toBeNull();
+    expect(within(screen.getByRole('group',{name:'즐겨찾기 아파트 선택'})).getByRole('checkbox').checked).toBe(true);expect(screen.queryByRole('button',{name:'대시보드',exact:true})).toBeNull();
   });
   it('loads the apartment tab directly from its public URL without dashboard detail',async()=>{
     window.history.replaceState(null,'','/?region=area_41465&tab=apartments');
     render(<App initialManifest={manifest} districtLoader={()=>Promise.resolve(rows)}/>);
     const apartments=screen.getByRole('tabpanel',{name:'아파트별 실거래가'});
     await within(apartments).findByRole('searchbox',{name:'아파트 검색'});
-    expect(within(apartments).getByRole('combobox',{name:'조회 아파트'}).value).toBe('');
+    expect((await within(apartments).findByRole('group',{name:'검색 아파트 선택'})).querySelectorAll('input:checked')).toHaveLength(0);
     expect(screen.queryByText('유효 거래',{selector:'.metric-label'})).toBeNull();
     expect(screen.queryByRole('button',{name:'원천 데이터',exact:true})).toBeNull();
   });
-  it('an old raw-data URL resolves to the favorites dashboard without exposing a raw table',async()=>{
+  it('an old raw-data URL resolves to unified apartment transactions without exposing a raw table',async()=>{
     window.history.replaceState(null,'','/?region=area_41465&tab=raw');
     render(<App initialManifest={manifest} districtLoader={()=>Promise.resolve(rows)}/>);
-    await screen.findByText('즐겨찾기한 아파트가 없습니다.');
-    expect(screen.getByRole('tabpanel',{name:'대시보드'})).toBeTruthy();
+    await screen.findByText('실거래가를 볼 아파트를 선택해 주세요.');
+    expect(screen.getByRole('tabpanel',{name:'아파트별 실거래가'})).toBeTruthy();
     expect(screen.queryByText('신고 자료 그대로')).toBeNull();
     expect(screen.queryByRole('button',{name:'CSV 다운로드'})).toBeNull();
-    expect(window.location.search).toContain('tab=dashboard');
+    expect(window.location.search).toContain('tab=apartments');
   });
-  it('keeps period and area controls inside the dashboard and removes them from the about tab',async()=>{
+  it('keeps period and area controls inside unified apartment transactions and removes them from the about tab',async()=>{
     const user=userEvent.setup();render(<App initialManifest={manifest} districtLoader={()=>Promise.resolve(rows)}/>);
-    const dashboard=screen.getByRole('tabpanel',{name:'대시보드'});
+    const dashboard=screen.getByRole('tabpanel',{name:'아파트별 실거래가'});
     await within(dashboard).findByLabelText('조회 주 기준 날짜');
     expect(within(dashboard).getByRole('spinbutton',{name:'최소 전용면적 (㎡)'})).toBeTruthy();
-    expect(within(dashboard).queryByRole('combobox',{name:'조회 지역'})).toBeNull();
+    expect(within(dashboard).getByRole('combobox',{name:'조회 지역'})).toBeTruthy();
     await user.click(screen.getByRole('button',{name:'데이터 안내'}));
     expect(screen.queryByLabelText('조회 주 기준 날짜')).toBeNull();
     expect(screen.queryByRole('button',{name:'원천 데이터'})).toBeNull();
@@ -82,8 +71,8 @@ describe('React transaction explorer',()=>{
   it('starts with empty personal favorites and makes no district request',async()=>{
     window.history.replaceState(null,'','/');const loader=vi.fn(()=>Promise.resolve(rows));
     render(<App initialManifest={{...manifest,favorite_region_ids:[]}} districtLoader={loader}/>);
-    await screen.findByText('즐겨찾기한 아파트가 없습니다.');
-    expect(screen.queryByRole('combobox',{name:'조회 지역'})).toBeNull();
+    await screen.findByText('실거래가를 볼 아파트를 선택해 주세요.');
+    expect(screen.getByRole('combobox',{name:'조회 지역'})).toBeTruthy();
     expect(loader).not.toHaveBeenCalled();
     expect(window.location.search).not.toContain('region=');
   });
@@ -97,11 +86,11 @@ describe('React transaction explorer',()=>{
     await screen.findByRole('region',{name:'즐겨찾기 지역'});
     const section=screen.getByRole('region',{name:'즐겨찾기 지역'});
     await user.click(within(section).getByRole('button',{name:/풍덕천동/}));
-    await screen.findByRole('combobox',{name:'조회 아파트'});
+    await screen.findByRole('group',{name:'검색 아파트 선택'});
     expect(loader).toHaveBeenCalledWith(expect.anything(),'41465');
     expect(window.location.search).toContain(favorite.region_id);
     await user.click(screen.getByRole('button',{name:'조회 선택 해제'}));
-    expect(screen.getByText('조회할 지역을 선택해 주세요.')).toBeTruthy();
+    expect(screen.getByText('아파트를 찾을 지역을 선택해 주세요.')).toBeTruthy();
     expect(window.location.search).not.toContain('region=');
   });
   it('filters by an individual column, resets pagination, and keeps raw strings',async()=>{
@@ -140,10 +129,10 @@ describe('React transaction explorer',()=>{
     const loader=vi.fn((_,code)=>Promise.resolve(code==='41465'?rows:[]));
     window.history.replaceState(null,'','/?region=area_41465&tab=apartments');
     render(<App initialManifest={manifest} districtLoader={loader}/>);
-    await screen.findByRole('combobox',{name:'조회 아파트'});
+    await screen.findByRole('group',{name:'검색 아파트 선택'});
     await user.selectOptions(screen.getByRole('combobox',{name:'시도'}),'서울특별시');
     await user.selectOptions(screen.getByRole('combobox',{name:'조회 지역'}),'dong_11110101');
-    await screen.findByText('이 조건에 조회할 아파트가 없습니다.');
+    await screen.findByText('아직 수집된 자료가 없는 지역입니다. 즐겨찾기한 아파트는 위에서 선택할 수 있습니다.');
     expect(window.location.search).toContain('dong_11110101');
     expect(screen.queryByRole('button',{name:'선택 지역 수집'})).toBeNull();
     await user.click(screen.getByRole('button',{name:'데이터 안내'}));
@@ -163,7 +152,7 @@ describe('React transaction explorer',()=>{
     window.history.replaceState(null,'','/?region=area_41465&tab=apartments');
     render(<App initialManifest={manifest} districtLoader={loader}/>);
     await user.selectOptions(screen.getByRole('combobox',{name:'조회 지역'}),'dong_11110101');
-    await screen.findByText('이 조건에 조회할 아파트가 없습니다.');
+    await screen.findByText('아직 수집된 자료가 없는 지역입니다. 즐겨찾기한 아파트는 위에서 선택할 수 있습니다.');
     resolveOld(rows);
     await waitFor(()=>expect(screen.queryByText('첫 아파트')).toBeNull());
   });

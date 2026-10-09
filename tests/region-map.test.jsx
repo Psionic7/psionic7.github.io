@@ -31,7 +31,7 @@ it('persists personal region stars beside apartment favorites, restores the tab,
  view.unmount();window.history.replaceState(null,'','/');view=render(<App initialManifest={manifest} districtLoader={loader}/>);await screen.findByRole('region',{name:'동 팝업 지도'});
  expect(window.location.search).toContain('tab=regions');expect(within(popup()).getByRole('button',{name:a.label+' 즐겨찾기 해제'}).getAttribute('aria-pressed')).toBe('true');
  await user.click(screen.getByRole('button',{name:'아파트별 실거래가',exact:true}));
- const favorites=screen.getByRole('region',{name:'즐겨찾기 지역'});expect(within(favorites).queryByRole('button',{name:/청운동/})).toBeNull();
+ const favorites=await screen.findByRole('region',{name:'즐겨찾기 지역'});expect(within(favorites).queryByRole('button',{name:/청운동/})).toBeNull();
  await user.click(within(favorites).getByRole('button',{name:/풍덕천동/}));await waitFor(()=>expect(loader).toHaveBeenCalledWith(expect.anything(),'41465'));
  expect(screen.getByRole('combobox',{name:'조회 지역'}).value).toBe(a.region_id);
  await user.click(screen.getByRole('button',{name:'지역 지도',exact:true}));await screen.findByRole('region',{name:'동 팝업 지도'});

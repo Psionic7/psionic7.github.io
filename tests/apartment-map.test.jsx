@@ -28,7 +28,7 @@ const data={apartments:[one,two],boundaries:{type:'FeatureCollection',features:[
 const mapLoader=async()=>data;
 beforeEach(()=>{window.localStorage.clear();window.history.replaceState(null,'','/');vi.stubGlobal('ResizeObserver',class {observe(){}disconnect(){}});});
 afterEach(()=>{cleanup();mock.popup?.container.remove();mock.popup=null;mock.maps.length=0;mock.polygons.length=0;mock.markers.length=0;vi.unstubAllGlobals();});
-it('polygon popup favorite add/remove keeps map and popup alive and persists in the dashboard store',async()=>{
+it('polygon popup favorite add/remove keeps map and popup alive and persists in the apartment favorite store',async()=>{
  const user=userEvent.setup();function Harness(){const [favorites,setFavorites]=useStoredState('viewer','apartments',[],validApartmentFavorites);return <ApartmentMapPage manifest={manifest} mapLoader={mapLoader} favorites={favorites} onToggleFavorite={item=>setFavorites(previous=>previous.some(p=>p.id===item.id)?previous.filter(p=>p.id!==item.id):[...previous,item])}/>;}
  const view=render(<Harness/>);await waitFor(()=>expect(mock.polygons.length).toBe(1));expect(mock.markers.length).toBe(1);
  act(()=>mock.polygons[0].click({latlng:[37.001,127.001]}));await screen.findByRole('dialog',{name:'단지 하나 아파트 정보'});expect(screen.getByText('도로명주소 1')).toBeTruthy();expect(screen.getByText('2000')).toBeTruthy();expect(screen.queryByText('유효 거래')).toBeNull();expect(screen.queryByText('최저가')).toBeNull();expect(screen.queryByText('최고가')).toBeNull();expect(screen.queryByRole('button',{name:'실거래 상세'})).toBeNull();

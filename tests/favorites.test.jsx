@@ -15,7 +15,7 @@ const favorite=makeApartmentFavorite(row(1),region);
 beforeEach(()=>{window.localStorage.clear();window.history.replaceState(null,'','/?tab=dashboard');});
 afterEach(()=>{cleanup();vi.restoreAllMocks();});
 describe('Personal apartment watchlist',()=>{
-  it('isolates same-name apartments by district and lot, loads shared districts once, and excludes cancellations from price statistics',async()=>{
+  it('isolates same-name apartments by district and lot, loads shared districts once, and uses the common table without summary cards',async()=>{
     const second=makeApartmentFavorite(row(2,{jibun:'2'}),region),third=makeApartmentFavorite(row(3,{region_code:'11110',dong:'청운동'}),other);
     savePreferences('viewer',{apartments:[favorite,second,third]});
     const loader=vi.fn((_,code)=>Promise.resolve(code==='41465'?[row(1),row(2,{cancelled:1,price_man:900000,raw:{cdealDay:'2026-10-01'}}),row(3,{jibun:'2',price_man:120000}),row(4,{jibun:'3',price_man:990000})]:[row(1,{region_code:code,dong:'청운동',price_man:50000})]));
@@ -25,10 +25,7 @@ describe('Personal apartment watchlist',()=>{
     expect(within(table(favorite)).getAllByRole('row')).toHaveLength(3);
     expect(within(table(second)).getAllByRole('row')).toHaveLength(2);
     expect(within(table(third)).getByText('5.00억 원')).toBeTruthy();
-    const stats=screen.getByLabelText(label(favorite)+' 주간 통계');
-    expect(within(stats).getByText('유효 거래').parentElement.textContent).toBe('유효 거래1건');
-    expect(within(stats).getByText('최고 거래금액').parentElement.textContent).toBe('최고 거래금액10.00억 원');
-    expect(within(stats).getByText('최근 거래가격').parentElement.textContent).toBe('최근 거래가격10.00억 원');
+    expect(screen.queryByText('유효 거래')).toBeNull();expect(screen.queryByText('최고 거래금액')).toBeNull();expect(document.querySelector('.weekly-metrics')).toBeNull();
     expect(within(table(favorite)).getByText('해제일 2026-10-01')).toBeTruthy();
     expect(within(table(second)).queryByText('99.00억 원')).toBeNull();
     const user=userEvent.setup();await user.click(screen.getByRole('checkbox',{name:'해제 거래 포함'}));
@@ -53,11 +50,13 @@ describe('Personal apartment watchlist',()=>{
     expect(screen.getByRole('button',{name:'10평대',exact:true}).getAttribute('aria-pressed')).toBe('true');
     await user.click(screen.getByRole('button',{name:'면적 필터 초기화'}));
     expect(within(table(favorite,'기간별')).getAllByRole('row')).toHaveLength(51);
-    await user.click(screen.getByRole('button',{name:label(favorite)+' 즐겨찾기 해제'}));
-    expect(screen.getByText('즐겨찾기한 아파트가 없습니다.')).toBeTruthy();
+    await user.click(screen.getByRole('button',{name:label(favorite)+' 조회 제거'}));
+    expect(readPreferences('viewer').apartments).toEqual([favorite]);
+    await user.click(within(screen.getByRole('group',{name:'즐겨찾기 아파트 선택'})).getByRole('button',{name:/즐겨찾기 해제/}));
+    expect(screen.getByText('실거래가를 볼 아파트를 선택해 주세요.')).toBeTruthy();
     expect(readPreferences('viewer').apartments).toEqual([]);
     second.unmount();render(<App initialManifest={manifest} districtLoader={loader}/>);
-    await screen.findByText('즐겨찾기한 아파트가 없습니다.');
+    await screen.findByText('실거래가를 볼 아파트를 선택해 주세요.');
   });
   it('keeps weekly rows free of favorite buttons and preserves saved favorites across failures and empty periods',async()=>{
     const user=userEvent.setup();window.history.replaceState(null,'',`/?tab=weekly&dong=${region.region_id}`);
@@ -70,6 +69,7 @@ describe('Personal apartment watchlist',()=>{
     expect(readPreferences('viewer').apartments).toHaveLength(1);
     first.unmount();fail=true;window.history.replaceState(null,'','/?tab=dashboard');
     render(<App initialManifest={manifest} districtLoader={loader}/>);
+    await user.click(within(await screen.findByRole('group',{name:'즐겨찾기 아파트 선택'})).getByRole('checkbox'));
     await screen.findByRole('alert');
     expect(readPreferences('viewer').apartments).toHaveLength(1);
     fail=false;await user.click(screen.getByRole('button',{name:'다시 불러오기',exact:true}));
@@ -86,9 +86,9 @@ describe('Personal apartment watchlist',()=>{
     expect(validApartmentFavorites([{...favorite,id:'forged'}])).toBe(false);
     savePreferences('viewer',{apartments:[{...favorite,region_code:'not-a-district'}]});
     const loader=vi.fn();render(<App initialManifest={manifest} districtLoader={loader}/>);
-    await screen.findByText('즐겨찾기한 아파트가 없습니다.');expect(loader).not.toHaveBeenCalled();
+    await screen.findByText('실거래가를 볼 아파트를 선택해 주세요.');expect(loader).not.toHaveBeenCalled();
   });
 });
 
 it('master favorites aggregate only verified trade aliases and keep unrelated names out',async()=>{const master=makeApartmentFavorite({...row(1),apartment:'공식단지명',master_id:'hub:official1',trade_keys:[JSON.stringify(['풍덕천동','1','첫번째신고명']),JSON.stringify(['풍덕천동','2','두번째신고명'])]},region);savePreferences('viewer',{apartments:[master]});const loader=vi.fn(()=>Promise.resolve([row(1,{apartment:'첫번째신고명'}),row(2,{jibun:'2',apartment:'두번째신고명'}),row(3,{apartment:'무관한아파트'})]));render(<App initialManifest={manifest} districtLoader={loader}/>);const trades=await screen.findByRole('region',{name:label(master)+' 주간 거래 내역'});expect(within(trades).getAllByRole('row')).toHaveLength(3);expect(within(trades).queryByText('무관한아파트')).toBeNull();expect(readPreferences('viewer').apartments[0].master_id).toBe('hub:official1');});
-it('an apartment master without collected trades remains a saved favorite',async()=>{const master=makeApartmentFavorite({...row(1),master_id:'hub:no-trades',trade_keys:[]},region);savePreferences('viewer',{apartments:[master]});const loader=vi.fn();render(<App initialManifest={{...manifest,districts:{}}} districtLoader={loader}/>);await screen.findByText('아직 수집된 자료가 없는 동입니다.');expect(loader).not.toHaveBeenCalled();expect(readPreferences('viewer').apartments).toEqual([master]);});
+it('an apartment master without collected trades remains a saved favorite',async()=>{const master=makeApartmentFavorite({...row(1),master_id:'hub:no-trades',trade_keys:[]},region);savePreferences('viewer',{apartments:[master]});const loader=vi.fn();render(<App initialManifest={{...manifest,districts:{}}} districtLoader={loader}/>);await screen.findByText('이 아파트 지역은 아직 수집된 자료가 없습니다.');expect(loader).not.toHaveBeenCalled();expect(readPreferences('viewer').apartments).toEqual([master]);});

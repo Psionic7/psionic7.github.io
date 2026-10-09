@@ -24,7 +24,7 @@ export function savePreferences(scope,value) {
   try {
     const document=readDocument();
     const entries=Object.entries(document.scopes).filter(([key,item])=>key!==scope && object(item));
-    const persistent=new Set(['viewer','explorer','display','weekly','favoriteDashboard','apartmentMap','regionMap']);
+    const persistent=new Set(['viewer','explorer','display','weekly','favoriteDashboard','apartmentMap','regionMap','apartmentTransactions','apartmentSearch']);
     const retained=entries.filter(([key])=>persistent.has(key));
     const scopes=[...retained,...entries.filter(([key])=>!persistent.has(key)).slice(-(79-retained.length))];
     scopes.push([scope,value]);
@@ -57,11 +57,12 @@ export function restoreExplorer(manifest,catalog,params) {
   const latest=weekBounds(publishedDay(manifest.published_at))?.start||'';
   const first=manifest.months[0];
   const earliest=first?weekBounds(`${first.slice(0,4)}-${first.slice(4)}-01`)?.start:'';
-  const week=weekBounds(requested('week',saved.weeklyDay))?.start;
+  const sharedWeekly=!params.has('tab')||params.get('tab')==='weekly';
+  const week=weekBounds(sharedWeekly?requested('week',saved.weeklyDay):saved.weeklyDay)?.start;
   const weeklyDay=week && (!earliest || week>=earliest) && (!latest || week<=latest)?week:latest;
   const lastDay=publishedDay(manifest.published_at),firstDay=first?`${first.slice(0,4)}-${first.slice(4)}-01`:'';
   const fallbackPeriod={mode:'week',month:lastDay.slice(0,7),start:firstDay&&weeklyDay<firstDay?firstDay:weeklyDay,end:lastDay};
-  const sharedPeriod=params.has('period')||params.has('week');
+  const sharedPeriod=sharedWeekly&&(params.has('period')||params.has('week'));
   const previousPeriod=object(saved.weeklyPeriod)?saved.weeklyPeriod:{};
   const mode=sharedPeriod?(params.get('period')||'week'):previousPeriod.mode;
   const getPeriod=(key,parameter)=>sharedPeriod?(params.get(parameter)||fallbackPeriod[key]):previousPeriod[key]||fallbackPeriod[key];
@@ -78,7 +79,7 @@ export function restoreExplorer(manifest,catalog,params) {
     try{const key=JSON.parse(saved.selectedApartment);if(Array.isArray(key) && key.length===3 && key.every(textPreference))selectedApartment=saved.selectedApartment;}catch{}
   }
   const newRegion=params.has('region') && !sameRegion;
-  return {regionId:region?.region_id||'',start,end,tab:['dashboard','apartments','weekly','map','regions','about'].includes(tab)?tab:'dashboard',
+  return {regionId:region?.region_id||'',start,end,tab:['apartments','weekly','map','regions','about'].includes(tab)?tab:'apartments',
     weeklyIds,weeklyDay,weeklyPeriod,selectedApartment,province:newRegion?'':province,city:newRegion?'':city,district:newRegion?'':district,
     search:!newRegion && textPreference(saved.search)?saved.search:''};
 }
