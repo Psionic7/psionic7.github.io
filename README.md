@@ -74,6 +74,8 @@ scripts/                Node.js 검사·내보내기·GitHub Pages 도구
 
 수집은 PC나 모바일 브라우저가 닫혀 있어도 GitHub Actions에서 실행합니다. 예약은 정시 실행을 보장하지 않으며 혼잡하면 지연·누락될 수 있습니다. 공개 저장소는 60일 동안 활동이 없으면 예약이 비활성화될 수 있으므로 웹 관리자에서 실행 이력을 확인하세요. 워크플로는 배포 파일을 매일 Git 커밋하지 않습니다.
 
+**GitHub 로그인 포털**도 지원합니다. 사용자는 GitHub 계정으로 로그인하고 작업용 토큰은 서버 Secret에만 보관합니다. GitHub Secrets에서 인증 서버로 전달하는 수동 배포 워크플로와 설정 항목은 [auth-admin/SETUP.md](auth-admin/SETUP.md)에 있습니다. 최초에는 Cloudflare 서버와 GitHub OAuth App을 등록해야 하며, 관리자 포털 주소가 설정된 뒤 기존 관리자 페이지에 GitHub 로그인 링크가 표시됩니다.
+
 웹 관리자 접속은 저장소 하나로 범위를 제한한 **GitHub fine-grained personal access token**을 사용합니다. 토큰 생성 시 `Psionic7/psionic7.github.io`를 선택하고 **Actions / Contents: Read and write**, 예약 시간 변경에 **Workflows: Read and write**를 설정합니다. 토큰은 React 메모리에만 유지하며 localStorage·sessionStorage·URL·서버 로그에 기록하지 않습니다. 새로고침·로그아웃 후 다시 입력해야 합니다. 관리자 작업은 GitHub가 실제 권한을 검사합니다. 관리자 페이지가 공개되어 있어도 관리 권한 없는 방문자는 작업을 실행할 수 없습니다. 화면에는 공공 API 키 입력란이 없습니다.
 
 초기 설정 (PC에서 한 번):

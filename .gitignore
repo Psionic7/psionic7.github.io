@@ -14,3 +14,9 @@ collection_regions.json
 my_real_estate.sqlite3
 /local/
 /admin-dist/
+/admin-portal-dist/
+.dev.vars
+.dev.vars.*
+.wrangler/
+/auth-admin/wrangler.deploy.json
+/auth-admin/wrangler.runtime-test.json

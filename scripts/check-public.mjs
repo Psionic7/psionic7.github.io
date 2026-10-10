@@ -8,7 +8,7 @@ import {randomUUID} from 'node:crypto';
 import {ROOT,paths,readJson,secretValues,checkedBytes,connect} from '../server/storage.mjs';
 import {sha256} from '../server/export.mjs';
 import {validateApartmentMap} from '../src/apartment-map-data.js';
-const privateName=name=>name.split('/').some(p=>['local','admin-dist','.venv','.streamlit'].includes(p)) || /(^|\/)(\.env[^/]*|collection_regions\.json|my_real_estate\.sqlite3|secrets\.toml)$/.test(name);
+const privateName=name=>name.split('/').some(p=>['local','admin-dist','admin-portal-dist','.wrangler','.venv','.streamlit'].includes(p)) || /(^|\/)(\.env[^/]*|\.dev\.vars[^/]*|collection_regions\.json|my_real_estate\.sqlite3|secrets\.toml)$/.test(name);
 export function checkPublic(root=ROOT,secretsFile=paths.env,{checkIndex=true}={}) {
   const secrets=secretValues(secretsFile);
   const git=(...args)=>execFileSync('git',['-c',`safe.directory=${root.replaceAll('\\','/')}`,'-C',root,...args],{maxBuffer:100*1024*1024});

@@ -1,0 +1,15 @@
+{
+  "name": "home-records-admin",
+  "main": "./worker.mjs",
+  "compatibility_date": "2026-09-28",
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": {
+    "directory": "../admin-portal-dist",
+    "binding": "ASSETS",
+    "run_worker_first": true
+  },
+  "durable_objects": {
+    "bindings": [{"name": "ADMIN_SESSIONS", "class_name": "AdminSessions"}]
+  },
+  "migrations": [{"tag": "v1", "new_sqlite_classes": ["AdminSessions"]}]
+}

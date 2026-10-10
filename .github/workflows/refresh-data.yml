@@ -63,6 +63,7 @@ jobs:
           pnpm build
           pnpm check:publish
         env:
+          VITE_ADMIN_PORTAL_URL: ${{ vars.ADMIN_PORTAL_URL }}
           MOLIT_SERVICE_KEY: ${{ secrets.MOLIT_SERVICE_KEY }}
           JUSO_ADDRESS_SEARCH_KEY: ${{ secrets.JUSO_ADDRESS_SEARCH_KEY }}
       - name: Preserve collected working database

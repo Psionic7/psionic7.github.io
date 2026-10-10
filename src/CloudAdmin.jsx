@@ -1,5 +1,6 @@
 import React, {lazy, Suspense, useEffect, useMemo, useRef, useState} from 'react';
 import {adminClient} from './cloud-admin-client.js';
+import {sessionAdminClient,adminPortalUrl,githubLoginError} from './admin-session-client.js';
 import {REPOSITORY} from '../automation/config.mjs';
 import {hierarchy} from './domain.mjs';
 const CloudRegionMap = lazy(() => import('./CloudRegionMap.jsx'));
@@ -7,10 +8,12 @@ const unique = values => [...new Set(values.filter(Boolean))].sort((a, b) => a.l
 
 const statusName = run => run.status === 'completed' ? ({success: '성공', failure: '실패', cancelled: '취소', skipped: '건너뜀'}[run.conclusion] || run.conclusion) : ({queued: '대기', in_progress: '실행 중', waiting: '배포 대기'}[run.status] || run.status);
 const time = value => new Date(value).toLocaleString('ko-KR', {timeZone: 'Asia/Seoul', dateStyle: 'short', timeStyle: 'short'});
-export default function CloudAdmin({clientFactory = adminClient, fetcher = fetch, MapComponent = CloudRegionMap}) {
+export default function CloudAdmin({clientFactory, fetcher = fetch, MapComponent = CloudRegionMap, githubAuth = typeof __ADMIN_GITHUB_AUTH__ !== 'undefined' && __ADMIN_GITHUB_AUTH__, portalUrl = import.meta.env.VITE_ADMIN_PORTAL_URL || ''}) {
+  const githubPortal = adminPortalUrl(portalUrl);
+  const [restoring,setRestoring] = useState(githubAuth);
   const [token, setToken] = useState(''), [client, setClient] = useState(null), [user, setUser] = useState('');
   const [loaded, setLoaded] = useState(null), [config, setConfig] = useState(null), [catalog, setCatalog] = useState([]);
-  const [runs, setRuns] = useState([]), [busy, setBusy] = useState(false), [error, setError] = useState(''), [message, setMessage] = useState('');
+  const [runs, setRuns] = useState([]), [busy, setBusy] = useState(false), [error, setError] = useState(()=>githubAuth?githubLoginError(window.location.search):''), [message, setMessage] = useState('');
   const [search, setSearch] = useState(''), [months, setMonths] = useState(''), [published, setPublished] = useState(null), [pending, setPending] = useState(false);
   const requestedAfter = useRef(new Set());
   const [province, setProvince] = useState(''), [city, setCity] = useState(''), [district, setDistrict] = useState('');
@@ -31,27 +34,45 @@ export default function CloudAdmin({clientFactory = adminClient, fetcher = fetch
     return () => {active = false;};
   }, [fetcher]);
   useEffect(() => {
+    if (!githubAuth) return;
+    let active = true;
+    const params=new URLSearchParams(window.location.search);
+    if (params.has('authError')) {params.delete('authError');window.history.replaceState(null,'',window.location.pathname+(params.size?'?'+params:''));}
+    const next = clientFactory ? clientFactory() : sessionAdminClient(fetcher);
+    (async () => {
+      try {
+        const name = await next.restore();
+        if (!name) return;
+        const [data,history] = await Promise.all([next.load(),next.runs()]);
+        if (active) {setClient(next);setUser(name);setLoaded(data);setConfig(data.config);setRuns(history);}
+      } catch (e) {if (active) setError(e.message);}
+      finally {if (active) setRestoring(false);}
+    })();
+    return () => {active=false;};
+  },[githubAuth,clientFactory,fetcher]);
+  useEffect(() => {
     if (!client) return;
     let active = true;
     const timer = setInterval(async () => {
       try {const items = await client.runs(); if (active) {setRuns(items); if (items.some(r => r.event === 'workflow_dispatch' && !requestedAfter.current.has(r.id))) setPending(false);}}
-      catch {if (active) setError('진행 상태를 불러오지 못했습니다. 토큰 만료 또는 연결 상태를 확인하세요.');}
+      catch (e) {if (active) {if (githubAuth && e.status===401) clearSession();setError(githubAuth?e.message:'진행 상태를 불러오지 못했습니다. 토큰 만료 또는 연결 상태를 확인하세요.');}}
     }, 15000);
     return () => {active = false; clearInterval(timer);};
   }, [client]);
   const operation = async task => {
     setBusy(true); setError(''); setMessage('');
-    try {await task();} catch (e) {setError(e.message);} finally {setBusy(false);}
+    try {await task();} catch (e) {if (githubAuth && e.status===401) clearSession();setError(e.message);} finally {setBusy(false);}
   };
   const login = event => {
     event.preventDefault();
     operation(async () => {
-      const next = clientFactory(token), name = await next.login();
+      const next = clientFactory ? clientFactory(token) : adminClient(token,fetcher), name = await next.login();
       const [data, history] = await Promise.all([next.load(), next.runs()]);
       setClient(next); setUser(name); setLoaded(data); setConfig(data.config); setRuns(history); setToken('');
     });
   };
-  const logout = () => {setClient(null); setUser(''); setToken(''); setLoaded(null); setConfig(null); setRuns([]); setError(''); setMessage(''); setPending(false);};
+  const clearSession = () => {setClient(null); setUser(''); setToken(''); setLoaded(null); setConfig(null); setRuns([]); setError(''); setMessage(''); setPending(false);};
+  const logout = () => operation(async () => {if (client.logout) await client.logout();clearSession();});
   const refresh = () => operation(async () => {
     const [data, history] = await Promise.all([client.load(), client.runs()]);
     setLoaded(data); setConfig(data.config); setRuns(history); setMessage('저장된 설정을 불러왔습니다.');
@@ -61,13 +82,18 @@ export default function CloudAdmin({clientFactory = adminClient, fetcher = fetch
   const visible = matches.slice(0, 100);
   const toggle = id => {if (!busy) setConfig(c => ({...c, region_ids: c.region_ids.includes(id) ? c.region_ids.filter(v => v !== id) : [...c.region_ids, id]}));};
   return <main className="cloud-admin">
-    <header className="page-header"><div><a href="/">집의 기록</a><h1>데이터 수집 관리자</h1><p>매일 예약 수집과 수동 실행을 관리합니다.</p></div>{client && <button disabled={busy} onClick={logout}>{user} · 로그아웃</button>}</header>
+    <header className="page-header"><div><a href={githubAuth?'https://psionic7.github.io/':'/'}>집의 기록</a><h1>데이터 수집 관리자</h1><p>매일 예약 수집과 수동 실행을 관리합니다.</p></div>{client && <button disabled={busy} onClick={logout}>{user} · 로그아웃</button>}</header>
     {error && <p role="alert" className="notice error">{error}</p>}{message && <p role="status" className="notice">{message}</p>}
     {published && <p className="small-note">공개 자료 업데이트: {time(published.published_at)} KST · {published.count.toLocaleString('ko-KR')}건</p>}
-    {!client ? <section className="panel">
-      <h2>관리자 접속</h2><p>이 저장소를 관리할 수 있는 GitHub 토큰으로 접속합니다. 토큰은 열린 페이지의 메모리에만 유지되며 새로고침·로그아웃 시 사라집니다.</p>
-      <form onSubmit={login}><label>GitHub 토큰<input type="password" autoComplete="off" spellCheck="false" value={token} onChange={e => setToken(e.target.value)} required /></label><button className="primary" disabled={busy || !catalog.length}>관리자 접속</button></form>
-      <details><summary>토큰 만들기</summary><p><a href={`https://github.com/settings/personal-access-tokens/new?name=Home+Records+Admin&resource_owner=Psionic7`} target="_blank" rel="noreferrer">GitHub에서 Fine-grained 토큰 만들기</a></p><p>저장소를 {REPOSITORY} 하나로 제한하고 Actions·Contents에 Read and write 권한을 설정하세요. 예약 시간 변경을 위해 Workflows의 Read and write 권한도 필요합니다. API 키는 이 화면에 입력하지 않습니다.</p></details>
+    {restoring?<section className="panel"><p role="status">접속 상태를 확인하고 있습니다.</p></section>:!client ? <section className="panel">
+      <h2>관리자 접속</h2>
+      {githubAuth?<><p>GitHub 계정으로 로그인하세요. 이 저장소 소유자의 계정으로만 관리자 기능을 사용할 수 있습니다.</p><p><a className="button primary" href="/api/admin/login">GitHub로 로그인</a></p><p className="small-note">토큰을 직접 입력하지 않아도 됩니다. 접속은 최대 4시간 유지됩니다.</p></>:<>
+        {githubPortal?<><p>GitHub 계정으로 로그인하면 토큰을 입력하지 않고 관리할 수 있습니다.</p><p><a className="button primary" href={githubPortal}>GitHub로 로그인</a></p></>:<p>이 저장소를 관리할 수 있는 GitHub 토큰으로 접속합니다. 토큰은 열린 페이지의 메모리에만 유지되며 새로고침·로그아웃 시 사라집니다.</p>}
+        <details open={!githubPortal}><summary>토큰으로 관리자 접속</summary>
+          <form onSubmit={login}><label>GitHub 토큰<input type="password" autoComplete="off" spellCheck="false" value={token} onChange={e => setToken(e.target.value)} required /></label><button className="primary" disabled={busy || !catalog.length}>관리자 접속</button></form>
+          <details><summary>토큰 만들기</summary><p><a href={`https://github.com/settings/personal-access-tokens/new?name=Home+Records+Admin&resource_owner=Psionic7`} target="_blank" rel="noreferrer">GitHub에서 Fine-grained 토큰 만들기</a></p><p>저장소를 {REPOSITORY} 하나로 제한하고 Actions·Contents에 Read and write 권한을 설정하세요. 예약 시간 변경을 위해 Workflows의 Read and write 권한도 필요합니다. API 키는 이 화면에 입력하지 않습니다.</p></details>
+        </details>
+      </>}
     </section> : <>
       <section className="panel"><div className="section-title"><h2>예약 수집 설정</h2><button disabled={busy} onClick={refresh}>저장 설정 다시 불러오기</button></div>
         <div className="cloud-fields">
