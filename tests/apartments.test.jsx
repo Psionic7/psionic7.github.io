@@ -39,7 +39,7 @@ describe('Unified apartment transactions',()=>{
   const item=makeApartmentFavorite(rows.at(-1),region);await choose(user,item);expect(tradeTable(item)).toBeTruthy();expect(readPreferences('viewer').apartments).toEqual([]);
   await user.click(within(search()).getByRole('button',{name:/희소단지.*즐겨찾기 추가/}));expect(readPreferences('viewer').apartments).toEqual([item]);
   const favorites=screen.getByRole('group',{name:'즐겨찾기 아파트 선택'});expect(within(favorites).getByRole('checkbox').checked).toBe(true);
-  await user.click(screen.getByRole('button',{name:label(item)+' 조회 제거'}));expect(readPreferences('apartmentTransactions').selected).toEqual([]);expect(readPreferences('viewer').apartments).toEqual([item]);
+  await user.click(screen.getByRole('button',{name:apartmentFavoriteLabel(item)+' 조회 선택 해제'}));expect(readPreferences('apartmentTransactions').selected).toEqual([]);expect(readPreferences('viewer').apartments).toEqual([item]);
   await user.click(within(favorites).getByRole('checkbox'));expect(tradeTable(item)).toBeTruthy();
   await user.click(within(favorites).getByRole('button',{name:/즐겨찾기 해제/}));expect(readPreferences('viewer').apartments).toEqual([]);expect(tradeTable(item)).toBeTruthy();
  });
@@ -64,4 +64,26 @@ describe('Unified apartment transactions',()=>{
   render(<App initialManifest={manifest} districtLoader={loader}/>);await waitFor(()=>expect(loader).toHaveBeenCalledTimes(1));await user.selectOptions(screen.getByRole('combobox',{name:'조회 지역'}),'area_11110');await screen.findByRole('alert');resolveOld([row()]);
   await user.click(screen.getByRole('button',{name:'다시 불러오기'}));await screen.findByRole('group',{name:'검색 아파트 선택'});expect(within(search()).queryByRole('checkbox',{name:/풍덕천동/})).toBeNull();
  });
+});
+
+it('preserves apartment search and result pagination when the whole filter panel and each result are collapsed',async()=>{
+ const user=userEvent.setup(),data=Array.from({length:52},(_,index)=>row({id:index+1}));
+ const secondRow=row({id:100,apartment:'비교아파트',jibun:'2'}),second=makeApartmentFavorite(secondRow,region);
+ const loader=vi.fn(async()=>[...data,secondRow]);
+ render(<App initialManifest={manifest} districtLoader={loader}/>);await screen.findByRole('group',{name:'검색 아파트 선택'});await choose(user);
+ await user.type(screen.getByRole('searchbox',{name:'아파트 검색'}),'비교');await choose(user,second);
+ const firstTable=tradeTable(favorite),secondTable=tradeTable(second);
+ await user.click(screen.getByRole('button',{name:label(favorite)+' 다음 거래 페이지'}));
+ expect(within(firstTable).getAllByRole('row')).toHaveLength(3);
+ const filters=screen.getByRole('button',{name:'조회 필터 접기'});await user.click(filters);
+ expect(screen.queryByRole('searchbox',{name:'아파트 검색'})).toBeNull();
+ const collapse=screen.getByRole('button',{name:label(favorite)+' 실거래가 접기'});await user.click(collapse);
+ expect(screen.queryByRole('region',{name:label(favorite)+' 기간별 거래 내역'})).toBeNull();
+ expect(within(secondTable).getAllByRole('row')).toHaveLength(2);
+ await user.click(screen.getByRole('button',{name:label(favorite)+' 실거래가 펼치기'}));
+ expect(within(firstTable).getAllByRole('row')).toHaveLength(3);
+ filters.focus();await user.keyboard('{Enter}');
+ expect(screen.getByRole('searchbox',{name:'아파트 검색'}).value).toBe('비교');
+ expect(readPreferences('apartmentTransactions').selected).toEqual([favorite,second]);
+ expect(loader).toHaveBeenCalledTimes(1);
 });

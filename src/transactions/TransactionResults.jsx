@@ -1,18 +1,18 @@
 import React, {useEffect, useMemo, useState} from 'react';
-import {ChevronLeft, ChevronRight, X} from 'lucide-react';
+import {ChevronLeft, ChevronRight} from 'lucide-react';
 import {apartmentAddress, areaValue, formatNumber, priceEok} from '../domain.mjs';
 import {Empty, Loading} from '../ViewState.jsx';
+import CollapsiblePanel from '../CollapsiblePanel.jsx';
 import {weeklyResultRows} from '../weekly/query.mjs';
 
-export default function TransactionResults({region,week,dataset,collected,minArea,maxArea,selectedBands,includeCancelled,mode,onRemove,onRetry}) {
+export default function TransactionResults({region,week,dataset,collected,minArea,maxArea,selectedBands,includeCancelled,mode,onRetry}) {
   const rows=useMemo(()=>weeklyResultRows(dataset?.rows||[],region,week,{minArea,maxArea,selectedBands,includeCancelled}),[dataset?.rows,region,week.start,week.end,minArea,maxArea,selectedBands,includeCancelled]);
   const periodLabel=mode==='week'?'주간':'기간별',timeLabel=mode==='week'?'이 주':'선택 기간';
   const areaFiltered=minArea!=='' || maxArea!=='' || selectedBands.length>0;
   const [page,setPage]=useState(1);
   useEffect(()=>setPage(1),[rows]);
   const pages=Math.max(1,Math.ceil(rows.length/50)), safePage=Math.min(page,pages), displayAreaUnit='pyeong', unit='평';
-  return <section className="panel weekly-dong" aria-label={`${region.label} ${periodLabel} 실거래가`}>
-    <div className="section-title"><div><h2>{region.key?region.apartment:region.dongs[0]}</h2><p>{region.key?apartmentAddress(region,region.region_name):region.region_name} · {week.start} — {week.end}</p></div><div className="watch-card-actions"><button aria-label={region.label+' 조회 제거'} onClick={onRemove}><X size={14}/>제거</button></div></div>
+  return <CollapsiblePanel className="weekly-dong" label={`${region.label} ${periodLabel} 실거래가`} toggleLabel={region.label+' 실거래가'} heading={<><h2>{region.key?region.apartment:region.dongs[0]}</h2><p>{region.key?apartmentAddress(region,region.region_name):region.region_name} · {week.start} — {week.end}</p></>}>
     {!collected?<Empty title={region.key?"이 아파트 지역은 아직 수집된 자료가 없습니다.":"아직 수집된 자료가 없는 동입니다."}>로컬 관리자에서 수집·배포하면 조회할 수 있습니다.</Empty>:dataset?.error?<div className="notice error" role="alert">이 지역의 자료를 불러오지 못했습니다.<button onClick={onRetry}>다시 불러오기</button></div>:!dataset?.rows?<Loading text="이 동의 거래를 불러오는 중입니다."/>:<>
       {!rows.length?<Empty title={areaFiltered?`${timeLabel}의 면적 조건에 맞는 ${includeCancelled?'':'유효 '}거래가 없습니다.`:`${timeLabel}에 조회되는 ${includeCancelled?'':'유효 '}거래가 없습니다.`}>{areaFiltered?'면적 필터를 조정하거나 초기화해 보세요.':region.key?'기간이나 다른 아파트를 선택해 보세요.':'기간이나 다른 동을 선택해 보세요.'}</Empty>:<>
         <div className="table-scroll weekly-trades" role="region" aria-label={`${region.label} ${periodLabel} 거래 내역`} tabIndex={0}><table className="summary-table">
@@ -22,5 +22,5 @@ export default function TransactionResults({region,week,dataset,collected,minAre
         <div className="pagination"><span>계약일 최신순 · 페이지당 50건 · {safePage} / {pages} 페이지</span><button aria-label={`${region.label} 이전 거래 페이지`} disabled={safePage<=1} onClick={()=>setPage(safePage-1)}><ChevronLeft size={16}/></button><button aria-label={`${region.label} 다음 거래 페이지`} disabled={safePage>=pages} onClick={()=>setPage(safePage+1)}><ChevronRight size={16}/></button></div>
       </>}
     </>}
-  </section>;
+  </CollapsiblePanel>;
 }

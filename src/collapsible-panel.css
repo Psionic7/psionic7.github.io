@@ -1,0 +1,10 @@
+.collapsible-panel>.collapsible-panel-heading{display:flex;align-items:flex-start;flex-direction:row;flex-wrap:nowrap;gap:12px}
+.collapsible-panel-title{flex:1;min-width:0}
+.collapsible-panel-title h2,.collapsible-panel-title p{overflow-wrap:anywhere}
+.collapsible-panel-actions{display:flex;align-items:center;gap:10px;flex-shrink:0}
+.collapsible-panel-toggle{width:36px;height:36px;padding:0;flex-shrink:0;color:#416c59;background:#f8fbf9;border-color:#dce9e3}
+.collapsible-panel-toggle svg{transform:rotate(-90deg)}
+.collapsible-panel.expanded>.collapsible-panel-heading .collapsible-panel-toggle svg{transform:rotate(0)}
+.collapsible-panel:not(.expanded)>.collapsible-panel-heading{margin-bottom:0}
+.collapsible-panel-content[hidden]{display:none}
+@media(max-width:560px){.collapsible-panel-actions{gap:6px}}

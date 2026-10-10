@@ -243,7 +243,7 @@ describe('Dong weekly transaction tab',()=>{
     expect(screen.getByRole('region',{name:`${a.label} 주간 실거래가`})).toBeTruthy();
     await user.click(screen.getByRole('button',{name:'평 (전용)',exact:true}));
     expect(within(tableA).getAllByRole('cell',{name:'25.7평'})).toHaveLength(2);
-    await user.click(screen.getByRole('button',{name:`${b.label} 조회 제거`}));
+    await user.click(screen.getByRole('button',{name:`${b.label} 선택 해제`}));
     expect(screen.queryByRole('region',{name:`${b.label} 주간 실거래가`})).toBeNull();
     expect(window.location.search).toContain('week=2026-09-28');
     expect(new URLSearchParams(window.location.search).getAll('dong')).toEqual([a.region_id,c.region_id]);
@@ -299,7 +299,7 @@ describe('Dong weekly transaction tab',()=>{
     await screen.findByRole('checkbox',{name:/풍덕천동.*용인시/});
     await user.click(screen.getByRole('checkbox',{name:/풍덕천동.*용인시/}));
     await waitFor(()=>expect(loader).toHaveBeenCalledTimes(1));
-    await user.click(screen.getByRole('button',{name:`${a.label} 조회 제거`}));
+    await user.click(screen.getByRole('button',{name:`${a.label} 선택 해제`}));
     resolve([row(1)]);
     await waitFor(()=>expect(screen.queryByRole('region',{name:`${a.label} 주간 실거래가`})).toBeNull());
   });
@@ -375,4 +375,35 @@ it('shows how to add personal favorite dongs when none are saved, without import
  expect(within(favorites).getByText('지역 지도에서 별표로 동을 즐겨찾기하면 여기에 표시됩니다.')).toBeTruthy();
  expect(within(favorites).queryByRole('checkbox')).toBeNull();
  expect(screen.getByRole('group',{name:'주간 조회할 동 선택'})).toBeTruthy();
+});
+
+it('collapses whole filters and individual dong panels independently while preserving pages and nested filter state',async()=>{
+ const user=userEvent.setup();window.history.replaceState(null,'',`/?tab=weekly&dong=${a.region_id}&dong=${b.region_id}`);
+ const loader=vi.fn(async(_,code)=>Array.from({length:52},(_,index)=>row(index+1,{region_code:code})));
+ render(<App initialManifest={manifest} districtLoader={loader}/>);
+ const panelA=await screen.findByRole('region',{name:a.label+' 주간 실거래가'});
+ const tableA=await within(panelA).findByRole('region',{name:a.label+' 주간 거래 내역'});
+ const tableB=await screen.findByRole('region',{name:b.label+' 주간 거래 내역'});
+ fireEvent.change(screen.getByRole('spinbutton',{name:'최대 전용면적 (㎡)'}),{target:{value:'90'}});
+ await user.click(screen.getByRole('checkbox',{name:'해제 거래 포함'}));
+ await user.click(screen.getByRole('button',{name:'전용면적 접기'}));
+ await user.click(screen.getByRole('button',{name:a.label+' 다음 거래 페이지'}));
+ expect(within(tableA).getAllByRole('row')).toHaveLength(3);
+ const url=location.search,settings=readPreferences('weekly');
+ const collapse=within(panelA).getByRole('button',{name:a.label+' 실거래가 접기'});await user.click(collapse);
+ expect(collapse.getAttribute('aria-expanded')).toBe('false');
+ expect(document.getElementById(collapse.getAttribute('aria-controls')).contains(tableA)).toBe(true);
+ expect(screen.queryByRole('region',{name:a.label+' 주간 거래 내역'})).toBeNull();
+ expect(within(tableB).getAllByRole('row')).toHaveLength(51);
+ await user.click(screen.getByRole('button',{name:'조회 필터 접기'}));
+ expect(screen.queryByRole('button',{name:'조회 기간 접기'})).toBeNull();
+ collapse.focus();await user.keyboard('{Enter}');
+ expect(within(tableA).getAllByRole('row')).toHaveLength(3);
+ expect(location.search).toBe(url);expect(readPreferences('weekly')).toEqual(settings);
+ await user.click(screen.getByRole('button',{name:'조회 필터 펼치기'}));
+ expect(screen.queryByRole('spinbutton',{name:'최대 전용면적 (㎡)'})).toBeNull();
+ await user.click(screen.getByRole('button',{name:'전용면적 펼치기'}));
+ expect(screen.getByRole('spinbutton',{name:'최대 전용면적 (㎡)'}).value).toBe('90');
+ expect(screen.getByRole('checkbox',{name:'해제 거래 포함'}).checked).toBe(false);
+ expect(loader).toHaveBeenCalledTimes(2);
 });
