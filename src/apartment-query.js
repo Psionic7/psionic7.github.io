@@ -9,7 +9,7 @@ export function apartmentQueryRegion(item) {
 }
 export function restoreApartmentQuery(manifest,catalog,params,favorites) {
   const saved=readPreferences('apartmentTransactions'),legacy=readPreferences('favoriteDashboard'),explorer=readPreferences('explorer');
-  const current=!params.has('tab')||['apartments','dashboard'].includes(params.get('tab'));
+  const current=!params.has('tab')||params.get('tab')==='apartments';
   const requested=current?params:new URLSearchParams();
   const regionId=requested.has('region')?requested.get('region'):saved.regionId??explorer.regionId;
   const region=catalog.find(item=>item.region_id===regionId);

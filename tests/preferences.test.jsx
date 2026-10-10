@@ -42,7 +42,7 @@ describe('Browser selection persistence',()=>{
     expect(within(screen.getByRole('group',{name:'검색 아파트 선택'})).getByRole('checkbox',{name:/기억단지/}).checked).toBe(true);
   });
   it('retains apartment transaction filters separately from dong filters',async()=>{
-    const user=userEvent.setup();window.history.replaceState(null,'','/?tab=dashboard');
+    const user=userEvent.setup();window.history.replaceState(null,'','/?tab=apartments');
     const first=open();await screen.findByText('실거래가를 볼 아파트를 선택해 주세요.');
     fireEvent.change(screen.getByRole('spinbutton',{name:'최대 전용면적 (㎡)'}),{target:{value:'70'}});
     await user.click(screen.getByRole('button',{name:'10평대',exact:true}));
@@ -77,10 +77,10 @@ describe('Browser selection persistence',()=>{
   });
   it('ignores damaged or obsolete saved values and survives storage denial',async()=>{
     window.localStorage.setItem(PREFERENCES_KEY,'{broken');
-    const first=open();await screen.findByRole('heading',{name:'실거래가를 볼 아파트를 선택해 주세요.'});first.unmount();
+    const first=open();await screen.findByRole('heading',{name:'즐겨찾기를 추가해 대시보드를 채워보세요.'});first.unmount();
     savePreferences('explorer',{regionId:'removed',tab:'invalid',weeklyIds:[a.region_id,'removed'],weeklyDay:'2099-01-01'});
     window.history.replaceState(null,'','/');const second=open();
-    await screen.findByText('실거래가를 볼 아파트를 선택해 주세요.');second.unmount();
+    await screen.findByText('즐겨찾기를 추가해 대시보드를 채워보세요.');second.unmount();
     vi.spyOn(Storage.prototype,'getItem').mockImplementation(()=>{throw new Error('blocked');});
     vi.spyOn(Storage.prototype,'setItem').mockImplementation(()=>{throw new Error('blocked');});
     window.history.replaceState(null,'','/?region=area_41465&tab=apartments');open();
@@ -92,7 +92,7 @@ describe('Browser selection persistence',()=>{
     const user=userEvent.setup();window.localStorage.setItem('unrelated','keep');
     savePreferences('explorer',{regionId:'area_41465',tab:'about'});savePreferences('display',{areaUnit:'pyeong'});
     open();await user.click(screen.getByRole('button',{name:'이 브라우저의 조회 설정 초기화'}));
-    await screen.findByText('실거래가를 볼 아파트를 선택해 주세요.');
-    expect(readPreferences('display')).toEqual({areaUnit:'m2'});expect(readPreferences('viewer').apartments).toEqual([]);expect(readPreferences('viewer').regions).toEqual([]);expect(window.localStorage.getItem('unrelated')).toBe('keep');
+    await screen.findByText('즐겨찾기를 추가해 대시보드를 채워보세요.');
+    expect(readPreferences('display')).toEqual({});expect(readPreferences('viewer').apartments).toEqual([]);expect(readPreferences('viewer').regions).toEqual([]);expect(window.localStorage.getItem('unrelated')).toBe('keep');
   });
 });

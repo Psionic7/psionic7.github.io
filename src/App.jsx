@@ -1,5 +1,5 @@
 import React,{lazy,Suspense,useEffect,useMemo,useState} from 'react';
-import {House,Building2,CalendarDays,Info,ArrowUpRight,Copy,Database,SlidersHorizontal,Map as MapIcon,MapPin} from 'lucide-react';
+import {House,Building2,CalendarDays,Info,ChartNoAxesCombined,ArrowUpRight,Copy,Database,SlidersHorizontal,Map as MapIcon,MapPin} from 'lucide-react';
 import {buildCatalog,formatNumber,monthLabel} from './domain.mjs';
 import {fetchJson,loadDistrict} from './data.js';
 import {Loading} from './ViewState.jsx';
@@ -8,11 +8,13 @@ import {clearPreferences,readPreferences,restoreExplorer,savePreferences,useStor
 import {validApartmentFavorites,sameApartmentFavorite} from './apartment-favorites.js';
 import {validRegionFavorites} from './region-favorites.js';
 import {restoreApartmentQuery,appendTransactionPeriod} from './apartment-query.js';
+import {restoreOverviewDays} from './dashboard/model.mjs';
+const Dashboard=lazy(()=>import('./Dashboard.jsx'));
 const ApartmentMapPage=lazy(()=>import('./ApartmentMapPage.jsx'));
 const RegionMapPage=lazy(()=>import('./RegionMapPage.jsx'));
 const ApartmentPage=lazy(()=>import('./ApartmentPage.jsx'));
 const WeeklyPage=lazy(()=>import('./WeeklyPage.jsx'));
-const tabs=[['apartments','아파트별 실거래가',Building2],['weekly','동 별 실거래가',CalendarDays],['map','아파트 지도',MapIcon],['regions','지역 지도',MapPin],['about','데이터 안내',Info]];
+const tabs=[['dashboard','대시보드',ChartNoAxesCombined],['apartments','아파트별 실거래가',Building2],['weekly','동 별 실거래가',CalendarDays],['map','아파트 지도',MapIcon],['regions','지역 지도',MapPin],['about','데이터 안내',Info]];
 const timestamp=value=>new Date(value).toLocaleString('ko-KR',{timeZone:'Asia/Seoul',dateStyle:'medium',timeStyle:'short'});
 export default function App({ initialManifest = null, districtLoader = loadDistrict }) {
   const [manifest, setManifest] = useState(initialManifest), [error, setError] = useState('');
@@ -43,18 +45,23 @@ function Explorer({manifest,districtLoader,onResetPreferences}) {
   const [tab,setTab]=useState(initial.tab),[weeklyIds,setWeeklyIds]=useState(initial.weeklyIds),[weeklyDay,setWeeklyDay]=useState(initial.weeklyDay),[weeklyPeriod,setWeeklyPeriod]=useState(initial.weeklyPeriod);
   const [selectedApartments,setSelectedApartments]=useState(apartmentInitial.selected),[searchRegionId,setSearchRegionId]=useState(apartmentInitial.regionId),[apartmentDay,setApartmentDay]=useState(apartmentInitial.day),[apartmentPeriod,setApartmentPeriod]=useState(apartmentInitial.period);
   const [apartmentFilters,setApartmentFilters]=useState(apartmentInitial.filters);
+  const [dashboardDays,setDashboardDays]=useState(()=>restoreOverviewDays(new URLSearchParams(window.location.search),readPreferences('overview').days));
   const [copied,setCopied]=useState(false);
   const toggleRegionFavorite=id=>{if(catalog.some(region=>region.region_id===id&&region.dongs.length===1))setRegionFavorites(previous=>previous.includes(id)?previous.filter(saved=>saved!==id):previous.length<2000?[...previous,id]:previous);};
   const toggleApartmentFavorite=item=>setApartmentFavorites(previous=>previous.some(saved=>sameApartmentFavorite(saved,item))?previous.filter(saved=>!sameApartmentFavorite(saved,item)):previous.length<1000?[...previous,item]:previous);
+  const openOverviewDong=(item,range,includeCancelled=false)=>{setWeeklyIds([item.region_id]);setWeeklyPeriod(previous=>({...previous,mode:'custom',...range}));savePreferences('weekly',{...readPreferences('weekly'),minArea:'',maxArea:'',areaBands:[],includeCancelled});setTab('weekly');};
+  const openOverviewApartment=(item,range,includeCancelled=false)=>{setSelectedApartments([item]);setApartmentPeriod(previous=>({...previous,mode:'custom',...range}));setSearchRegionId('area_'+item.region_code);setApartmentFilters({province:'',city:'',district:'',search:''});savePreferences('apartmentTransactions',{...readPreferences('apartmentTransactions'),minArea:'',maxArea:'',areaBands:[],includeCancelled});setTab('apartments');};
+  useEffect(()=>{savePreferences('overview',{days:dashboardDays});},[dashboardDays]);
   useEffect(()=>{savePreferences('explorer',{...readPreferences('explorer'),tab,weeklyIds,weeklyDay,weeklyPeriod});},[tab,weeklyIds,weeklyDay,weeklyPeriod]);
   useEffect(()=>{savePreferences('apartmentTransactions',{...readPreferences('apartmentTransactions'),selected:selectedApartments,regionId:searchRegionId,day:apartmentDay,period:apartmentPeriod});},[selectedApartments,searchRegionId,apartmentDay,apartmentPeriod]);
   useEffect(()=>{savePreferences('apartmentSearch',{...readPreferences('apartmentSearch'),filters:apartmentFilters});},[apartmentFilters]);
   useEffect(()=>{
     const params=new URLSearchParams({tab});
+    if(tab==='dashboard')params.set('days',String(dashboardDays));
     if(tab==='weekly'){weeklyIds.forEach(id=>params.append('dong',id));appendTransactionPeriod(params,weeklyPeriod,weeklyDay);}
     if(tab==='apartments'){if(searchRegionId)params.set('region',searchRegionId);if(selectedApartments.length)selectedApartments.forEach(item=>params.append('apt',JSON.stringify(item)));else params.set('apt','');appendTransactionPeriod(params,apartmentPeriod,apartmentDay);}
     window.history.replaceState(null,'','?'+params);
-  },[tab,weeklyIds,weeklyDay,weeklyPeriod,selectedApartments,searchRegionId,apartmentDay,apartmentPeriod]);
+  },[tab,weeklyIds,weeklyDay,weeklyPeriod,selectedApartments,searchRegionId,apartmentDay,apartmentPeriod,dashboardDays]);
   const share=async()=>{try{await navigator.clipboard.writeText(window.location.href);setCopied(true);setTimeout(()=>setCopied(false),2500);}catch{window.prompt('이 주소를 복사해 주세요.',window.location.href);}};
   return <div className="app-shell public-shell"><main className="main-content">
     <div className="site-brand"><a className="brand" href="/"><span className="brand-icon"><House size={25}/></span><span>집의 기록<small>아파트 실거래 아카이브</small></span></a><span className="small-note">자료 업데이트 {timestamp(manifest.published_at)} KST</span></div>
@@ -62,7 +69,8 @@ function Explorer({manifest,districtLoader,onResetPreferences}) {
     <nav className="tabs" aria-label="조회 화면">{tabs.map(([id,label,Icon])=><button key={id} aria-current={tab===id?'page':undefined} onClick={()=>setTab(id)}><Icon size={17}/>{label}</button>)}</nav>
     <section className="tab-content" role="tabpanel" aria-label={tabs.find(([id])=>id===tab)[1]}>
       <Suspense fallback={<Loading text="조회 화면을 준비하고 있습니다."/>}>
-        {tab==='apartments'?<ApartmentPage manifest={manifest} catalog={catalog} favorites={apartmentFavorites} favoriteRegions={favorites} selected={selectedApartments} onChange={setSelectedApartments} searchRegionId={searchRegionId} onSearchRegionChange={setSearchRegionId} searchFilters={apartmentFilters} onSearchFiltersChange={setApartmentFilters} day={apartmentDay} onDayChange={value=>setApartmentDay(weekBounds(value)?.start||'')} period={apartmentPeriod} onPeriodChange={setApartmentPeriod} districtLoader={districtLoader} onToggleFavorite={toggleApartmentFavorite}/>
+        {tab==='dashboard'?<Dashboard manifest={manifest} regions={favorites} apartments={apartmentFavorites} days={dashboardDays} onDaysChange={setDashboardDays} districtLoader={districtLoader} onOpenDong={openOverviewDong} onOpenApartment={openOverviewApartment} onManageDongs={()=>setTab('regions')} onManageApartments={()=>setTab('map')}/>
+        :tab==='apartments'?<ApartmentPage manifest={manifest} catalog={catalog} favorites={apartmentFavorites} favoriteRegions={favorites} selected={selectedApartments} onChange={setSelectedApartments} searchRegionId={searchRegionId} onSearchRegionChange={setSearchRegionId} searchFilters={apartmentFilters} onSearchFiltersChange={setApartmentFilters} day={apartmentDay} onDayChange={value=>setApartmentDay(weekBounds(value)?.start||'')} period={apartmentPeriod} onPeriodChange={setApartmentPeriod} districtLoader={districtLoader} onToggleFavorite={toggleApartmentFavorite}/>
         :tab==='weekly'?<WeeklyPage manifest={manifest} catalog={catalog} favoriteRegions={favorites} selectedIds={weeklyIds} onChange={setWeeklyIds} day={weeklyDay} onDayChange={value=>setWeeklyDay(weekBounds(value)?.start||'')} period={weeklyPeriod} onPeriodChange={setWeeklyPeriod} districtLoader={districtLoader}/>
         :tab==='map'?<ApartmentMapPage manifest={manifest} favorites={apartmentFavorites} onToggleFavorite={toggleApartmentFavorite}/>
         :tab==='regions'?<RegionMapPage catalog={catalog} favorites={regionFavorites} onToggleFavorite={toggleRegionFavorite}/>

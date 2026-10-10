@@ -7,9 +7,9 @@ const catalog=[region],manifest={months:['202601','202609','202610'],published_a
 const item=makeApartmentFavorite({apartment:'저장단지',dong:'풍덕천동',jibun:'1'},region);
 const restore=params=>restoreApartmentQuery(manifest,catalog,new URLSearchParams(params),[item]);
 beforeEach(()=>localStorage.clear());
-it('migrates legacy dashboard links and filters while ordinary apartment visits start with a separate empty selection',()=>{
+it('migrates legacy apartment filters without treating the new overview as an apartment query',()=>{
  savePreferences('favoriteDashboard',{day:'2026-09-28',period:{mode:'month',month:'2026-09',start:'2026-09-01',end:'2026-09-30'}});
- expect(restore('tab=dashboard')).toMatchObject({selected:[item],day:'2026-09-28',period:{mode:'month',month:'2026-09'}});
+ expect(restore('tab=dashboard')).toMatchObject({selected:[],day:'2026-09-28',period:{mode:'month',month:'2026-09'}});
  expect(restore('tab=apartments').selected).toEqual([]);
 });
 it('preserves old saved apartment selections and accepts old contract-month links as the common custom period',()=>{

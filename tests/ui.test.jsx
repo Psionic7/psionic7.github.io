@@ -8,7 +8,7 @@ import {savePreferences} from '../src/preferences.js';
 const region={region_id:'suji',label:'용인 수지구',region_name:'경기도 용인시 수지구',region_code:'41465',dongs:[]};
 const rows=Array.from({length:115},(_,i)=>({id:i+1,region_code:'41465',deal_month:'202601',deal_date:'2026-01-05',apartment:i===0?'첫 아파트':'두번째',dong:'풍덕천동',jibun:'1',road_address:'경기도 용인시 수지구 풍덕천로 12',price_man:100000,area_m2:85,cancelled:0,raw:{aptNm:i===0?'첫 아파트':'두번째',umdNm:'풍덕천동',dealAmount:i===0?'100,000':'50,000',floor:'4',cdealType:''}}));
 const manifest={regions:[region,{region_id:'dong_11110101',label:'서울특별시 종로구 청운동',region_name:'서울특별시 종로구',region_code:'11110',dongs:['청운동']}],districts:{'41465':{file:'fake.json',count:115,months:['202601']}},months:['202601'],published_at:'2026-10-02T00:00:00+00:00',count:115,boundary_catalog_date:'2023-07-29'};
-beforeEach(()=>{window.localStorage.clear();window.history.replaceState(null,'','/?region=area_41465&tab=dashboard');});
+beforeEach(()=>{window.localStorage.clear();window.history.replaceState(null,'','/?region=area_41465&tab=apartments');});
 afterEach(()=>{cleanup();vi.restoreAllMocks();vi.unstubAllGlobals();});
 describe('React transaction explorer',()=>{
   it('adds a personal apartment favorite through search while selecting multiple trades in the unified tab',async()=>{
@@ -18,7 +18,7 @@ describe('React transaction explorer',()=>{
     await user.click(within(search).getByRole('button',{name:/첫 아파트.*즐겨찾기 추가/}));
     await user.click(within(search).getByRole('checkbox',{name:/첫 아파트/}));
     const table=await screen.findByRole('region',{name:/첫 아파트.*기간별 거래 내역/});expect(within(table).getAllByRole('row')).toHaveLength(2);expect(within(table).queryByText('두번째')).toBeNull();
-    expect(within(screen.getByRole('group',{name:'즐겨찾기 아파트 선택'})).getByRole('checkbox').checked).toBe(true);expect(screen.queryByRole('button',{name:'대시보드',exact:true})).toBeNull();
+    expect(within(screen.getByRole('group',{name:'즐겨찾기 아파트 선택'})).getByRole('checkbox').checked).toBe(true);expect(screen.getByRole('button',{name:'대시보드',exact:true})).toBeTruthy();
   });
   it('loads the apartment tab directly from its public URL without dashboard detail',async()=>{
     window.history.replaceState(null,'','/?region=area_41465&tab=apartments');
@@ -29,14 +29,14 @@ describe('React transaction explorer',()=>{
     expect(screen.queryByText('유효 거래',{selector:'.metric-label'})).toBeNull();
     expect(screen.queryByRole('button',{name:'원천 데이터',exact:true})).toBeNull();
   });
-  it('an old raw-data URL resolves to unified apartment transactions without exposing a raw table',async()=>{
+  it('an old raw-data URL resolves to the overview dashboard without exposing a raw table',async()=>{
     window.history.replaceState(null,'','/?region=area_41465&tab=raw');
     render(<App initialManifest={manifest} districtLoader={()=>Promise.resolve(rows)}/>);
-    await screen.findByText('실거래가를 볼 아파트를 선택해 주세요.');
-    expect(screen.getByRole('tabpanel',{name:'아파트별 실거래가'})).toBeTruthy();
+    await screen.findByText('즐겨찾기를 추가해 대시보드를 채워보세요.');
+    expect(screen.getByRole('tabpanel',{name:'대시보드'})).toBeTruthy();
     expect(screen.queryByText('신고 자료 그대로')).toBeNull();
     expect(screen.queryByRole('button',{name:'CSV 다운로드'})).toBeNull();
-    expect(window.location.search).toContain('tab=apartments');
+    expect(window.location.search).toContain('tab=dashboard');
   });
   it('keeps period and area controls inside unified apartment transactions and removes them from the about tab',async()=>{
     const user=userEvent.setup();render(<App initialManifest={manifest} districtLoader={()=>Promise.resolve(rows)}/>);
@@ -71,8 +71,8 @@ describe('React transaction explorer',()=>{
   it('starts with empty personal favorites and makes no district request',async()=>{
     window.history.replaceState(null,'','/');const loader=vi.fn(()=>Promise.resolve(rows));
     render(<App initialManifest={{...manifest,favorite_region_ids:[]}} districtLoader={loader}/>);
-    await screen.findByText('실거래가를 볼 아파트를 선택해 주세요.');
-    expect(screen.getByRole('combobox',{name:'조회 지역'})).toBeTruthy();
+    await screen.findByText('즐겨찾기를 추가해 대시보드를 채워보세요.');
+    expect(screen.queryByRole('combobox',{name:'조회 지역'})).toBeNull();
     expect(loader).not.toHaveBeenCalled();
     expect(window.location.search).not.toContain('region=');
   });
