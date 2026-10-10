@@ -22,7 +22,7 @@ describe('Unified apartment transactions',()=>{
   const user=userEvent.setup(),rows=[row(),row({id:2,deal_date:'2026-03-10',deal_month:'202603',price_man:120000}),row({id:3,area_m2:60}),row({id:4,jibun:'2',price_man:900000}),row({id:5,cancelled:1,price_man:800000,raw:{cdealDay:'2026-04-01'}}),row({id:6,dong:'죽전동',price_man:700000})];
   render(<App initialManifest={manifest} districtLoader={async()=>rows}/>);await screen.findByRole('group',{name:'검색 아파트 선택'});await choose(user);
   let table=tradeTable(favorite);expect(within(table).getAllByRole('row')).toHaveLength(5);
-  expect(within(table).getAllByRole('columnheader').map(cell=>cell.textContent)).toEqual(['계약일','아파트 이름','전용면적 (평)','층','거래금액','거래 상태 / 해제일']);
+  expect(within(table).getAllByRole('columnheader').map(cell=>cell.textContent)).toEqual(['계약일','아파트 이름','전용면적','층','거래금액','거래 상태 / 해제일']);
   expect(within(table).getByText('26.03.10')).toBeTruthy();expect(within(table).getAllByText('25.7평')).toHaveLength(3);
   expect(within(table).queryByText('90.00억 원')).toBeNull();expect(within(table).queryByText('70.00억 원')).toBeNull();expect(screen.queryByText('유효 거래')).toBeNull();expect(screen.queryByText('최고 거래금액')).toBeNull();expect(document.querySelector('.weekly-metrics')).toBeNull();
   await user.click(screen.getByRole('checkbox',{name:'해제 거래 포함'}));expect(within(table).getAllByRole('row')).toHaveLength(4);
