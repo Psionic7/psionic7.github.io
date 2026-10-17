@@ -51,7 +51,7 @@ describe('Personal apartment watchlist',()=>{
     expect(screen.getByRole('button',{name:'10평대',exact:true}).getAttribute('aria-pressed')).toBe('true');
     await user.click(screen.getByRole('button',{name:'면적 필터 초기화'}));
     expect(within(table(favorite,'기간별')).getAllByRole('row')).toHaveLength(51);
-    await user.click(screen.getByRole('button',{name:label(favorite)+' 조회 제거'}));
+    await user.click(within(screen.getByLabelText('선택한 조회 아파트')).getByRole('button',{name:/조회 선택 해제$/}));
     expect(readPreferences('viewer').apartments).toEqual([favorite]);
     await user.click(within(screen.getByRole('group',{name:'즐겨찾기 아파트 선택'})).getByRole('button',{name:/즐겨찾기 해제/}));
     expect(screen.getByText('실거래가를 볼 아파트를 선택해 주세요.')).toBeTruthy();

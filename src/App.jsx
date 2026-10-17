@@ -1,5 +1,5 @@
 import React,{lazy,Suspense,useEffect,useMemo,useState} from 'react';
-import {House,Building2,CalendarDays,Info,ChartNoAxesCombined,ArrowUpRight,Copy,Database,SlidersHorizontal,Map as MapIcon,MapPin} from 'lucide-react';
+import {House,Building2,CalendarDays,Info,ChartNoAxesCombined,ArrowUpRight,Copy,Database,SlidersHorizontal,Map as MapIcon,MapPin,Star,ChevronRight} from 'lucide-react';
 import {buildCatalog,formatNumber,monthLabel} from './domain.mjs';
 import {fetchJson,loadDistrict} from './data.js';
 import {Loading} from './ViewState.jsx';
@@ -15,6 +15,14 @@ const RegionMapPage=lazy(()=>import('./RegionMapPage.jsx'));
 const ApartmentPage=lazy(()=>import('./ApartmentPage.jsx'));
 const WeeklyPage=lazy(()=>import('./WeeklyPage.jsx'));
 const tabs=[['dashboard','대시보드',ChartNoAxesCombined],['apartments','아파트별 실거래가',Building2],['weekly','동 별 실거래가',CalendarDays],['map','아파트 지도',MapIcon],['regions','지역 지도',MapPin],['about','데이터 안내',Info]];
+const pageCopy={
+  dashboard:['나의 관심 동네, 한눈에.','관심 있는 곳의 거래를 모아, 우리 동네의 변화를 발견하세요.','MY HOME JOURNAL'],
+  apartments:['궁금한 아파트의 진짜 거래.','관심 단지를 고르고, 기간과 면적에 따른 실거래를 비교하세요.','APARTMENT RECORDS'],
+  weekly:['동네마다 다른 거래의 흐름.','여러 동의 실거래를 같은 조건으로 나란히 살펴보세요.','NEIGHBORHOOD RECORDS'],
+  map:['다음 관심 단지를 찾아보세요.','지도 위에서 아파트를 둘러보고, 마음에 드는 곳을 저장하세요.','EXPLORE APARTMENTS'],
+  regions:['관심 있는 동네를 넓혀보세요.','서울과 경기의 동네를 둘러보고, 별표로 기록을 시작하세요.','EXPLORE NEIGHBORHOODS'],
+  about:['기록의 바탕이 되는 데이터.','자료의 출처와 조회 방법, 브라우저에 저장되는 설정을 확인하세요.','ABOUT THE RECORDS'],
+};
 const timestamp=value=>new Date(value).toLocaleString('ko-KR',{timeZone:'Asia/Seoul',dateStyle:'medium',timeStyle:'short'});
 export default function App({ initialManifest = null, districtLoader = loadDistrict }) {
   const [manifest, setManifest] = useState(initialManifest), [error, setError] = useState('');
@@ -63,11 +71,21 @@ function Explorer({manifest,districtLoader,onResetPreferences}) {
     window.history.replaceState(null,'','?'+params);
   },[tab,weeklyIds,weeklyDay,weeklyPeriod,selectedApartments,searchRegionId,apartmentDay,apartmentPeriod,dashboardDays]);
   const share=async()=>{try{await navigator.clipboard.writeText(window.location.href);setCopied(true);setTimeout(()=>setCopied(false),2500);}catch{window.prompt('이 주소를 복사해 주세요.',window.location.href);}};
-  return <div className="app-shell public-shell"><main className="main-content">
-    <div className="site-brand"><a className="brand" href="/"><span className="brand-icon"><House size={25}/></span><span>집의 기록<small>아파트 실거래 아카이브</small></span></a><span className="small-note">자료 업데이트 {timestamp(manifest.published_at)} KST</span></div>
-    <header className="page-header"><div><p className="eyebrow">HOME RECORDS / REAL TRANSACTIONS</p><h1>실거래로 읽는 우리 동네</h1><p>지역과 기간을 골라 거래의 흐름을 살펴보세요.</p></div><button className="share-button" onClick={share}><Copy size={15}/>{copied?'주소 복사됨':'조회 주소 복사'}</button></header>
-    <nav className="tabs" aria-label="조회 화면">{tabs.map(([id,label,Icon])=><button key={id} aria-current={tab===id?'page':undefined} onClick={()=>setTab(id)}><Icon size={17}/>{label}</button>)}</nav>
-    <section className="tab-content" role="tabpanel" aria-label={tabs.find(([id])=>id===tab)[1]}>
+  const activeLabel=tabs.find(([id])=>id===tab)[1];
+  return <div className="app-shell public-shell">
+    <a className="skip-content" href="#main-content">본문으로 건너뛰기</a>
+    <aside className="workspace-sidebar" aria-label="사이트 탐색">
+      <a className="brand" href="/"><span className="brand-icon"><House size={23}/></span><span>집의 기록<small>HOME RECORDS</small></span></a>
+      <p className="nav-caption">나의 부동산 아카이브</p>
+      <nav className="tabs" aria-label="조회 화면">{tabs.map(([id,label,Icon])=><button key={id} aria-current={tab===id?'page':undefined} onClick={()=>setTab(id)}><Icon size={18} aria-hidden="true"/>{label}</button>)}</nav>
+      <div className="saved-summary"><p><Star size={14}/> 나의 즐겨찾기</p><div><span>관심 동네</span><strong>{favorites.length}<small>곳</small></strong></div><div><span>관심 아파트</span><strong>{apartmentFavorites.length}<small>곳</small></strong></div><span className="saved-note">이 브라우저에 소중히 보관됩니다.</span></div>
+      <div className="sidebar-bottom"><span className="source-indicator"><i/>공공데이터로 쌓는 기록</span><p>국토교통부 실거래 자료 기반<br/>서울 · 경기 아파트 매매</p><span className="sidebar-signature">집을 둘러싼, 더 나은 발견.</span></div>
+    </aside>
+    <div className="workspace-main">
+    <div className="workspace-topbar"><div className="breadcrumb"><House size={14}/><span>워크스페이스</span><ChevronRight size={12}/><strong>{activeLabel}</strong></div><div className="topbar-actions"><span className="update-status"><i/>자료 업데이트 <time dateTime={manifest.published_at}>{timestamp(manifest.published_at)} KST</time></span><button className="share-button" onClick={share}><Copy size={14}/>{copied?'주소 복사됨':'조회 주소 복사'}</button></div></div>
+    <main className="main-content" id="main-content" tabIndex={-1}>
+    <header className="page-header"><div><p className="eyebrow">{pageCopy[tab][2]}</p><h1>{pageCopy[tab][0]}</h1><p>{pageCopy[tab][1]}</p></div><span className="header-location"><MapPin size={14}/>서울 · 경기</span></header>
+    <section className="tab-content" role="tabpanel" aria-label={activeLabel}>
       <Suspense fallback={<Loading text="조회 화면을 준비하고 있습니다."/>}>
         {tab==='dashboard'?<Dashboard manifest={manifest} regions={favorites} apartments={apartmentFavorites} days={dashboardDays} onDaysChange={setDashboardDays} districtLoader={districtLoader} onOpenDong={openOverviewDong} onOpenApartment={openOverviewApartment} onManageDongs={()=>setTab('regions')} onManageApartments={()=>setTab('map')}/>
         :tab==='apartments'?<ApartmentPage manifest={manifest} catalog={catalog} favorites={apartmentFavorites} favoriteRegions={favorites} selected={selectedApartments} onChange={setSelectedApartments} searchRegionId={searchRegionId} onSearchRegionChange={setSearchRegionId} searchFilters={apartmentFilters} onSearchFiltersChange={setApartmentFilters} day={apartmentDay} onDayChange={value=>setApartmentDay(weekBounds(value)?.start||'')} period={apartmentPeriod} onPeriodChange={setApartmentPeriod} districtLoader={districtLoader} onToggleFavorite={toggleApartmentFavorite}/>
@@ -76,8 +94,8 @@ function Explorer({manifest,districtLoader,onResetPreferences}) {
         :tab==='regions'?<RegionMapPage catalog={catalog} favorites={regionFavorites} onToggleFavorite={toggleRegionFavorite}/>
         :<About manifest={manifest} onResetPreferences={onResetPreferences}/>}
       </Suspense>
-    </section><footer className="page-footer">자료: 국토교통부 아파트 매매 실거래가 · 신고 자료의 정정과 해제에 따라 값이 달라질 수 있습니다.</footer>
-  </main></div>;
+    </section><footer className="page-footer"><span>집의 기록 <span className="footer-divider">/</span> 국토교통부 아파트 매매 실거래가</span><span>신고 자료의 정정과 해제에 따라 값이 달라질 수 있습니다.</span></footer>
+  </main></div></div>;
 }
 function About({ manifest,onResetPreferences }) {
   const covered = Object.keys(manifest.districts);
