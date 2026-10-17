@@ -1,6 +1,7 @@
 import React,{useEffect,useMemo,useRef,useState} from 'react';
-import {Star,House,Database,Download,Play,Square,Save,Undo2,MapPin,ExternalLink,Plus} from 'lucide-react';
+import {Star,Database,Download,Play,Square,Save,Undo2,MapPin,ExternalLink,Plus} from 'lucide-react';
 import RegionMap from './RegionMap.jsx';
+import BrandMark from '../src/BrandMark.jsx';
 import ApartmentMasterPanel from './ApartmentMasterPanel.jsx';
 import RawExplorer from './RawExplorer.jsx';
 import {hierarchy,formatNumber} from '../src/domain.mjs';
@@ -49,7 +50,7 @@ export default function Admin({initialState,initialBoundaries,initialAdminBounda
     try {const result=await request(endpoint,body,state.csrf);onSuccess?.(result);const next=await request('state');refreshState(next);}
     catch(e){setError(e.message);}finally{setPending(false);}
   }
-  return <div className="admin-shell"><header className="admin-header"><a className="brand" href="/"><span className="brand-icon"><House size={25}/></span><span>집의 기록<small>React · 로컬 관리자</small></span></a><span className="badge">관리자 PC 전용</span><a href="https://psionic7.github.io/" target="_blank" rel="noreferrer">공개 사이트 <ExternalLink size={14}/></a></header>
+  return <div className="admin-shell"><header className="admin-header"><a className="brand" href="/"><span className="brand-icon"><BrandMark/></span><span>집의 기록<small>React · 로컬 관리자</small></span></a><span className="badge">관리자 PC 전용</span><a href="https://psionic7.github.io/" target="_blank" rel="noreferrer">공개 사이트 <ExternalLink size={14}/></a></header>
     <main className="admin-main"><div className="page-header"><div><p className="eyebrow">LOCAL DATA COLLECTION</p><h1>데이터 수집 · 관리</h1><p>수집 지역을 편집하고 실거래 자료를 로컬 SQLite에 저장합니다.</p></div><div className="admin-count"><Database size={20}/><strong>{formatNumber(state?.stats.count||0)}건</strong><small>로컬 거래 데이터</small></div></div>
       {error&&<div className="notice error" role="alert">{error}</div>}{message&&<div className="notice success" role="status">{message}</div>}
       <nav className="tabs" aria-label="관리자 화면"><button aria-current={tab==='collection'?'page':undefined} onClick={()=>setTab('collection')}>데이터 수집</button><button aria-current={tab==='raw'?'page':undefined} onClick={()=>setTab('raw')}>원천 데이터</button></nav>
