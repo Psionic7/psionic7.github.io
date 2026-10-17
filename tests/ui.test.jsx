@@ -5,6 +5,7 @@ import userEvent from '@testing-library/user-event';
 import App from '../src/App.jsx';
 import RawTable from '../admin/RawTable.jsx';
 import {savePreferences} from '../src/preferences.js';
+const expandArea=()=>{const toggle=screen.queryByRole('button',{name:'전용면적 펼치기'});if(toggle)fireEvent.click(toggle);};
 const region={region_id:'suji',label:'용인 수지구',region_name:'경기도 용인시 수지구',region_code:'41465',dongs:[]};
 const rows=Array.from({length:115},(_,i)=>({id:i+1,region_code:'41465',deal_month:'202601',deal_date:'2026-01-05',apartment:i===0?'첫 아파트':'두번째',dong:'풍덕천동',jibun:'1',road_address:'경기도 용인시 수지구 풍덕천로 12',price_man:100000,area_m2:85,cancelled:0,raw:{aptNm:i===0?'첫 아파트':'두번째',umdNm:'풍덕천동',dealAmount:i===0?'100,000':'50,000',floor:'4',cdealType:''}}));
 const manifest={regions:[region,{region_id:'dong_11110101',label:'서울특별시 종로구 청운동',region_name:'서울특별시 종로구',region_code:'11110',dongs:['청운동']}],districts:{'41465':{file:'fake.json',count:115,months:['202601']}},months:['202601'],published_at:'2026-10-02T00:00:00+00:00',count:115,boundary_catalog_date:'2023-07-29'};
@@ -42,7 +43,7 @@ describe('React transaction explorer',()=>{
     const user=userEvent.setup();render(<App initialManifest={manifest} districtLoader={()=>Promise.resolve(rows)}/>);
     const dashboard=screen.getByRole('tabpanel',{name:'아파트별 실거래가'});
     await within(dashboard).findByLabelText('조회 주 기준 날짜');
-    expect(within(dashboard).getByRole('spinbutton',{name:'최소 전용면적 (㎡)'})).toBeTruthy();
+    expandArea();expect(within(dashboard).getByRole('spinbutton',{name:'최소 전용면적 (㎡)'})).toBeTruthy();
     expect(within(dashboard).getByRole('combobox',{name:'조회 지역'})).toBeTruthy();
     await user.click(screen.getByRole('button',{name:'데이터 안내'}));
     expect(screen.queryByLabelText('조회 주 기준 날짜')).toBeNull();
@@ -131,6 +132,7 @@ describe('React transaction explorer',()=>{
     render(<App initialManifest={manifest} districtLoader={loader}/>);
     await screen.findByRole('group',{name:'검색 아파트 선택'});
     await user.selectOptions(screen.getByRole('combobox',{name:'시도'}),'서울특별시');
+    await user.click(screen.getByRole('checkbox',{name:'미수집 지역 포함'}));
     await user.selectOptions(screen.getByRole('combobox',{name:'조회 지역'}),'dong_11110101');
     await screen.findByText('아직 수집된 자료가 없는 지역입니다. 즐겨찾기한 아파트는 위에서 선택할 수 있습니다.');
     expect(window.location.search).toContain('dong_11110101');
@@ -151,6 +153,7 @@ describe('React transaction explorer',()=>{
     const loader=vi.fn((_,code)=>code==='41465'?new Promise(resolve=>{resolveOld=resolve;}):Promise.resolve([]));
     window.history.replaceState(null,'','/?region=area_41465&tab=apartments');
     render(<App initialManifest={manifest} districtLoader={loader}/>);
+    await user.click(screen.getByRole('checkbox',{name:'미수집 지역 포함'}));
     await user.selectOptions(screen.getByRole('combobox',{name:'조회 지역'}),'dong_11110101');
     await screen.findByText('아직 수집된 자료가 없는 지역입니다. 즐겨찾기한 아파트는 위에서 선택할 수 있습니다.');
     resolveOld(rows);

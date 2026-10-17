@@ -3,6 +3,7 @@ import path from 'node:path';
 import {createHash,randomUUID} from 'node:crypto';
 import {gzipSync} from 'node:zlib';
 import {exportApartmentMap} from './export-apartment-map.mjs';
+import {browserPayloads,writeBrowserPayloads,writeBrowserRegistry,cleanBrowserPayloads} from './browser-export.mjs';
 import {connect,PUBLIC_SCHEMA,TRADE_COLUMNS,REGION_COLUMNS,paths,ROOT,secretValues,checkedBytes,savedIds,atomicWrite} from './storage.mjs';
 export const sha256=data=>createHash('sha256').update(data).digest('hex');
 export function databasePayload(raw,secrets,compressAbove=95*1024*1024) {
@@ -40,6 +41,8 @@ export function exportData({source=paths.db,target=path.join(ROOT,'public/data')
     districts[code]={file,count:rows.length,months:[...new Set(rows.map(r=>r.deal_month))].sort(),sha256:digest,dongs:[...new Set(rows.map(r=>r.dong))].sort()};
   }
   const manifest={version:2,published_at:published,exported_at:new Date().toISOString(),count:trades.length,regions:catalog,districts,favorite_region_ids:savedIds(favorites,catalog),months:[...new Set(trades.map(r=>r.deal_month))].sort(),source:'국토교통부 아파트 매매 실거래가',boundary_catalog_date:'2023-07-29'};
+  const browser=browserPayloads(groups,secrets),browserFolder=path.join(path.dirname(target),'query-data');
+  for(const [code,metadata] of Object.entries(browser.districts))districts[code].browser=metadata;
   fs.mkdirSync(target,{recursive:true});const temp=path.join(target,`.snapshot-${randomUUID()}.tmp`);
   try {
     const out=connect(temp);
@@ -60,7 +63,10 @@ export function exportData({source=paths.db,target=path.join(ROOT,'public/data')
     const manifestBytes=checkedBytes(JSON.stringify(manifest),secrets);
     for(const [name,bytes] of payloads)atomicWrite(path.join(target,name),bytes);
     atomicWrite(path.join(target,payload.metadata.file),payload.bytes);
+    writeBrowserPayloads(browserFolder,browser.payloads);
+    writeBrowserRegistry(browserFolder,manifest,browser.districts,secrets);
     atomicWrite(path.join(target,'manifest.json'),manifestBytes);
+    cleanBrowserPayloads(browserFolder,browser.payloads);
     for(const name of fs.readdirSync(target))if(/^trades-\d{5}-[a-f0-9]{12}\.json$/.test(name)&&!payloads.has(name))fs.unlinkSync(path.join(target,name));
     const obsolete=path.join(target,payload.metadata.file==='public.sqlite3'?'public.sqlite3.gz':'public.sqlite3');
     if(fs.existsSync(obsolete))fs.unlinkSync(obsolete);

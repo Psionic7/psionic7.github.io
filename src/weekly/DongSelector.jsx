@@ -1,10 +1,12 @@
-import React from 'react';
+import React,{useState} from 'react';
+import {hasTradeCoverage} from '../coverage.js';
 import {MapPin,Search,Star,X} from 'lucide-react';
 import {formatNumber,hierarchy} from '../domain.mjs';
 import {textPreference,useStoredState} from '../preferences.js';
 import FilterGroup from './FilterGroup.jsx';
 const unique=values=>[...new Set(values)].sort((a,b)=>a.localeCompare(b,'ko'));
 export default function DongSelector({manifest,catalog,selected,selectedIds,onChange,favoriteRegions=[]}) {
+  const [showUnavailable,setShowUnavailable]=useState(false);
   const dongs=catalog.filter(region=>region.dongs.length===1),locations=dongs.map(hierarchy),favoriteDongs=favoriteRegions.filter(region=>region.dongs.length===1);
   const [province,setProvince]=useStoredState('weekly','province','',value=>value===''||locations.some(item=>item.province===value));
   const [city,setCity]=useStoredState('weekly','city','',value=>value===''||locations.some(item=>(!province||item.province===province)&&item.city===value));
@@ -13,9 +15,10 @@ export default function DongSelector({manifest,catalog,selected,selectedIds,onCh
   const provinces=unique(dongs.map(region=>hierarchy(region).province));
   const cities=unique(dongs.filter(region=>!province||hierarchy(region).province===province).map(region=>hierarchy(region).city));
   const districts=unique(dongs.filter(region=>(!province||hierarchy(region).province===province)&&(!city||hierarchy(region).city===city)).map(region=>hierarchy(region).district));
-  const choices=dongs.filter(region=>{const location=hierarchy(region);return(!province||location.province===province)&&(!city||location.city===city)&&(!district||location.district===district)&&(!search.trim()||region.label.includes(search.trim()));});
+  const choices=dongs.filter(region=>{const location=hierarchy(region);return(showUnavailable||hasTradeCoverage(manifest,region))&&(!province||location.province===province)&&(!city||location.city===city)&&(!district||location.district===district)&&(!search.trim()||region.label.includes(search.trim()));});
   const toggle=id=>onChange(selectedIds.includes(id)?selectedIds.filter(value=>value!==id):[...selectedIds,id]);
-  return <FilterGroup number="03" title="조회할 동" label="조회 지역 설정" icon={MapPin} className="region-card" actions={<button className="text-button" disabled={!selectedIds.length} onClick={()=>onChange([])}>선택 모두 해제</button>}>
+  return <FilterGroup number="01" title="조회할 동" label="조회 지역 설정" icon={MapPin} className="region-card" actions={<button className="text-button" disabled={!selectedIds.length} onClick={()=>onChange([])}>선택 모두 해제</button>}>
+        <label className="coverage-toggle"><input type="checkbox" checked={showUnavailable} onChange={event=>setShowUnavailable(event.target.checked)}/>미수집 지역 포함</label>
         <section className="weekly-favorite-dongs" aria-label="즐겨찾기한 동">
           <div className="weekly-picker-title"><strong><Star size={14} fill="currentColor"/>즐겨찾기한 동 <span className="badge">{formatNumber(favoriteDongs.length)}곳</span></strong><small>아래 검색 조건과 관계없이 선택할 수 있습니다.</small></div>
           {favoriteDongs.length?<div className="weekly-dong-picker" role="group" aria-label="즐겨찾기한 동 선택">{favoriteDongs.map(region=><label key={region.region_id} className={selectedIds.includes(region.region_id)?'selected':''}><input type="checkbox" checked={selectedIds.includes(region.region_id)} onChange={()=>toggle(region.region_id)}/><span>{region.dongs[0]}<small>{region.region_name}{manifest.districts[region.region_code]?'':' · 미수집'}</small></span></label>)}</div>:<p className="small-note">지역 지도에서 별표로 동을 즐겨찾기하면 여기에 표시됩니다.</p>}

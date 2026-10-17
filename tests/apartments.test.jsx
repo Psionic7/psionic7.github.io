@@ -5,6 +5,7 @@ import userEvent from '@testing-library/user-event';
 import App from '../src/App.jsx';
 import {makeApartmentFavorite,apartmentFavoriteLabel} from '../src/apartment-favorites.js';
 import {readPreferences,savePreferences} from '../src/preferences.js';
+const expandArea=()=>{const toggle=screen.queryByRole('button',{name:'전용면적 펼치기'});if(toggle)fireEvent.click(toggle);};
 const region={region_id:'dong_41465101',region_code:'41465',region_name:'경기도 용인시 수지구',label:'경기도 용인시 수지구 풍덕천동',dongs:['풍덕천동']};
 const other={region_id:'dong_11110101',region_code:'11110',region_name:'서울특별시 종로구',label:'서울특별시 종로구 청운동',dongs:['청운동']};
 const manifest={regions:[region,other],districts:{'41465':{file:'suji.json',months:['202601','202602','202603','202604']},'11110':{file:'seoul.json',months:['202601','202602','202603','202604']}},months:['202601','202602','202603','202604'],published_at:'2026-04-30T12:00:00Z'};
@@ -26,7 +27,7 @@ describe('Unified apartment transactions',()=>{
   expect(within(table).getByText('26.03.10')).toBeTruthy();expect(within(table).getAllByText('25.7평')).toHaveLength(3);
   expect(within(table).queryByText('90.00억 원')).toBeNull();expect(within(table).queryByText('70.00억 원')).toBeNull();expect(screen.queryByText('유효 거래')).toBeNull();expect(screen.queryByText('최고 거래금액')).toBeNull();expect(document.querySelector('.weekly-metrics')).toBeNull();
   await user.click(screen.getByRole('checkbox',{name:'해제 거래 포함'}));expect(within(table).getAllByRole('row')).toHaveLength(4);
-  fireEvent.change(screen.getByRole('spinbutton',{name:'최소 전용면적 (㎡)'}),{target:{value:'85'}});expect(within(table).getAllByRole('row')).toHaveLength(3);
+  expandArea();fireEvent.change(screen.getByRole('spinbutton',{name:'최소 전용면적 (㎡)'}),{target:{value:'85'}});expect(within(table).getAllByRole('row')).toHaveLength(3);
   await user.click(screen.getByRole('button',{name:'평 (전용)',exact:true}));expect(within(table).getAllByText('25.7평')).toHaveLength(2);expect(readPreferences('apartmentTransactions').minArea).toBe(85);
   await user.click(screen.getByRole('button',{name:'조회할 아파트 접기'}));expect(within(table).getAllByRole('row')).toHaveLength(3);
   await user.click(screen.getByRole('button',{name:'조회할 아파트 펼치기'}));expect(within(search()).getByRole('checkbox',{name:apartmentFavoriteLabel(favorite)+' 조회 선택'}).checked).toBe(true);
@@ -47,7 +48,7 @@ describe('Unified apartment transactions',()=>{
   const user=userEvent.setup();render(<App initialManifest={manifest} districtLoader={async()=>Array.from({length:52},(_,index)=>row({id:index+1,area_m2:index===0?60:85,price_man:index===0?77000:100000}))}/>);
   await screen.findByRole('group',{name:'검색 아파트 선택'});await choose(user);const table=tradeTable(favorite);expect(within(table).getAllByRole('row')).toHaveLength(51);
   await user.click(screen.getByRole('button',{name:label(favorite)+' 다음 거래 페이지'}));expect(within(table).getAllByRole('row')).toHaveLength(3);expect(within(table).getByText('7.70억 원')).toBeTruthy();
-  fireEvent.change(screen.getByRole('spinbutton',{name:'최대 전용면적 (㎡)'}),{target:{value:'60'}});expect(within(table).getAllByRole('row')).toHaveLength(2);expect(screen.getByRole('button',{name:label(favorite)+' 이전 거래 페이지'}).disabled).toBe(true);
+  expandArea();fireEvent.change(screen.getByRole('spinbutton',{name:'최대 전용면적 (㎡)'}),{target:{value:'60'}});expect(within(table).getAllByRole('row')).toHaveLength(2);expect(screen.getByRole('button',{name:label(favorite)+' 이전 거래 페이지'}).disabled).toBe(true);
  });
  it('keeps selections across search regions, requests each district once, and restores the entire shared query',async()=>{
   const user=userEvent.setup(),otherItem=makeApartmentFavorite(row({region_code:'11110',dong:'청운동'}),other);

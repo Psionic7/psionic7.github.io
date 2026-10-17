@@ -4,8 +4,8 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite --host 127.0.0.1",
-    "build": "vite build && node scripts/finish-build.mjs",
+    "dev": "node scripts/prepare-browser-data.mjs && vite --host 127.0.0.1",
+    "build": "node scripts/prepare-browser-data.mjs && vite build && node scripts/finish-build.mjs",
     "preview": "vite preview --host 127.0.0.1",
     "test": "vitest run",
     "test:domain": "node --test tests/domain.test.mjs tests/weekly.test.mjs tests/weekly-query.test.mjs",

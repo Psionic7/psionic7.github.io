@@ -1,0 +1,122 @@
+/* Task-first layout and readable controls across the public explorer. */
+.public-shell .main-content p,.public-shell .main-content small,.public-shell .main-content label{font-size:13px;color:#52624a;line-height:1.8}
+.public-shell .page-header p:not(.eyebrow){font-size:14px;color:#52624a}
+.public-shell .page-header .eyebrow{font-size:11px;color:#52624a}
+.public-shell .page-header{margin-bottom:18px}
+.public-shell .main-content button,.public-shell .main-content .button{font-size:13px;min-height:44px}
+.public-shell .small-note,.public-shell .main-content .small-note{font-size:13px;color:#52624a}
+.public-shell .tabs button{font-size:13px;min-height:46px}
+.public-shell .share-button{font-size:12px;min-height:44px}
+.public-shell .workspace-sidebar{overflow-y:auto;scrollbar-width:thin}
+.public-shell .data-status-banner{display:grid;grid-template-columns:1.1fr 1fr;gap:16px;padding:15px 18px;margin-bottom:22px;border:1px solid #d7e1cd;border-radius:10px;background:#f0f5e9;font-size:13px;color:#455b39}
+.data-status-banner>div{min-width:0;display:flex;flex-direction:column;gap:4px}
+.data-status-banner strong{font-size:13px;font-weight:600}
+.data-status-banner span{font-size:12px;color:#52624a;line-height:1.7;overflow-wrap:anywhere}
+.public-shell .data-status-banner.stale{background:#fff8eb;border-color:#e8d4b2;color:#765323}
+.data-status-banner.stale span{color:#765323}
+.public-shell .weekly-controls{padding:20px}
+.public-shell .weekly-controls-title{margin-bottom:15px}
+.public-shell .weekly-controls>.collapsible-panel-content>.region-card{margin:0 0 18px}
+.public-shell .apartment-search-controls{margin:0 0 10px;grid-template-columns:1fr 1fr;gap:12px}
+.public-shell .coverage-toggle{display:flex;flex-direction:row;align-items:center;gap:9px;margin:10px 0 15px;font-size:13px}
+.coverage-toggle input{width:18px;height:18px;flex-shrink:0}
+.public-shell .weekly-location{margin-top:14px}
+.public-shell .weekly-favorite-dongs{margin-bottom:12px;padding-bottom:12px}
+.public-shell .weekly-dong-picker label,.public-shell .weekly-dong-picker small{font-size:12px;color:#52624a}
+.public-shell .selection-placeholder{font-size:13px;color:#52624a}
+.public-shell .area-band-buttons button{color:#455b39;background:#f9fbf5;font-size:13px}
+.public-shell .area-band-buttons button[aria-pressed=true]{color:white;background:#4a6c3e}
+.public-shell .area-card-footer,.public-shell .area-card-footer span,.public-shell .period-card .small-note,.public-shell .filter-caption,.public-shell .period-stepper span,.public-shell .area-band-picker p{font-size:12px;color:#52624a}
+.public-shell .period-shortcuts{gap:8px;color:#52624a;font-size:12px}
+.public-shell .period-shortcuts>span{flex-basis:100%}
+.public-shell .period-shortcuts button{color:#455b39;font-size:13px}
+.public-shell .filter-group-heading-main{gap:8px}
+.public-shell .period-summary strong{font-size:13px}
+.public-shell .period-summary span{font-size:12px;color:#455b39}
+.public-shell .unit-buttons button{font-size:12px;min-height:40px}
+.public-shell .weekly-display-options p,.public-shell .area-band-caption,.public-shell .area-range-scale{font-size:12px;color:#52624a}
+.public-shell .period-tabs button{color:#52624a;font-size:13px}
+.public-shell .filter-step{font-size:12px;color:#455b39}
+.public-shell .weekly-controls .section-title h2{font-size:18px}
+.public-shell .weekly-controls .section-title p{font-size:13px}
+.public-shell .results-shortcut{position:sticky;top:8px;z-index:600;display:flex;gap:12px;align-items:center;justify-content:space-between;margin:0 0 16px;padding:12px 16px;border:1px solid #c9d8bd;border-radius:10px;background:#fcfff8;box-shadow:0 3px 16px #243b2b14;font-size:13px;color:#455b39}
+.public-shell #transaction-results{scroll-margin-top:95px;outline:none}
+.public-shell .weekly-trades{max-height:none}
+.public-shell .summary-table td,.public-shell .summary-table th{font-size:13px;line-height:1.6;padding:11px 10px;color:#455b39}
+.public-shell .summary-table td small{font-size:12px;color:#52624a}
+.public-shell .trade-status{font-size:12px;padding:4px 8px;color:#3d5b2d;background:#e8f1df}
+.public-shell .trade-status.cancelled{background:#fbe9de;color:#8b3e22}
+.public-shell .cancelled-trade td:nth-child(5) strong{text-decoration:line-through}
+.public-shell .page-footer,.public-shell .page-footer span{font-size:12px;color:#52624a}
+.public-shell .overview-toolbar button{font-size:13px;min-height:44px;color:#455b39}
+.public-shell .overview-toolbar p,.public-shell .overview-toolbar p span{font-size:12px;color:#52624a}
+.public-shell .dashboard-welcome{display:flex;gap:20px;align-items:center;justify-content:space-between;background:#f0f5e9;margin-bottom:22px}
+.dashboard-welcome h2{font-size:19px;margin-bottom:8px}
+.dashboard-welcome button{flex-shrink:0}
+.public-shell .dashboard-heading{display:flex;align-items:center;justify-content:space-between;gap:15px;margin-bottom:15px}
+.dashboard-heading h2{font-size:19px}.dashboard-heading>div{display:flex;gap:8px;flex-wrap:wrap}
+.public-shell .onboarding-heading h3{font-size:17px;line-height:1.7}
+.public-shell .onboarding-card h4{font-size:16px}
+.public-shell .onboarding-card p,.public-shell .onboarding-card .onboarding-step{font-size:13px;color:#52624a}
+.public-shell .onboarding-card button{font-size:13px;color:#455b39}
+.public-shell .section-kicker{font-size:11px;color:#52624a}
+.public-shell .onboarding-note{font-size:12px;color:#52624a}
+.public-shell .overview-favorite-name small,.public-shell .overview-favorite-value small,.public-shell .overview-change,.public-shell .overview-last,.public-shell .overview-state{font-size:12px;color:#52624a}
+.public-shell .overview-metrics p,.public-shell .overview-metrics article>span{font-size:13px;color:#52624a}
+.public-shell .overview-section-heading button,.public-shell .overview-chart-data summary,.public-shell .overview-chart-empty{font-size:13px;color:#455b39}
+.public-shell .overview-trend figcaption{font-size:12px;color:#52624a}
+.public-shell .undo-notice{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:12px 16px;margin-bottom:18px;background:#edf5e7;border:1px solid #c9d8bd;border-radius:10px;color:#35572e;font-size:14px}
+.public-shell .preference-actions{display:flex;align-items:flex-start;flex-direction:column;gap:9px;margin-top:18px}
+.public-shell .preference-actions p{margin:0 0 10px}
+.public-shell .danger-button{color:#8e3325;border-color:#d8a99d;background:#fff8f5}
+.confirm-backdrop{position:fixed;inset:0;background:#1f302e70;z-index:2000;display:grid;place-items:center;padding:20px}
+.confirm-dialog{background:white;border-radius:14px;padding:26px;max-width:480px;box-shadow:0 18px 70px #17261a50}
+.confirm-dialog h2{margin-bottom:15px}.confirm-dialog>div{display:flex;justify-content:flex-end;gap:10px;margin-top:24px}
+@media(max-width:899px){
+  .public-shell .workspace-sidebar{overflow:visible}
+  .public-shell .tabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));overflow:visible;gap:5px;padding-bottom:14px}
+  .public-shell .tabs button{white-space:normal;padding:9px 10px;gap:7px}
+}
+@media(max-width:600px){
+  .public-shell .tabs{grid-template-columns:repeat(2,minmax(0,1fr));gap:4px}
+  .public-shell .tabs button{font-size:12px;min-height:44px}
+  .public-shell .workspace-topbar{height:52px}
+  .public-shell .main-content{padding:20px 14px}
+  .public-shell .page-header h1{font-size:23px}
+  .public-shell .page-header p:not(.eyebrow){font-size:13px}
+  .public-shell[data-tab=apartments] .page-header p,.public-shell[data-tab=weekly] .page-header p{display:none}
+  .public-shell .data-status-banner{grid-template-columns:1fr;gap:7px;padding:10px 12px;margin-bottom:14px}
+  .public-shell .weekly-controls{padding:16px 12px}
+  .public-shell .weekly-controls-title p{display:none}
+  .public-shell .weekly-controls-title .badge{display:none}
+  .public-shell .apartment-search-controls{grid-template-columns:1fr}
+  .public-shell .dong-filter-card{padding:14px 12px}
+  .public-shell .dashboard-welcome,.public-shell .dashboard-heading{flex-direction:column;align-items:stretch}
+  .public-shell .dashboard-welcome{padding:20px}
+  .public-shell .onboarding-card{padding:19px 16px;gap:12px}
+  .public-shell .onboarding-icon{width:34px;height:38px}
+  .public-shell .main-content .onboarding-note{font-size:12px}
+  .public-shell .results-shortcut{top:5px;padding:9px 12px;font-size:12px;gap:8px;flex-wrap:wrap}
+  .public-shell .results-shortcut .button{font-size:12px}
+  /* One semantic table, presented as cards: price and status never scroll away. */
+  .public-shell .mobile-trades{overflow:visible;max-height:none;border:0;border-radius:0}
+  .public-shell .mobile-trades table{display:block;width:100%;min-width:0;border:0}
+  .public-shell .mobile-trades thead{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+  .public-shell .mobile-trades tbody{display:grid;gap:12px}
+  .public-shell .mobile-trades tr{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px;padding:16px;border:1px solid #dce5d2;border-radius:10px;background:#fcfef9}
+  .public-shell .mobile-trades td{display:block;min-width:0;border:0;padding:0;white-space:normal;overflow-wrap:anywhere;line-height:1.7;font-size:14px;color:#354c2c}
+  .public-shell .mobile-trades td:before{content:attr(data-label);display:block;font-size:12px;color:#52624a;font-weight:400;margin-bottom:3px}
+  .public-shell .mobile-trades td:nth-child(2){order:0;grid-column:1/-1;font-size:16px}
+  .public-shell .mobile-trades td:nth-child(1){order:1;grid-column:1/-1}
+  .public-shell .mobile-trades td:nth-child(5){order:2;font-size:18px;font-weight:700}
+  .public-shell .mobile-trades td:nth-child(6){order:3}
+  .public-shell .mobile-trades td:nth-child(3){order:4}
+  .public-shell .mobile-trades td:nth-child(4){order:5}
+  .public-shell .mobile-trades td:nth-child(7){order:6;grid-column:1/-1}
+  .public-shell .mobile-trades td:nth-child(7) button{width:100%}
+  .public-shell .mobile-trades .cancelled-trade{background:#fff5ef;border-color:#ddb7a5}
+  .public-shell .mobile-trades td small{display:block;font-size:12px;line-height:1.7;margin-left:0}
+  .public-shell .pagination{flex-wrap:wrap;gap:10px}
+  .public-shell .pagination span{font-size:12px;flex-basis:100%}
+  .public-shell .undo-notice{align-items:stretch;flex-direction:column}
+}

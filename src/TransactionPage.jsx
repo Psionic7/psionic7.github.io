@@ -1,4 +1,4 @@
-import React, {useMemo, useState} from 'react';
+import React, {useEffect,useMemo, useState} from 'react';
 import {CalendarDays, SlidersHorizontal, Settings2} from 'lucide-react';
 import {areaInputValue, areaM2, areaUnitLabel} from './domain.mjs';
 import {periodBounds,publishedDay} from './weekly.mjs';
@@ -20,7 +20,7 @@ const validAreaBands=value=>Array.isArray(value) && value.length<=areaBands.leng
 function useFilterPreference(scope,field,fallback,validate) {
   return useStoredState(scope,field,()=>{const previous=scope==='apartmentTransactions'?readPreferences('favoriteDashboard')[field]:undefined;return validate(previous)?previous:fallback;},validate);
 }
-export default function TransactionPage({manifest,regions,day,onDayChange,period,onPeriodChange,districtLoader,apartmentView=false,searchRegionCode,renderSelection,filterScope='weekly'}) {
+export default function TransactionPage({manifest,regions,day,onDayChange,period,onPeriodChange,districtLoader,apartmentView=false,searchRegionCode,renderSelection,filterScope='weekly',onQueryChange}) {
   const selected=regions;
   const [areaUnit,setAreaUnit]=useStoredState('display','areaUnit','m2',unitPreference);
   // Store exact square metres; unit changes only affect the input display.
@@ -28,6 +28,7 @@ export default function TransactionPage({manifest,regions,day,onDayChange,period
   const [maxArea,setMaxArea]=useFilterPreference(filterScope,'maxArea','',optionalArea);
   const [selectedBands,setSelectedBands]=useFilterPreference(filterScope,'areaBands',[],validAreaBands);
   const [includeCancelled,setIncludeCancelled]=useFilterPreference(filterScope,'includeCancelled',true,value=>typeof value==='boolean');
+  useEffect(()=>{onQueryChange?.();},[minArea,maxArea,selectedBands,includeCancelled,areaUnit,onQueryChange]);
   const setArea=(setter,value)=>setter(value===''?'':areaM2(Math.max(0,Number(value)),areaUnit));
   const areaFiltered=minArea!=='' || maxArea!=='' || selectedBands.length>0;
   const selectBands=bands=>{
@@ -41,7 +42,8 @@ export default function TransactionPage({manifest,regions,day,onDayChange,period
   const [retry,setRetry]=useState(0);
   const selectedCodes=useMemo(()=>[...new Set(selected.map(region=>region.region_code))].sort(),[selected]);
   const codes=useMemo(()=>[...new Set([...selectedCodes,...(searchRegionCode?[searchRegionCode]:[])])].sort(),[selectedCodes,searchRegionCode]);
-  const datasets=useDistrictDatasets(manifest,codes,districtLoader,retry);
+  const requestRange=periodBounds(period,day);
+  const datasets=useDistrictDatasets(manifest,codes,districtLoader,retry,{...requestRange,catalogOnlyCodes:codes.filter(code=>!selectedCodes.includes(code))});
   const knownMaxArea=useMemo(()=>selectedCodes.reduce((max,code)=>(datasets[code]?.rows||[]).reduce((value,row)=>Math.max(value,Number(row.area_m2)||0),max),300),[selectedCodes,datasets]);
   const sliderCeiling=Math.max(Math.ceil(knownMaxArea/50)*50,minArea||0,maxArea||0);
   const latestDay=publishedDay(manifest.published_at),requestedRange=periodBounds(period,day);
@@ -52,10 +54,12 @@ export default function TransactionPage({manifest,regions,day,onDayChange,period
   if(requestedRange&&period.mode==='month'&&((earliestDay&&period.month<earliestDay.slice(0,7))||(latestDay&&period.month>latestDay.slice(0,7))))periodError='공개 자료 범위 안에서 조회 월을 선택해 주세요.';
   const week=periodError?null:requestedRange;
   return <div className="weekly-page">
+    {!!selected.length&&week&&<div className="results-shortcut"><span>{selected.length}{apartmentView?'개 아파트':'개 동'} 선택됨 · {includeCancelled?'해제 거래 포함':'유효 거래만'}</span><a className="button primary" href="#transaction-results">거래 결과로 이동 ↓</a></div>}
     <CollapsiblePanel className="weekly-controls" headingClassName="weekly-controls-title" label={apartmentView?"즐겨찾기 아파트 조회 조건":"동 별 실거래가 조회 조건"} toggleLabel="조회 필터" heading={<><h2><CalendarDays size={19}/>{apartmentView?'아파트별 실거래가':'동 별 실거래가'}</h2><p>{apartmentView?'즐겨찾기나 검색으로 아파트를 선택하고 실제 거래를 함께 비교하세요.':'기간과 면적을 고르고, 여러 동의 실제 거래를 함께 비교하세요.'}</p></>} actions={<span className="badge">{selected.length}{apartmentView?'개 아파트':'개 동 선택'}</span>}>
+      {renderSelection({datasets,onRetry:()=>setRetry(value=>value+1)})}
       <div className="dong-filter-grid">
         <PeriodPicker period={period} onChange={onPeriodChange} day={day} onDayChange={onDayChange} range={week} earliestDay={earliestDay} latestDay={latestDay} error={periodError}/>
-        <FilterGroup number="02" title="전용면적" label="조회 면적 설정" icon={SlidersHorizontal} className="area-card" actions={<AreaUnit value={areaUnit} onChange={setAreaUnit}/>}>
+        <FilterGroup number="03" title="전용면적" label="조회 면적 설정" icon={SlidersHorizontal} className="area-card" initiallyExpanded={areaFiltered||selected.length>0} actions={<AreaUnit value={areaUnit} onChange={setAreaUnit}/>}>
           <div className="area-band-picker" role="group" aria-label="전용평대 빠른 선택">
             <div className="area-band-caption"><strong>평대 빠른 선택</strong><span>여러 구간 선택 가능</span></div>
             <div className="area-band-buttons"><button aria-pressed={!selectedBands.length} onClick={()=>selectBands([])}>전체 평대</button>{areaBands.map(band=><button key={band} aria-pressed={selectedBands.includes(band)} onClick={()=>toggleBand(band)}>{band}평대</button>)}</div>
@@ -70,10 +74,9 @@ export default function TransactionPage({manifest,regions,day,onDayChange,period
           {invalidArea&&<p className="notice error" role="alert">최소 전용면적은 최대 전용면적보다 클 수 없습니다.</p>}
         </FilterGroup>
       </div>
-      {renderSelection({datasets,onRetry:()=>setRetry(value=>value+1)})}
       <FilterGroup number="04" title="기타 옵션" icon={Settings2} className="other-card"><div className="weekly-display-options"><label className="weekly-cancel-toggle"><input type="checkbox" checked={includeCancelled} onChange={event=>setIncludeCancelled(event.target.checked)}/>해제 거래 포함</label><p>최근 자료는 신고 지연으로 추가될 수 있습니다.</p></div></FilterGroup>
     </CollapsiblePanel>
-    {!!selected.length&&week&&<div className="weekly-results-context"><strong>조회 결과 · {selected.length}{apartmentView?'개 아파트':'개 동'}</strong><span>{week.start} — {week.end}</span><small>{period.mode==='week'?'주간':period.mode==='month'?'월간':'직접 지정'} · {includeCancelled?'해제 포함':'유효 거래만'}</small></div>}
+    {!!selected.length&&week&&<div className="weekly-results-context" id="transaction-results" tabIndex={-1}><strong>조회 결과 · {selected.length}{apartmentView?'개 아파트':'개 동'}</strong><span>{week.start} — {week.end}</span><small>{period.mode==='week'?'주간':period.mode==='month'?'월간':'직접 지정'} · {includeCancelled?'해제 포함':'유효 거래만'}</small></div>}
     {!selected.length ? <section className="panel"><Empty title={apartmentView?'실거래가를 볼 아파트를 선택해 주세요.':'실거래가를 볼 동을 선택해 주세요.'}>{apartmentView?'위의 즐겨찾기 아파트나 지역·아파트 검색에서 조회할 단지를 선택하세요.':'서로 다른 시·구의 동도 함께 선택할 수 있습니다.'}</Empty></section>
       : week&&<div className="weekly-stack">{selected.map(region=><TransactionResults key={region.region_id} region={region} week={week} dataset={datasets[region.region_code]} collected={!!manifest.districts[region.region_code]} minArea={minArea} maxArea={maxArea} selectedBands={selectedBands} includeCancelled={includeCancelled} mode={period.mode} onRetry={()=>setRetry(value=>value+1)}/>)}</div>}
   </div>;

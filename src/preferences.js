@@ -35,6 +35,10 @@ export function savePreferences(scope,value) {
 export function clearPreferences() {
   try{window.localStorage.removeItem(PREFERENCES_KEY);}catch{}
 }
+export const snapshotPreferences=()=>readDocument();
+export function restorePreferences(document){try{window.localStorage.setItem(PREFERENCES_KEY,JSON.stringify(document));}catch{}}
+export function resetQueries(){const document=readDocument();restorePreferences({version:1,scopes:{viewer:document.scopes.viewer||{}}});}
+export function clearFavorites(){savePreferences('viewer',{...readPreferences('viewer'),apartments:[],regions:[]});}
 
 export const textPreference=value=>typeof value==='string' && value.length<=200;
 export const areaPreference=value=>typeof value==='number' && Number.isFinite(value) && value>=0 && value<=100000;

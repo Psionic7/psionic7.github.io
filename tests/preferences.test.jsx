@@ -5,6 +5,7 @@ import userEvent from '@testing-library/user-event';
 import App from '../src/App.jsx';
 import {PREFERENCES_KEY,readPreferences,savePreferences} from '../src/preferences.js';
 
+const expandArea=()=>{const toggle=screen.queryByRole('button',{name:'전용면적 펼치기'});if(toggle)fireEvent.click(toggle);};
 const a={region_id:'dong_41465101',label:'경기도 용인시 수지구 풍덕천동',region_name:'경기도 용인시 수지구',region_code:'41465',dongs:['풍덕천동']};
 const b={...a,region_id:'dong_41465103',label:'경기도 용인시 수지구 동천동',dongs:['동천동']};
 const seoul={region_id:'dong_11110101',label:'서울특별시 종로구 청운동',region_name:'서울특별시 종로구',region_code:'11110',dongs:['청운동']};
@@ -34,7 +35,7 @@ describe('Browser selection persistence',()=>{
     await user.selectOptions(screen.getByRole('combobox',{name:'시도'}),'경기도');await user.selectOptions(screen.getByRole('combobox',{name:'시'}),'용인시');await user.selectOptions(screen.getByRole('combobox',{name:'구'}),'수지구');
     await user.type(screen.getByRole('searchbox',{name:'지역 검색'}),'수지');await user.type(screen.getByRole('searchbox',{name:'아파트 검색'}),'기억');
     await user.click(within(search).getByRole('checkbox',{name:/기억단지/}));
-    fireEvent.change(screen.getByRole('spinbutton',{name:'최소 전용면적 (㎡)'}),{target:{value:'60'}});fireEvent.change(screen.getByRole('spinbutton',{name:'최대 전용면적 (㎡)'}),{target:{value:'60'}});
+    expandArea();fireEvent.change(screen.getByRole('spinbutton',{name:'최소 전용면적 (㎡)'}),{target:{value:'60'}});expandArea();fireEvent.change(screen.getByRole('spinbutton',{name:'최대 전용면적 (㎡)'}),{target:{value:'60'}});
     await user.click(screen.getByRole('button',{name:'평 (전용)',exact:true}));first.unmount();window.history.replaceState(null,'','/');open();
     const table=await screen.findByRole('region',{name:/기억단지.*기간별 거래 내역/});expect(within(table).getAllByRole('row')).toHaveLength(2);
     expect(screen.getByLabelText('조회 월').value).toBe('2026-02');expect(screen.getByRole('combobox',{name:'시도'}).value).toBe('경기도');expect(screen.getByRole('searchbox',{name:'지역 검색'}).value).toBe('수지');expect(screen.getByRole('searchbox',{name:'아파트 검색'}).value).toBe('기억');
@@ -44,7 +45,7 @@ describe('Browser selection persistence',()=>{
   it('retains apartment transaction filters separately from dong filters',async()=>{
     const user=userEvent.setup();window.history.replaceState(null,'','/?tab=apartments');
     const first=open();await screen.findByText('실거래가를 볼 아파트를 선택해 주세요.');
-    fireEvent.change(screen.getByRole('spinbutton',{name:'최대 전용면적 (㎡)'}),{target:{value:'70'}});
+    expandArea();fireEvent.change(screen.getByRole('spinbutton',{name:'최대 전용면적 (㎡)'}),{target:{value:'70'}});
     await user.click(screen.getByRole('button',{name:'10평대',exact:true}));
     first.unmount();open();await screen.findByText('실거래가를 볼 아파트를 선택해 주세요.');
     expect(screen.getByRole('spinbutton',{name:'최대 전용면적 (㎡)'}).value).toBe('66.1157');
@@ -52,6 +53,7 @@ describe('Browser selection persistence',()=>{
     expect(screen.getByRole('button',{name:'10평대',exact:true}).getAttribute('aria-pressed')).toBe('true');
     await user.click(screen.getByRole('button',{name:'동 별 실거래가',exact:true}));
     await screen.findByText('실거래가를 볼 동을 선택해 주세요.');
+    expandArea();
     expect(screen.getByRole('spinbutton',{name:'최대 전용면적 (㎡)'}).value).toBe('');
     expect(screen.getByRole('button',{name:'10평대',exact:true}).getAttribute('aria-pressed')).toBe('false');
   });

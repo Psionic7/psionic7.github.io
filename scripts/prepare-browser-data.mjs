@@ -1,0 +1,13 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import {fileURLToPath} from 'node:url';
+import {browserPayloads,writeBrowserPayloads,writeBrowserRegistry,cleanBrowserPayloads} from '../server/browser-export.mjs';
+import {secretValues,paths} from '../server/storage.mjs';
+const root=fileURLToPath(new URL('../',import.meta.url)),folder=path.join(root,'public/data'),target=path.join(root,'public/query-data');
+const manifest=JSON.parse(fs.readFileSync(path.join(folder,'manifest.json'))),secrets=secretValues(paths.env);
+const groups=new Map(Object.entries(manifest.districts).map(([code,item])=>[code,JSON.parse(fs.readFileSync(path.join(folder,item.file)))]));
+const {payloads,districts}=browserPayloads(groups,secrets);
+writeBrowserPayloads(target,payloads);
+writeBrowserRegistry(target,manifest,districts,secrets);
+cleanBrowserPayloads(target,payloads);
+console.log(`검색 목록 ${Object.keys(districts).length}개 및 월별 조회 파일 ${payloads.size-Object.keys(districts).length}개 준비 완료`);

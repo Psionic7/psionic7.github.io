@@ -1,8 +1,8 @@
 import React, {useId, useState} from 'react';
 import {ChevronDown} from 'lucide-react';
 
-export default function FilterGroup({number,title,label=title,icon:Icon,caption,actions,className='',children}) {
-  const [expanded,setExpanded]=useState(true);
+export default function FilterGroup({number,title,label=title,icon:Icon,caption,actions,className='',children,initiallyExpanded=true}) {
+  const [expanded,setExpanded]=useState(initiallyExpanded);
   const contentId=useId();
   return <section className={`dong-filter-card filter-group ${className}${expanded?' expanded':''}`} aria-label={label}>
     <div className="dong-filter-heading">

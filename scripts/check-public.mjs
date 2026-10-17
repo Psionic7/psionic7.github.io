@@ -8,6 +8,7 @@ import {randomUUID} from 'node:crypto';
 import {ROOT,paths,readJson,secretValues,checkedBytes,connect} from '../server/storage.mjs';
 import {sha256} from '../server/export.mjs';
 import {validateApartmentMap} from '../src/apartment-map-data.js';
+import {checkBrowserData} from '../server/browser-export.mjs';
 const privateName=name=>name.split('/').some(p=>['local','admin-dist','.venv','.streamlit'].includes(p)) || /(^|\/)(\.env[^/]*|collection_regions\.json|my_real_estate\.sqlite3|secrets\.toml)$/.test(name);
 export function checkPublic(root=ROOT,secretsFile=paths.env,{checkIndex=true}={}) {
   const secrets=secretValues(secretsFile);
@@ -18,6 +19,7 @@ export function checkPublic(root=ROOT,secretsFile=paths.env,{checkIndex=true}={}
   for(const name of candidates) {if(privateName(name))throw new Error('게시 대상에 비공개 파일이 있습니다.');const file=path.join(root,name);if(fs.existsSync(file)&&fs.statSync(file).isFile()) checkedBytes(fs.readFileSync(file),secrets);}
   for(const sub of ['public/data','docs/data']) {
     const folder=path.join(root,sub),manifest=readJson(path.join(folder,'manifest.json'));
+    checkBrowserData(path.join(root,path.dirname(sub),'query-data'),manifest,secrets);
     const known=new Set(manifest.regions.map(r=>r.region_id)),favorites=manifest.favorite_region_ids;
     if(!Array.isArray(favorites)||new Set(favorites).size!==favorites.length||favorites.some(id=>!known.has(id)||['suji','gwanggyo','bundang'].includes(id)))throw new Error('공개 즐겨찾기 목록 오류');
     const database=manifest.database||{file:'public.sqlite3',format:'sqlite3'};

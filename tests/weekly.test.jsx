@@ -6,6 +6,7 @@ import App from '../src/App.jsx';
 import {readPreferences,savePreferences} from '../src/preferences.js';
 import {PYEONG_M2} from '../src/domain.mjs';
 
+const expandArea=()=>{const toggle=screen.queryByRole('button',{name:'전용면적 펼치기'});if(toggle)fireEvent.click(toggle);};
 const a={region_id:'dong_41465101',label:'경기도 용인시 수지구 풍덕천동',region_name:'경기도 용인시 수지구',region_code:'41465',dongs:['풍덕천동']};
 const b={region_id:'dong_11110101',label:'서울특별시 종로구 풍덕천동',region_name:'서울특별시 종로구',region_code:'11110',dongs:['풍덕천동']};
 const c={...a,region_id:'dong_41465103',label:'경기도 용인시 수지구 동천동',dongs:['동천동']};
@@ -120,9 +121,9 @@ describe('Dong weekly transaction tab',()=>{
       for(const area of [10,19.9999,30,39.9999])expect(within(table).getByText(`전용${area}평단지`)).toBeTruthy();
       for(const area of [9.9999,20,29.9999,40])expect(within(table).queryByText(`전용${area}평단지`)).toBeNull();
     }
-    fireEvent.change(screen.getByRole('spinbutton',{name:'최대 전용면적 (㎡)'}),{target:{value:'100'}});
+    expandArea();fireEvent.change(screen.getByRole('spinbutton',{name:'최대 전용면적 (㎡)'}),{target:{value:'100'}});
     expect(within(screen.getByRole('region',{name:`${a.label} 주간 거래 내역`})).getAllByRole('row')).toHaveLength(5);
-    await user.click(screen.getByRole('button',{name:'평 (전용)',exact:true}));
+    expandArea();await user.click(screen.getByRole('button',{name:'평 (전용)',exact:true}));
     expect(readPreferences('weekly')).toMatchObject({areaBands:[10,30],maxArea:100});
     expect(loader).toHaveBeenCalledTimes(2);
     first.unmount();window.history.replaceState(null,'','/');
@@ -172,7 +173,7 @@ describe('Dong weekly transaction tab',()=>{
     fireEvent.change(lower,{target:{value:'0'}});
     fireEvent.change(upper,{target:{value:upper.max}});
     expect(readPreferences('weekly')).toMatchObject({minArea:'',maxArea:''});
-    fireEvent.change(screen.getByRole('spinbutton',{name:'최대 전용면적 (㎡)'}),{target:{value:'400'}});
+    expandArea();fireEvent.change(screen.getByRole('spinbutton',{name:'최대 전용면적 (㎡)'}),{target:{value:'400'}});
     expect(Number(upper.max)).toBeGreaterThanOrEqual(400);expect(upper.value).toBe('400');
   });
   it('filters every dong inclusively, keeps exact bounds across units and revisits, and resets the range',async()=>{
@@ -197,7 +198,7 @@ describe('Dong weekly transaction tab',()=>{
       expect(within(table).queryByText('큰단지')).toBeNull();
       expect(within(table).queryByText('해제단지')).toBeNull();
     }
-    await user.click(screen.getByRole('button',{name:'평 (전용)',exact:true}));
+    expandArea();await user.click(screen.getByRole('button',{name:'평 (전용)',exact:true}));
     expect(screen.getByRole('spinbutton',{name:'최소 전용면적 (평)'}).value).toBe('18.15');
     expect(readPreferences('weekly')).toMatchObject({minArea:60,maxArea:85});
     expect(within(screen.getByRole('region',{name:`${a.label} 주간 거래 내역`})).getAllByRole('row')).toHaveLength(3);
@@ -241,7 +242,7 @@ describe('Dong weekly transaction tab',()=>{
     await user.type(screen.getByRole('searchbox',{name:'주간 동 검색'}),'동천');
     expect(screen.queryByRole('checkbox',{name:/풍덕천동.*용인시/})).toBeNull();
     expect(screen.getByRole('region',{name:`${a.label} 주간 실거래가`})).toBeTruthy();
-    await user.click(screen.getByRole('button',{name:'평 (전용)',exact:true}));
+    expandArea();await user.click(screen.getByRole('button',{name:'평 (전용)',exact:true}));
     expect(within(tableA).getAllByRole('cell',{name:'25.7평'})).toHaveLength(2);
     await user.click(screen.getByRole('button',{name:`${b.label} 선택 해제`}));
     expect(screen.queryByRole('region',{name:`${b.label} 주간 실거래가`})).toBeNull();
@@ -316,7 +317,7 @@ it('collapses each numbered filter group independently without clearing inputs, 
   const options=screen.getByRole('region',{name:'기타 옵션'});
   expect(within(options).getByRole('checkbox',{name:'해제 거래 포함'}).checked).toBe(true);
   const date=screen.getByLabelText('조회 주 기준 날짜').value;
-  fireEvent.change(screen.getByRole('spinbutton',{name:'최대 전용면적 (㎡)'}),{target:{value:'85'}});
+  expandArea();fireEvent.change(screen.getByRole('spinbutton',{name:'최대 전용면적 (㎡)'}),{target:{value:'85'}});
   for(const title of ['조회 기간','전용면적','조회할 동']){
     const button=screen.getByRole('button',{name:title+' 접기'});
     await user.click(button);
@@ -384,7 +385,7 @@ it('collapses whole filters and individual dong panels independently while prese
  const panelA=await screen.findByRole('region',{name:a.label+' 주간 실거래가'});
  const tableA=await within(panelA).findByRole('region',{name:a.label+' 주간 거래 내역'});
  const tableB=await screen.findByRole('region',{name:b.label+' 주간 거래 내역'});
- fireEvent.change(screen.getByRole('spinbutton',{name:'최대 전용면적 (㎡)'}),{target:{value:'90'}});
+ expandArea();fireEvent.change(screen.getByRole('spinbutton',{name:'최대 전용면적 (㎡)'}),{target:{value:'90'}});
  await user.click(screen.getByRole('checkbox',{name:'해제 거래 포함'}));
  await user.click(screen.getByRole('button',{name:'전용면적 접기'}));
  await user.click(screen.getByRole('button',{name:a.label+' 다음 거래 페이지'}));
