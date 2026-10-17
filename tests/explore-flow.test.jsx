@@ -1,0 +1,48 @@
+import React from 'react';
+import {afterEach,beforeEach,it,expect,vi} from 'vitest';
+import {cleanup,render,screen,within,fireEvent} from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import HomeSearch from '../src/HomeSearch.jsx';
+import TradeTrend from '../src/transactions/TradeTrend.jsx';
+import App from '../src/App.jsx';
+import {makeApartmentFavorite} from '../src/apartment-favorites.js';
+import {readPreferences} from '../src/preferences.js';
+import {buildCatalog} from '../src/domain.mjs';
+const dong={region_id:'dong_41465101',region_code:'41465',region_name:'경기도 용인시 수지구',label:'경기도 용인시 수지구 풍덕천동',dongs:['풍덕천동']};
+const manifest={regions:[dong],districts:{'41465':{file:'fixture.json',months:['202609'],dongs:['풍덕천동']}},months:['202609'],published_at:'2026-10-03T00:00:00Z',count:3};
+const catalog=buildCatalog(manifest.regions);
+const row=(id,changes={})=>({id,region_code:'41465',dong:'풍덕천동',apartment:'e편한세상 수지',jibun:'1',price_man:168000,area_m2:84.92,floor:8,deal_date:'2026-09-28',deal_month:'202609',cancelled:0,raw:{},...changes});
+const item=makeApartmentFavorite(row(1),dong);
+beforeEach(()=>{localStorage.clear();history.replaceState(null,'','/?tab=apartments');});
+afterEach(()=>{cleanup();vi.restoreAllMocks();});
+it('finds apartments across coverage without a region prerequisite or whitespace-sensitive names',async()=>{
+ const open=vi.fn(),loader=vi.fn(async()=>[item,{...item,id:'outside',region_code:'11110',apartment:'e편한세상 수지 미수집'}]);
+ render(<HomeSearch manifest={manifest} catalog={catalog} onApartment={open} onRegion={()=>{}} loader={loader}/>);
+ fireEvent.change(screen.getByLabelText('어느 아파트가 궁금하세요?'),{target:{value:'e편한세상수지'}});
+ const result=await screen.findByRole('button',{name:/^e편한세상 수지 경기도/});
+ expect(screen.queryByText('e편한세상 수지 미수집')).toBeNull();
+ await userEvent.setup().click(result);expect(open).toHaveBeenCalledWith(item);expect(loader).toHaveBeenCalledTimes(1);
+});
+it('coverage shortcuts search the district directly and a failed index can be retried',async()=>{
+ const loader=vi.fn().mockRejectedValueOnce(new Error('offline')).mockResolvedValueOnce([item]);
+ render(<HomeSearch manifest={manifest} catalog={catalog} onApartment={()=>{}} onRegion={()=>{}} loader={loader}/>);
+ await userEvent.setup().click(screen.getByRole('button',{name:'용인시 수지구'}));
+ expect(screen.getByLabelText('어느 아파트가 궁금하세요?').value).toBe('경기도 용인시 수지구');
+ await userEvent.setup().click(await screen.findByRole('button',{name:'다시 시도'}));
+ expect(await screen.findByRole('button',{name:/^e편한세상 수지 경기도/})).toBeTruthy();expect(loader).toHaveBeenCalledTimes(2);
+});
+it('opens a shared apartment with its price visible, conditions closed, and saves directly from the result',async()=>{
+ const params=new URLSearchParams({tab:'apartments',apt:JSON.stringify(item),period:'custom',from:'2026-09-01',to:'2026-10-03'});history.replaceState(null,'','/?'+params);
+ render(<App initialManifest={manifest} districtLoader={async()=>[row(1),row(2,{deal_date:'2026-09-30',price_man:999000,cancelled:1}),row(3,{deal_date:'2026-09-02',price_man:160000})]}/>);
+ const highlight=await screen.findByLabelText('최근 유효 거래');expect(highlight.textContent).toContain('16.80');expect(highlight.textContent).toContain('84.92');expect(highlight.textContent).toContain('2026-09-28');
+ expect(screen.queryByRole('searchbox',{name:'아파트 검색'})).toBeNull();expect(screen.getByRole('button',{name:/기간 \/ 조건/}).getAttribute('aria-expanded')).toBe('false');
+ await userEvent.setup().click(screen.getByRole('button',{name:'e편한세상 수지 관심 단지 저장'}));expect(readPreferences('viewer').apartments).toEqual([item]);
+ await userEvent.setup().click(screen.getByRole('button',{name:/기간 \/ 조건/}));expect(screen.getByLabelText('조회 시작일').value).toBe('2026-09-01');
+});
+it('compares exact areas separately and excludes cancelled trades from the price trend',async()=>{
+ render(<TradeTrend rows={[row(1,{area_m2:60,price_man:100000}),row(2,{area_m2:60,deal_date:'2026-09-20',price_man:90000}),row(3,{area_m2:84,price_man:300000}),row(4,{area_m2:60,price_man:990000,cancelled:1})]}/>);
+ await userEvent.setup().click(screen.getByText('같은 전용면적의 거래 흐름 보기'));
+ expect(screen.getByRole('img',{name:/60제곱미터 유효 거래 2건, 최저 9.00억원, 최고 10.00억원/})).toBeTruthy();
+ await userEvent.setup().selectOptions(screen.getByLabelText('비교할 전용면적'),'84');
+ expect(screen.queryByRole('img')).toBeNull();expect(screen.getByText(/유효 거래가 1건/)).toBeTruthy();
+});

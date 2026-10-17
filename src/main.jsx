@@ -6,3 +6,5 @@ import './workspace.css';
 import './ux.css';
 
 createRoot(document.getElementById('root')).render(<React.StrictMode><App /></React.StrictMode>);
+
+import './explore.css';

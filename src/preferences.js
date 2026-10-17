@@ -83,7 +83,7 @@ export function restoreExplorer(manifest,catalog,params) {
     try{const key=JSON.parse(saved.selectedApartment);if(Array.isArray(key) && key.length===3 && key.every(textPreference))selectedApartment=saved.selectedApartment;}catch{}
   }
   const newRegion=params.has('region') && !sameRegion;
-  return {regionId:region?.region_id||'',start,end,tab:['dashboard','apartments','weekly','map','regions','about'].includes(tab)?tab:'dashboard',
+  return {regionId:region?.region_id||'',start,end,tab:['dashboard','apartments','weekly','map','regions','about'].includes(tab)?tab:'apartments',
     weeklyIds,weeklyDay,weeklyPeriod,selectedApartment,province:newRegion?'':province,city:newRegion?'':city,district:newRegion?'':district,
     search:!newRegion && textPreference(saved.search)?saved.search:''};
 }

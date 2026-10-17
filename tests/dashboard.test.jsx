@@ -1,3 +1,4 @@
+import {openQueryControls} from './query-controls.js';
 import React from 'react';
 import {beforeEach,afterEach,it,expect,vi} from 'vitest';
 import {render,screen,within,cleanup,waitFor} from '@testing-library/react';
@@ -15,14 +16,15 @@ const apartmentLabel=apartment.apartment+' · '+apartment.region_name+' '+apartm
 const seed=()=>savePreferences('viewer',{regions:[a.region_id],apartments:[apartment]});
 const summary=()=>screen.getByRole('region',{name:'관심 거래 요약'});
 beforeEach(()=>{localStorage.clear();window.history.replaceState(null,'','/?tab=dashboard');});afterEach(()=>{cleanup();vi.restoreAllMocks();});
-it('places the new overview tab first, starts fresh visitors there, and offers favorite setup without fetching a district',async()=>{
- window.history.replaceState(null,'','/');const user=userEvent.setup(),loader=vi.fn();render(<App initialManifest={manifest} districtLoader={loader}/>);
- await screen.findByText('즐겨찾기를 추가해 대시보드를 채워보세요.');expect(within(screen.getByRole('navigation',{name:'조회 화면'})).getAllByRole('button')[0].textContent).toBe('대시보드');expect(loader).not.toHaveBeenCalled();expect(readPreferences('overview').days).toBe(30);
- await user.click(screen.getByRole('button',{name:'동 즐겨찾기 추가'}));expect(new URLSearchParams(location.search).get('tab')).toBe('regions');
+it('starts fresh visitors in search and keeps the primary navigation focused on three tasks',async()=>{
+ window.history.replaceState(null,'','/');const loader=vi.fn();render(<App initialManifest={manifest} districtLoader={loader}/>);
+ await screen.findByLabelText('어느 아파트가 궁금하세요?');
+ expect(within(screen.getByRole('navigation',{name:'주요 메뉴'})).getAllByRole('button').map(button=>button.textContent)).toEqual(['집 찾기','관심 목록','데이터 안내']);
+ expect(loader).not.toHaveBeenCalled();expect(new URLSearchParams(location.search).get('tab')).toBe('apartments');
 });
 it('loads shared districts once, summarizes both favorite types and deduplicates recent trades without altering queries or favorites',async()=>{
  seed();savePreferences('apartmentTransactions',{selected:[apartment],minArea:60,period:{mode:'month',month:'2026-08',start:'2026-08-01',end:'2026-08-31'}});savePreferences('explorer',{weeklyIds:[b.region_id],weeklyPeriod:{mode:'month',month:'2026-08',start:'2026-08-01',end:'2026-08-31'}});
- const loader=vi.fn(async()=>[row(1),row(2,{cancelled:1,raw:{cdealDay:'2026-10-01'}}),row(3,{jibun:'2',apartment:'다른단지'})]);render(<App initialManifest={manifest} districtLoader={loader}/>);
+ const loader=vi.fn(async()=>[row(1),row(2,{cancelled:1,raw:{cdealDay:'2026-10-01'}}),row(3,{jibun:'2',apartment:'다른단지'})]);render(<App initialManifest={manifest} districtLoader={loader}/>);await openQueryControls();
  await waitFor(()=>expect(within(summary()).getByText('동 유효 거래').closest('article').textContent).toContain('2건'));
  expect(within(summary()).getByText('아파트 유효 거래').closest('article').textContent).toContain('1건');expect(loader).toHaveBeenCalledTimes(1);
  const trades=screen.getByRole('region',{name:'최근 관심 거래 내역'});expect(within(trades).getAllByRole('row')).toHaveLength(4);expect(within(trades).getByText('해제일 2026-10-01')).toBeTruthy();expect(within(trades).getAllByRole('columnheader')).toHaveLength(7);
@@ -30,23 +32,23 @@ it('loads shared districts once, summarizes both favorite types and deduplicates
  expect(readPreferences('apartmentTransactions').period.month).toBe('2026-08');expect(readPreferences('explorer').weeklyPeriod.month).toBe('2026-08');
 });
 it('persists recent duration independently, shares it in the URL and gives explicit shared duration priority',async()=>{
- seed();const user=userEvent.setup(),loader=vi.fn(async()=>[row(1),row(2,{deal_date:'2026-09-08'})]);let view=render(<App initialManifest={manifest} districtLoader={loader}/>);await screen.findByRole('region',{name:'최근 관심 거래 내역'});
+ seed();const user=userEvent.setup(),loader=vi.fn(async()=>[row(1),row(2,{deal_date:'2026-09-08'})]);let view=render(<App initialManifest={manifest} districtLoader={loader}/>);await openQueryControls();await screen.findByRole('region',{name:'최근 관심 거래 내역'});
  await user.click(within(screen.getByRole('group',{name:'대시보드 조회 기간'})).getByRole('button',{name:'최근 7일'}));expect(readPreferences('overview').days).toBe(7);expect(new URLSearchParams(location.search).get('days')).toBe('7');expect(within(screen.getByRole('region',{name:'최근 관심 거래 내역'})).getAllByRole('row')).toHaveLength(2);expect(loader).toHaveBeenCalledTimes(1);
- view.unmount();window.history.replaceState(null,'','/');view=render(<App initialManifest={manifest} districtLoader={loader}/>);await screen.findByRole('region',{name:'대시보드 안내'});expect(screen.getByRole('button',{name:'최근 7일'}).getAttribute('aria-pressed')).toBe('true');view.unmount();
- window.history.replaceState(null,'','/?tab=dashboard&days=90');view=render(<App initialManifest={manifest} districtLoader={loader}/>);await screen.findByRole('region',{name:'대시보드 안내'});expect(readPreferences('overview').days).toBe(90);
+ view.unmount();window.history.replaceState(null,'','/');view=render(<App initialManifest={manifest} districtLoader={loader}/>);await openQueryControls();await screen.findByRole('region',{name:'대시보드 안내'});expect(screen.getByRole('button',{name:'최근 7일'}).getAttribute('aria-pressed')).toBe('true');view.unmount();
+ window.history.replaceState(null,'','/?tab=dashboard&days=90');view=render(<App initialManifest={manifest} districtLoader={loader}/>);await openQueryControls();await screen.findByRole('region',{name:'대시보드 안내'});expect(readPreferences('overview').days).toBe(90);
 });
 it('opens a dong or apartment with the same overview period and clears unrelated result filters while preserving favorite stars',async()=>{
  seed();savePreferences('weekly',{minArea:100,areaBands:[30],includeCancelled:true});savePreferences('apartmentTransactions',{minArea:100,areaBands:[30],includeCancelled:true});
- const user=userEvent.setup();render(<App initialManifest={manifest} districtLoader={async()=>[row(1)]}/>);await screen.findByRole('region',{name:'최근 관심 거래 내역'});
+ const user=userEvent.setup();render(<App initialManifest={manifest} districtLoader={async()=>[row(1)]}/>);await openQueryControls();await screen.findByRole('region',{name:'최근 관심 거래 내역'});
  await user.click(screen.getByRole('button',{name:a.label+' 거래 보기'}));await screen.findByRole('region',{name:a.label+' 기간별 거래 내역'});expect(readPreferences('explorer').weeklyIds).toEqual([a.region_id]);expect(readPreferences('weekly')).toMatchObject({minArea:'',maxArea:'',areaBands:[],includeCancelled:false});expect(screen.getByLabelText('조회 시작일').value).toBe('2026-09-04');
- await user.click(screen.getByRole('button',{name:'대시보드',exact:true}));await screen.findByRole('region',{name:'최근 관심 거래 내역'});await user.click(screen.getByRole('button',{name:'관심단지 경기도 용인시 수지구 풍덕천동 지번 1 거래 보기'}));
+ await user.click(screen.getByRole('button',{name:'관심 목록',exact:true}));await screen.findByRole('region',{name:'최근 관심 거래 내역'});await user.click(screen.getByRole('button',{name:'관심단지 경기도 용인시 수지구 풍덕천동 지번 1 거래 보기'}));
  await screen.findByRole('region',{name:apartmentLabel+' 기간별 거래 내역'});expect(readPreferences('apartmentTransactions')).toMatchObject({selected:[apartment],minArea:'',maxArea:'',areaBands:[],includeCancelled:false});expect(readPreferences('viewer')).toEqual({regions:[a.region_id],apartments:[apartment]});
 });
 it('distinguishes failed, loading, uncollected and empty sources and retries only the failed district',async()=>{
  savePreferences('viewer',{regions:[a.region_id,b.region_id,missing.region_id],apartments:[]});let attempts=0;const loader=vi.fn(async(_,code)=>{if(code==='11110'&&attempts++===0)throw new Error('offline');return code==='41465'?[row(1)]:[];});
- const user=userEvent.setup();render(<App initialManifest={manifest} districtLoader={loader}/>);await screen.findByRole('alert');await waitFor(()=>expect(loader).toHaveBeenCalledTimes(2));expect(screen.getByText('미수집')).toBeTruthy();expect(screen.getByText('불러오기 실패')).toBeTruthy();
+ const user=userEvent.setup();render(<App initialManifest={manifest} districtLoader={loader}/>);await openQueryControls();await screen.findByRole('alert');await waitFor(()=>expect(loader).toHaveBeenCalledTimes(2));expect(screen.getByText('미수집')).toBeTruthy();expect(screen.getByText('불러오기 실패')).toBeTruthy();
  await user.click(screen.getByRole('button',{name:'자료 다시 불러오기'}));await waitFor(()=>expect(screen.queryByText('불러오기 실패')).toBeNull());expect(loader).toHaveBeenCalledTimes(3);expect(loader.mock.calls.filter(call=>call[1]==='41465')).toHaveLength(1);expect(loader.mock.calls.some(call=>call[1]==='41117')).toBe(false);expect(readPreferences('viewer').regions).toEqual([a.region_id,b.region_id,missing.region_id]);
 });
 it('a cancelled recent trade opens its apartment query with cancellations enabled',async()=>{
- seed();const user=userEvent.setup();render(<App initialManifest={manifest} districtLoader={async()=>[row(1,{cancelled:1})]}/>);const recent=await screen.findByRole('region',{name:'최근 관심 거래 내역'});await user.click(within(recent).getByRole('button',{name:'관심단지 풍덕천동 2026-09-28 거래 조회'}));await screen.findByRole('region',{name:apartmentLabel+' 기간별 거래 내역'});expect(readPreferences('apartmentTransactions').includeCancelled).toBe(true);
+ seed();const user=userEvent.setup();render(<App initialManifest={manifest} districtLoader={async()=>[row(1,{cancelled:1})]}/>);await openQueryControls();const recent=await screen.findByRole('region',{name:'최근 관심 거래 내역'});await user.click(within(recent).getByRole('button',{name:'관심단지 풍덕천동 2026-09-28 거래 조회'}));await screen.findByRole('region',{name:apartmentLabel+' 기간별 거래 내역'});expect(readPreferences('apartmentTransactions').includeCancelled).toBe(true);
 });

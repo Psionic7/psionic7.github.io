@@ -1,6 +1,7 @@
 import React,{useState} from 'react';
+import {ArrowRight} from 'lucide-react';
 import ApartmentFavoriteButton from './ApartmentFavoriteButton.jsx';
-export default function ApartmentMapPopup({apartments,favorites,onToggleFavorite,boundaryName='',boundarySource='OpenStreetMap',boundaryKind='',buildingAttributes=null}){
+export default function ApartmentMapPopup({apartments,favorites,onToggleFavorite,onOpenApartment,boundaryName='',boundarySource='OpenStreetMap',boundaryKind='',buildingAttributes=null}){
   const [id,setId]=useState(apartments[0].id);
   const apartment=apartments.find(a=>a.id===id)||apartments[0];
   const currentYear=Number(new Intl.DateTimeFormat('en-US',{timeZone:'Asia/Seoul',year:'numeric'}).format(new Date()));
@@ -16,5 +17,6 @@ export default function ApartmentMapPopup({apartments,favorites,onToggleFavorite
       <div><dt>지상 층수</dt><dd>{buildingAttributes.grnd_flr||'—'}층</dd></div>
       <div><dt>지하 층수</dt><dd>{buildingAttributes.ugrnd_flr||'—'}층</dd></div>
     </dl>}
+    {onOpenApartment&&<button className="primary map-transaction-link" onClick={()=>onOpenApartment(apartment)}>이 아파트 실거래가 보기<ArrowRight size={16}/></button>}
   </div>;
 }

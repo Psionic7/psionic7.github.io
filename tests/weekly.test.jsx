@@ -1,3 +1,4 @@
+import {openQueryControls} from './query-controls.js';
 import React from 'react';
 import {afterEach,beforeEach,describe,expect,it,vi} from 'vitest';
 import {cleanup,fireEvent,render,screen,waitFor,within} from '@testing-library/react';
@@ -21,7 +22,7 @@ describe('Dong weekly transaction tab',()=>{
     window.history.replaceState(null,'',`/?tab=weekly&dong=${a.region_id}`);
     const data=[row(1),row(2,{deal_month:'202610',deal_date:'2026-10-02'}),row(3,{deal_month:'202610',deal_date:'2026-10-04'})];
     const loader=vi.fn(()=>Promise.resolve(data));
-    const first=render(<App initialManifest={manifest} districtLoader={loader}/>);
+    const first=render(<App initialManifest={manifest} districtLoader={loader}/>);await openQueryControls();
     await screen.findByRole('region',{name:`${a.label} 주간 거래 내역`});
     await user.click(screen.getByRole('button',{name:'월간',exact:true}));
     fireEvent.change(screen.getByLabelText('조회 월'),{target:{value:'2026-09'}});
@@ -40,7 +41,7 @@ describe('Dong weekly transaction tab',()=>{
     expect(screen.queryByRole('region',{name:`${a.label} 기간별 거래 내역`})).toBeNull();
     fireEvent.change(screen.getByLabelText('조회 시작일'),{target:{value:'2026-09-28'}});
     first.unmount();window.history.replaceState(null,'','/');
-    const second=render(<App initialManifest={manifest} districtLoader={loader}/>);
+    const second=render(<App initialManifest={manifest} districtLoader={loader}/>);await openQueryControls();
     await screen.findByRole('region',{name:`${a.label} 기간별 거래 내역`});
     expect(screen.getByLabelText('조회 종료일').value).toBe('2026-10-02');
     expect(readPreferences('explorer').weeklyIds).toEqual([a.region_id]);
@@ -48,11 +49,11 @@ describe('Dong weekly transaction tab',()=>{
     expect(screen.getByLabelText('조회 시작일').value).toBe('2026-09-04');
     expect(screen.getByLabelText('조회 종료일').value).toBe('2026-10-03');
     second.unmount();window.history.replaceState(null,'',`/?tab=weekly&dong=${a.region_id}&period=month&month=2026-09`);
-    const third=render(<App initialManifest={manifest} districtLoader={loader}/>);
+    const third=render(<App initialManifest={manifest} districtLoader={loader}/>);await openQueryControls();
     await screen.findByRole('region',{name:`${a.label} 기간별 거래 내역`});
     expect(screen.getByLabelText('조회 월').value).toBe('2026-09');
     third.unmount();window.history.replaceState(null,'',`/?tab=weekly&dong=${a.region_id}&week=2026-09-28`);
-    render(<App initialManifest={manifest} districtLoader={loader}/>);
+    render(<App initialManifest={manifest} districtLoader={loader}/>);await openQueryControls();
     await screen.findByRole('region',{name:`${a.label} 주간 거래 내역`});
     expect(screen.getByRole('button',{name:'주간',exact:true}).getAttribute('aria-pressed')).toBe('true');
   });
@@ -61,7 +62,7 @@ describe('Dong weekly transaction tab',()=>{
     window.history.replaceState(null,'',`/?tab=weekly&dong=${a.region_id}`);
     const data=[6,8,10,10,12,15].map((price,index)=>row(index+1,{price_man:price*10000,apartment:`가격단지${index}`,area_m2:index===5?120:85}));
     data.push(row(99,{cancelled:1,price_man:990000,apartment:'해제최고가'}));
-    render(<App initialManifest={manifest} districtLoader={()=>Promise.resolve(data)}/>);
+    render(<App initialManifest={manifest} districtLoader={()=>Promise.resolve(data)}/>);await openQueryControls();
     await screen.findByRole('region',{name:`${a.label} 주간 거래 내역`});
     const table=()=>screen.getByRole('region',{name:`${a.label} 주간 거래 내역`});
     const section=screen.getByRole('region',{name:`${a.label} 주간 실거래가`});
@@ -79,7 +80,7 @@ describe('Dong weekly transaction tab',()=>{
     const user=userEvent.setup();
     window.history.replaceState(null,'',`/?tab=weekly&dong=${a.region_id}`);
     const loader=()=>Promise.resolve([row(1,{area_m2:60,price_man:60000}),row(2,{cancelled:1,apartment:'해제단지',price_man:900000,raw:{cdealDay:'2026-10-01'}})]);
-    const first=render(<App initialManifest={manifest} districtLoader={loader}/>);
+    const first=render(<App initialManifest={manifest} districtLoader={loader}/>);await openQueryControls();
     const table=await screen.findByRole('region',{name:`${a.label} 주간 거래 내역`});
     expect(screen.getByRole('checkbox',{name:'해제 거래 포함'}).checked).toBe(true);
     expect(within(table).getAllByRole('row')).toHaveLength(3);
@@ -91,7 +92,7 @@ describe('Dong weekly transaction tab',()=>{
     await user.click(screen.getByRole('button',{name:'면적 필터 초기화'}));
     await user.click(screen.getByRole('checkbox',{name:'해제 거래 포함'}));
     expect(within(table).queryByText('해제단지')).toBeNull();
-    first.unmount();render(<App initialManifest={manifest} districtLoader={loader}/>);
+    first.unmount();render(<App initialManifest={manifest} districtLoader={loader}/>);await openQueryControls();
     await screen.findByRole('region',{name:`${a.label} 주간 거래 내역`});
     expect(screen.getByRole('checkbox',{name:'해제 거래 포함'}).checked).toBe(false);
   });
@@ -103,7 +104,7 @@ describe('Dong weekly transaction tab',()=>{
       ...pyeongs.map((area,index)=>row(index+1,{region_code:code,area_m2:area*PYEONG_M2,apartment:`전용${area}평단지`,price_man:(index+1)*10000})),
       row(99,{region_code:code,area_m2:12*PYEONG_M2,apartment:'해제평대단지',cancelled:1,price_man:990000})
     ]));
-    const first=render(<App initialManifest={manifest} districtLoader={loader}/>);
+    const first=render(<App initialManifest={manifest} districtLoader={loader}/>);await openQueryControls();
     await screen.findByRole('region',{name:`${b.label} 주간 거래 내역`});
     const picker=()=>within(screen.getByRole('group',{name:'전용평대 빠른 선택'}));
     await user.click(picker().getByRole('button',{name:'10평대',exact:true}));
@@ -127,7 +128,7 @@ describe('Dong weekly transaction tab',()=>{
     expect(readPreferences('weekly')).toMatchObject({areaBands:[10,30],maxArea:100});
     expect(loader).toHaveBeenCalledTimes(2);
     first.unmount();window.history.replaceState(null,'','/');
-    render(<App initialManifest={manifest} districtLoader={loader}/>);
+    render(<App initialManifest={manifest} districtLoader={loader}/>);await openQueryControls();
     await screen.findByRole('region',{name:`${b.label} 주간 거래 내역`});
     expect(picker().getByRole('button',{name:'10평대',exact:true}).getAttribute('aria-pressed')).toBe('true');
     expect(picker().getByRole('button',{name:'20평대',exact:true}).getAttribute('aria-pressed')).toBe('false');
@@ -155,7 +156,7 @@ describe('Dong weekly transaction tab',()=>{
   });
   it('connects both slider handles to the filters, prevents crossing and supports unbounded endpoints',async()=>{
     window.history.replaceState(null,'',`/?tab=weekly&dong=${a.region_id}`);
-    render(<App initialManifest={manifest} districtLoader={()=>Promise.resolve([row(1,{area_m2:60}),row(2),row(3,{area_m2:120})])}/>);
+    render(<App initialManifest={manifest} districtLoader={()=>Promise.resolve([row(1,{area_m2:60}),row(2),row(3,{area_m2:120})])}/>);await openQueryControls();
     await screen.findByRole('region',{name:`${a.label} 주간 거래 내역`});
     const lower=screen.getByRole('slider',{name:'최소 전용면적 슬라이더 (㎡)'});
     const upper=screen.getByRole('slider',{name:'최대 전용면적 슬라이더 (㎡)'});
@@ -186,7 +187,7 @@ describe('Dong weekly transaction tab',()=>{
       row(4,{region_code:code,area_m2:85.01,apartment:'큰단지',price_man:150000}),
       row(5,{region_code:code,cancelled:1,area_m2:70,apartment:'해제단지',price_man:900000})
     ]));
-    const first=render(<App initialManifest={manifest} districtLoader={loader}/>);
+    const first=render(<App initialManifest={manifest} districtLoader={loader}/>);await openQueryControls();
     await screen.findByRole('region',{name:`${b.label} 주간 거래 내역`});
     await user.click(screen.getByRole('checkbox',{name:'해제 거래 포함'}));
     await user.type(screen.getByRole('spinbutton',{name:'최소 전용면적 (㎡)'}),'60');
@@ -204,7 +205,7 @@ describe('Dong weekly transaction tab',()=>{
     expect(within(screen.getByRole('region',{name:`${a.label} 주간 거래 내역`})).getAllByRole('row')).toHaveLength(3);
     expect(loader).toHaveBeenCalledTimes(2);
     first.unmount();window.history.replaceState(null,'','/');
-    render(<App initialManifest={manifest} districtLoader={loader}/>);
+    render(<App initialManifest={manifest} districtLoader={loader}/>);await openQueryControls();
     await screen.findByRole('region',{name:`${b.label} 주간 거래 내역`});
     expect(screen.getByRole('spinbutton',{name:'최대 전용면적 (평)'}).value).toBe('25.7125');
     await user.click(screen.getByRole('button',{name:'㎡',exact:true}));
@@ -221,7 +222,7 @@ describe('Dong weekly transaction tab',()=>{
     const user=userEvent.setup();
     const data=[row(1),row(2,{deal_month:'202610',deal_date:'2026-10-04',price_man:120000}),row(3,{deal_date:'2026-09-27',price_man:700000}),row(4,{cancelled:1,price_man:800000}),row(5,{dong:'동천동',apartment:'동천단지'}),row(6,{deal_date:'2026-10-05',price_man:900000})];
     const loader=vi.fn((_,code)=>Promise.resolve(code==='41465'?data:[row(1,{region_code:'11110',apartment:'서울단지',price_man:50000})]));
-    render(<App initialManifest={manifest} districtLoader={loader}/>);
+    render(<App initialManifest={manifest} districtLoader={loader}/>);await openQueryControls();
     await screen.findByText('실거래가를 볼 동을 선택해 주세요.');
     await user.click(screen.getByRole('checkbox',{name:'해제 거래 포함'}));
     expect(loader).not.toHaveBeenCalled();
@@ -253,7 +254,7 @@ describe('Dong weekly transaction tab',()=>{
     const user=userEvent.setup();
     window.history.replaceState(null,'',`/?tab=weekly&dong=${a.region_id}&dong=invalid&dong=${a.region_id}&week=2026-10-01`);
     const loader=vi.fn(()=>Promise.resolve(Array.from({length:52},(_,i)=>row(i+1,{price_man:i===0?77000:100000}))));
-    render(<App initialManifest={manifest} districtLoader={loader}/>);
+    render(<App initialManifest={manifest} districtLoader={loader}/>);await openQueryControls();
     const table=await screen.findByRole('region',{name:`${a.label} 주간 거래 내역`});
     expect(within(table).getAllByRole('row')).toHaveLength(51);
     await user.click(screen.getByRole('button',{name:`${a.label} 다음 거래 페이지`}));
@@ -272,7 +273,8 @@ describe('Dong weekly transaction tab',()=>{
     expect(screen.getByRole('button',{name:'다음 주',exact:true}).disabled).toBe(true);
     expect(loader).toHaveBeenCalledTimes(1);
     await user.click(screen.getByRole('button',{name:'데이터 안내',exact:true}));
-    await user.click(screen.getByRole('button',{name:'동 별 실거래가',exact:true}));
+    await user.click(screen.getByRole('button',{name:'집 찾기',exact:true}));
+    await user.click(screen.getByRole('button',{name:'동 별 실거래가',exact:true}));await openQueryControls();
     await screen.findByRole('region',{name:`${a.label} 주간 거래 내역`});
     expect(screen.getByRole('checkbox',{name:/풍덕천동.*용인시/}).checked).toBe(true);
   });
@@ -281,7 +283,7 @@ describe('Dong weekly transaction tab',()=>{
     window.history.replaceState(null,'',`/?tab=weekly&dong=${a.region_id}&dong=${b.region_id}&dong=${uncollected.region_id}`);
     let attempts=0;
     const loader=vi.fn((_,code)=>code==='11110'&&attempts++===0?Promise.reject(new Error('failure')):Promise.resolve([row(1,{region_code:code})]));
-    render(<App initialManifest={manifest} districtLoader={loader}/>);
+    render(<App initialManifest={manifest} districtLoader={loader}/>);await openQueryControls();
     await screen.findByRole('alert');
     await screen.findByRole('region',{name:`${a.label} 주간 거래 내역`});
     expect(screen.getByText('아직 수집된 자료가 없는 동입니다.')).toBeTruthy();
@@ -296,7 +298,7 @@ describe('Dong weekly transaction tab',()=>{
   it('does not restore a removed card when an earlier request finishes late',async()=>{
     const user=userEvent.setup();let resolve;
     const loader=vi.fn(()=>new Promise(done=>{resolve=done;}));
-    render(<App initialManifest={manifest} districtLoader={loader}/>);
+    render(<App initialManifest={manifest} districtLoader={loader}/>);await openQueryControls();
     await screen.findByRole('checkbox',{name:/풍덕천동.*용인시/});
     await user.click(screen.getByRole('checkbox',{name:/풍덕천동.*용인시/}));
     await waitFor(()=>expect(loader).toHaveBeenCalledTimes(1));
@@ -310,10 +312,10 @@ it('collapses each numbered filter group independently without clearing inputs, 
   const user=userEvent.setup();
   window.history.replaceState(null,'',`/?tab=weekly&dong=${a.region_id}`);
   const loader=vi.fn(()=>Promise.resolve([row(1),row(2,{cancelled:1,raw:{cdealDay:'2026-10-01'}})]));
-  render(<App initialManifest={manifest} districtLoader={loader}/>);
+  render(<App initialManifest={manifest} districtLoader={loader}/>);await openQueryControls();
   const table=await screen.findByRole('region',{name:`${a.label} 주간 거래 내역`});
   expect(screen.getByRole('button',{name:'동 별 실거래가',exact:true})).toBeTruthy();
-  expect([...document.querySelectorAll('.weekly-controls .filter-step')].map(step=>step.textContent)).toEqual(['01','02','03','04']);
+  expect([...document.querySelectorAll('.query-selection .filter-step,.query-conditions .filter-step')].map(step=>step.textContent)).toEqual(['01','02','03','04']);
   const options=screen.getByRole('region',{name:'기타 옵션'});
   expect(within(options).getByRole('checkbox',{name:'해제 거래 포함'}).checked).toBe(true);
   const date=screen.getByLabelText('조회 주 기준 날짜').value;
@@ -345,7 +347,7 @@ it('collapses each numbered filter group independently without clearing inputs, 
 it('selects personal favorite dongs independently of search, synchronizes both pickers and persists selections without changing favorites',async()=>{
  const user=userEvent.setup();savePreferences('viewer',{regions:[b.region_id,a.region_id,uncollected.region_id,'dong_99999999']});
  const loader=vi.fn(async(_,code)=>[row(1,{region_code:code})]);
- let view=render(<App initialManifest={manifest} districtLoader={loader}/>);
+ let view=render(<App initialManifest={manifest} districtLoader={loader}/>);await openQueryControls();
  const favorites=await screen.findByRole('group',{name:'즐겨찾기한 동 선택'});
  expect(within(favorites).getAllByRole('checkbox').map(input=>input.closest('label').textContent)).toEqual([b,a,uncollected].map(region=>region.dongs[0]+region.region_name+(manifest.districts[region.region_code]?'':' · 미수집')));
  expect(within(favorites).getAllByRole('checkbox').every(input=>!input.checked)).toBe(true);expect(loader).not.toHaveBeenCalled();
@@ -362,7 +364,7 @@ it('selects personal favorite dongs independently of search, synchronizes both p
  await user.click(within(favorites).getByRole('checkbox',{name:/매탄동/}));
  expect(screen.getByText('아직 수집된 자료가 없는 동입니다.')).toBeTruthy();expect(loader.mock.calls.map(call=>call[1]).sort()).toEqual(['11110','41465']);
  expect(readPreferences('viewer').regions).toEqual([b.region_id,a.region_id,uncollected.region_id,'dong_99999999']);
- view.unmount();window.history.replaceState(null,'','/');view=render(<App initialManifest={manifest} districtLoader={loader}/>);
+ view.unmount();window.history.replaceState(null,'','/');view=render(<App initialManifest={manifest} districtLoader={loader}/>);await openQueryControls();
  const restored=await screen.findByRole('group',{name:'즐겨찾기한 동 선택'});
  expect(within(restored).getByRole('checkbox',{name:/풍덕천동.*종로구/}).checked).toBe(true);expect(within(restored).getByRole('checkbox',{name:/매탄동/}).checked).toBe(true);
  await user.click(screen.getByRole('button',{name:'선택 모두 해제'}));
@@ -371,7 +373,7 @@ it('selects personal favorite dongs independently of search, synchronizes both p
 });
 
 it('shows how to add personal favorite dongs when none are saved, without importing administrator collection favorites',async()=>{
- render(<App initialManifest={manifest}/>);
+ render(<App initialManifest={manifest}/>);await openQueryControls();
  const favorites=await screen.findByRole('region',{name:'즐겨찾기한 동'});
  expect(within(favorites).getByText('지역 지도에서 별표로 동을 즐겨찾기하면 여기에 표시됩니다.')).toBeTruthy();
  expect(within(favorites).queryByRole('checkbox')).toBeNull();
@@ -381,7 +383,7 @@ it('shows how to add personal favorite dongs when none are saved, without import
 it('collapses whole filters and individual dong panels independently while preserving pages and nested filter state',async()=>{
  const user=userEvent.setup();window.history.replaceState(null,'',`/?tab=weekly&dong=${a.region_id}&dong=${b.region_id}`);
  const loader=vi.fn(async(_,code)=>Array.from({length:52},(_,index)=>row(index+1,{region_code:code})));
- render(<App initialManifest={manifest} districtLoader={loader}/>);
+ render(<App initialManifest={manifest} districtLoader={loader}/>);await openQueryControls();
  const panelA=await screen.findByRole('region',{name:a.label+' 주간 실거래가'});
  const tableA=await within(panelA).findByRole('region',{name:a.label+' 주간 거래 내역'});
  const tableB=await screen.findByRole('region',{name:b.label+' 주간 거래 내역'});
@@ -396,12 +398,12 @@ it('collapses whole filters and individual dong panels independently while prese
  expect(document.getElementById(collapse.getAttribute('aria-controls')).contains(tableA)).toBe(true);
  expect(screen.queryByRole('region',{name:a.label+' 주간 거래 내역'})).toBeNull();
  expect(within(tableB).getAllByRole('row')).toHaveLength(51);
- await user.click(screen.getByRole('button',{name:'조회 필터 접기'}));
+ await user.click(screen.getByRole('button',{name:/기간 \/ 조건/}));
  expect(screen.queryByRole('button',{name:'조회 기간 접기'})).toBeNull();
  collapse.focus();await user.keyboard('{Enter}');
  expect(within(tableA).getAllByRole('row')).toHaveLength(3);
  expect(location.search).toBe(url);expect(readPreferences('weekly')).toEqual(settings);
- await user.click(screen.getByRole('button',{name:'조회 필터 펼치기'}));
+ await user.click(screen.getByRole('button',{name:/기간 \/ 조건/}));
  expect(screen.queryByRole('spinbutton',{name:'최대 전용면적 (㎡)'})).toBeNull();
  await user.click(screen.getByRole('button',{name:'전용면적 펼치기'}));
  expect(screen.getByRole('spinbutton',{name:'최대 전용면적 (㎡)'}).value).toBe('90');

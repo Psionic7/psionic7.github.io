@@ -1,3 +1,4 @@
+import {openQueryControls} from './query-controls.js';
 import React from 'react';
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 import {cleanup, fireEvent, render, screen, waitFor, within} from '@testing-library/react';
@@ -14,16 +15,16 @@ afterEach(()=>{cleanup();vi.restoreAllMocks();vi.unstubAllGlobals();});
 describe('React transaction explorer',()=>{
   it('adds a personal apartment favorite through search while selecting multiple trades in the unified tab',async()=>{
     const user=userEvent.setup();window.history.replaceState(null,'','/?region=area_41465&tab=apartments&period=month&month=2026-01');
-    render(<App initialManifest={manifest} districtLoader={()=>Promise.resolve(rows)}/>);
+    render(<App initialManifest={manifest} districtLoader={()=>Promise.resolve(rows)}/>);await openQueryControls();
     const search=await screen.findByRole('group',{name:'검색 아파트 선택'});
     await user.click(within(search).getByRole('button',{name:/첫 아파트.*즐겨찾기 추가/}));
     await user.click(within(search).getByRole('checkbox',{name:/첫 아파트/}));
     const table=await screen.findByRole('region',{name:/첫 아파트.*기간별 거래 내역/});expect(within(table).getAllByRole('row')).toHaveLength(2);expect(within(table).queryByText('두번째')).toBeNull();
-    expect(within(screen.getByRole('group',{name:'즐겨찾기 아파트 선택'})).getByRole('checkbox').checked).toBe(true);expect(screen.getByRole('button',{name:'대시보드',exact:true})).toBeTruthy();
+    expect(within(screen.getByRole('group',{name:'즐겨찾기 아파트 선택'})).getByRole('checkbox').checked).toBe(true);expect(screen.getByRole('button',{name:'관심 목록',exact:true})).toBeTruthy();
   });
   it('loads the apartment tab directly from its public URL without dashboard detail',async()=>{
     window.history.replaceState(null,'','/?region=area_41465&tab=apartments');
-    render(<App initialManifest={manifest} districtLoader={()=>Promise.resolve(rows)}/>);
+    render(<App initialManifest={manifest} districtLoader={()=>Promise.resolve(rows)}/>);await openQueryControls();
     const apartments=screen.getByRole('tabpanel',{name:'아파트별 실거래가'});
     await within(apartments).findByRole('searchbox',{name:'아파트 검색'});
     expect((await within(apartments).findByRole('group',{name:'검색 아파트 선택'})).querySelectorAll('input:checked')).toHaveLength(0);
@@ -32,15 +33,15 @@ describe('React transaction explorer',()=>{
   });
   it('an old raw-data URL resolves to the overview dashboard without exposing a raw table',async()=>{
     window.history.replaceState(null,'','/?region=area_41465&tab=raw');
-    render(<App initialManifest={manifest} districtLoader={()=>Promise.resolve(rows)}/>);
-    await screen.findByText('즐겨찾기를 추가해 대시보드를 채워보세요.');
-    expect(screen.getByRole('tabpanel',{name:'대시보드'})).toBeTruthy();
+    render(<App initialManifest={manifest} districtLoader={()=>Promise.resolve(rows)}/>);await openQueryControls();
+    await screen.findByLabelText('어느 아파트가 궁금하세요?');
+    expect(screen.getByRole('tabpanel',{name:'아파트별 실거래가'})).toBeTruthy();
     expect(screen.queryByText('신고 자료 그대로')).toBeNull();
     expect(screen.queryByRole('button',{name:'CSV 다운로드'})).toBeNull();
-    expect(window.location.search).toContain('tab=dashboard');
+    expect(window.location.search).toContain('tab=apartments');
   });
   it('keeps period and area controls inside unified apartment transactions and removes them from the about tab',async()=>{
-    const user=userEvent.setup();render(<App initialManifest={manifest} districtLoader={()=>Promise.resolve(rows)}/>);
+    const user=userEvent.setup();render(<App initialManifest={manifest} districtLoader={()=>Promise.resolve(rows)}/>);await openQueryControls();
     const dashboard=screen.getByRole('tabpanel',{name:'아파트별 실거래가'});
     await within(dashboard).findByLabelText('조회 주 기준 날짜');
     expandArea();expect(within(dashboard).getByRole('spinbutton',{name:'최소 전용면적 (㎡)'})).toBeTruthy();
@@ -71,9 +72,9 @@ describe('React transaction explorer',()=>{
   });
   it('starts with empty personal favorites and makes no district request',async()=>{
     window.history.replaceState(null,'','/');const loader=vi.fn(()=>Promise.resolve(rows));
-    render(<App initialManifest={{...manifest,favorite_region_ids:[]}} districtLoader={loader}/>);
-    await screen.findByText('즐겨찾기를 추가해 대시보드를 채워보세요.');
-    expect(screen.queryByRole('combobox',{name:'조회 지역'})).toBeNull();
+    render(<App initialManifest={{...manifest,favorite_region_ids:[]}} districtLoader={loader}/>);await openQueryControls();
+    await screen.findByLabelText('어느 아파트가 궁금하세요?');
+    expect(screen.getByRole('combobox',{name:'조회 지역'}).value).toBe('');
     expect(loader).not.toHaveBeenCalled();
     expect(window.location.search).not.toContain('region=');
   });
@@ -83,7 +84,7 @@ describe('React transaction explorer',()=>{
     const favorite={region_id:'dong_41465101',label:'경기도 용인시 수지구 풍덕천동',region_name:'경기도 용인시 수지구',region_code:'41465',dongs:['풍덕천동']};
     savePreferences('viewer',{regions:[favorite.region_id]});
     const loader=vi.fn(()=>Promise.resolve(rows));
-    render(<App initialManifest={{...manifest,regions:[...manifest.regions,favorite],favorite_region_ids:['dong_11110101']}} districtLoader={loader}/>);
+    render(<App initialManifest={{...manifest,regions:[...manifest.regions,favorite],favorite_region_ids:['dong_11110101']}} districtLoader={loader}/>);await openQueryControls();
     await screen.findByRole('region',{name:'즐겨찾기 지역'});
     const section=screen.getByRole('region',{name:'즐겨찾기 지역'});
     await user.click(within(section).getByRole('button',{name:/풍덕천동/}));
@@ -129,9 +130,9 @@ describe('React transaction explorer',()=>{
     const user=userEvent.setup();
     const loader=vi.fn((_,code)=>Promise.resolve(code==='41465'?rows:[]));
     window.history.replaceState(null,'','/?region=area_41465&tab=apartments');
-    render(<App initialManifest={manifest} districtLoader={loader}/>);
+    render(<App initialManifest={manifest} districtLoader={loader}/>);await openQueryControls();
     await screen.findByRole('group',{name:'검색 아파트 선택'});
-    await user.selectOptions(screen.getByRole('combobox',{name:'시도'}),'서울특별시');
+    await user.click(screen.getByText('지역 세부 조건'));await user.selectOptions(screen.getByRole('combobox',{name:'시도'}),'서울특별시');
     await user.click(screen.getByRole('checkbox',{name:'미수집 지역 포함'}));
     await user.selectOptions(screen.getByRole('combobox',{name:'조회 지역'}),'dong_11110101');
     await screen.findByText('아직 수집된 자료가 없는 지역입니다. 즐겨찾기한 아파트는 위에서 선택할 수 있습니다.');
@@ -141,9 +142,9 @@ describe('React transaction explorer',()=>{
     expect(screen.getByRole('link',{name:'웹 수집 관리자'}).getAttribute('href')).toBe('/admin.html');
     expect(screen.getByRole('link',{name:'공개 SQLite 다운로드'}).getAttribute('href')).toBe('/data/public.sqlite3');
   });
-  it('uses the manifest SQLite archive link and explains decompression for large datasets',()=>{
+  it('uses the manifest SQLite archive link and explains decompression for large datasets',async()=>{
     window.history.replaceState(null,'','/?tab=about');
-    render(<App initialManifest={{...manifest,database:{file:'public.sqlite3.gz',format:'sqlite3+gzip'}}}/>);
+    render(<App initialManifest={{...manifest,database:{file:'public.sqlite3.gz',format:'sqlite3+gzip'}}}/>);await openQueryControls();
     expect(screen.getByRole('link',{name:'공개 SQLite 다운로드 (.gz)'}).getAttribute('href')).toBe('/data/public.sqlite3.gz');
     expect(screen.getByText(/다운로드 후 gzip 압축을 풀면/)).toBeTruthy();
   });
@@ -152,7 +153,7 @@ describe('React transaction explorer',()=>{
     let resolveOld;
     const loader=vi.fn((_,code)=>code==='41465'?new Promise(resolve=>{resolveOld=resolve;}):Promise.resolve([]));
     window.history.replaceState(null,'','/?region=area_41465&tab=apartments');
-    render(<App initialManifest={manifest} districtLoader={loader}/>);
+    render(<App initialManifest={manifest} districtLoader={loader}/>);await openQueryControls();
     await user.click(screen.getByRole('checkbox',{name:'미수집 지역 포함'}));
     await user.selectOptions(screen.getByRole('combobox',{name:'조회 지역'}),'dong_11110101');
     await screen.findByText('아직 수집된 자료가 없는 지역입니다. 즐겨찾기한 아파트는 위에서 선택할 수 있습니다.');

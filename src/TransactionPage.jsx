@@ -1,7 +1,8 @@
 import React, {useEffect,useMemo, useState} from 'react';
-import {CalendarDays, SlidersHorizontal, Settings2} from 'lucide-react';
+import {ListFilter, SlidersHorizontal, Settings2} from 'lucide-react';
 import {areaInputValue, areaM2, areaUnitLabel} from './domain.mjs';
-import {periodBounds,publishedDay} from './weekly.mjs';
+import {periodBounds,publishedDay,recentRange} from './weekly.mjs';
+import {hasTradeCoverage} from './coverage.js';
 import {Empty} from './ViewState.jsx';
 import AreaUnit from './AreaUnit.jsx';
 import AreaRange from './AreaRange.jsx';
@@ -11,7 +12,6 @@ import {areaPreference,readPreferences,unitPreference,useStoredState} from './pr
 
 import TransactionResults from './transactions/TransactionResults.jsx';
 import FilterGroup from './weekly/FilterGroup.jsx';
-import CollapsiblePanel from './CollapsiblePanel.jsx';
 import {useDistrictDatasets} from './weekly/useDistrictDatasets.js';
 
 const optionalArea=value=>value==='' || areaPreference(value);
@@ -20,8 +20,11 @@ const validAreaBands=value=>Array.isArray(value) && value.length<=areaBands.leng
 function useFilterPreference(scope,field,fallback,validate) {
   return useStoredState(scope,field,()=>{const previous=scope==='apartmentTransactions'?readPreferences('favoriteDashboard')[field]:undefined;return validate(previous)?previous:fallback;},validate);
 }
-export default function TransactionPage({manifest,regions,day,onDayChange,period,onPeriodChange,districtLoader,apartmentView=false,searchRegionCode,renderSelection,filterScope='weekly',onQueryChange}) {
+export default function TransactionPage({manifest,regions,day,onDayChange,period,onPeriodChange,districtLoader,apartmentView=false,searchRegionCode,renderSelection,filterScope='weekly',onQueryChange,renderResultActions}) {
   const selected=regions;
+  const [controlsOpen,setControlsOpen]=useState(!regions.length&&!!searchRegionCode);
+  const [conditionOpen,setConditionOpen]=useState(false);
+
   const [areaUnit,setAreaUnit]=useStoredState('display','areaUnit','m2',unitPreference);
   // Store exact square metres; unit changes only affect the input display.
   const [minArea,setMinArea]=useFilterPreference(filterScope,'minArea','',optionalArea);
@@ -54,9 +57,16 @@ export default function TransactionPage({manifest,regions,day,onDayChange,period
   if(requestedRange&&period.mode==='month'&&((earliestDay&&period.month<earliestDay.slice(0,7))||(latestDay&&period.month>latestDay.slice(0,7))))periodError='공개 자료 범위 안에서 조회 월을 선택해 주세요.';
   const week=periodError?null:requestedRange;
   return <div className="weekly-page">
-    {!!selected.length&&week&&<div className="results-shortcut"><span>{selected.length}{apartmentView?'개 아파트':'개 동'} 선택됨 · {includeCancelled?'해제 거래 포함':'유효 거래만'}</span><a className="button primary" href="#transaction-results">거래 결과로 이동 ↓</a></div>}
-    <CollapsiblePanel className="weekly-controls" headingClassName="weekly-controls-title" label={apartmentView?"즐겨찾기 아파트 조회 조건":"동 별 실거래가 조회 조건"} toggleLabel="조회 필터" heading={<><h2><CalendarDays size={19}/>{apartmentView?'아파트별 실거래가':'동 별 실거래가'}</h2><p>{apartmentView?'즐겨찾기나 검색으로 아파트를 선택하고 실제 거래를 함께 비교하세요.':'기간과 면적을 고르고, 여러 동의 실제 거래를 함께 비교하세요.'}</p></>} actions={<span className="badge">{selected.length}{apartmentView?'개 아파트':'개 동 선택'}</span>}>
+    <div className="query-toolbar">
+      <button className="query-selection-button" aria-expanded={controlsOpen} aria-controls="query-controls" onClick={()=>setControlsOpen(value=>!value)}>{selected.length?`${selected.length}${apartmentView?'개 단지':'개 동네'} 선택 · 변경 / 비교 추가`:apartmentView?'지역별 단지 목록에서 선택':'조회할 동네 선택'}<ListFilter size={17}/></button>
+      <div className="quick-periods" role="group" aria-label="빠른 조회 기간">{[30,90,365].map(count=>{const recent=recentRange(latestDay,count,earliestDay);return <button key={count} disabled={!recent} aria-pressed={period.mode==='custom'&&period.start===recent?.start&&period.end===recent?.end} onClick={()=>onPeriodChange({...period,mode:'custom',...recent})}>{count===365?'1년':`${count}일`}</button>;})}</div>
+      <button aria-expanded={conditionOpen} aria-controls="query-conditions" onClick={()=>setConditionOpen(value=>!value)}><SlidersHorizontal size={16}/>{areaFiltered?'면적 조건 적용':'전체 면적'} · 기간 / 조건</button>
+    </div>
+    <section id="query-controls" className="query-selection" aria-label={apartmentView?'즐겨찾기 아파트 조회 조건':'동 별 실거래가 조회 조건'} hidden={!controlsOpen}>
       {renderSelection({datasets,onRetry:()=>setRetry(value=>value+1)})}
+      {!!selected.length&&<button className="primary selection-done" onClick={()=>{setControlsOpen(false);requestAnimationFrame(()=>document.getElementById('transaction-results')?.focus({preventScroll:true}));}}>선택 완료 · 거래 결과 보기</button>}
+    </section>
+    <section id="query-conditions" className="query-conditions" aria-label="상세 조회 조건" hidden={!conditionOpen}>
       <div className="dong-filter-grid">
         <PeriodPicker period={period} onChange={onPeriodChange} day={day} onDayChange={onDayChange} range={week} earliestDay={earliestDay} latestDay={latestDay} error={periodError}/>
         <FilterGroup number="03" title="전용면적" label="조회 면적 설정" icon={SlidersHorizontal} className="area-card" initiallyExpanded={areaFiltered||selected.length>0} actions={<AreaUnit value={areaUnit} onChange={setAreaUnit}/>}>
@@ -75,9 +85,11 @@ export default function TransactionPage({manifest,regions,day,onDayChange,period
         </FilterGroup>
       </div>
       <FilterGroup number="04" title="기타 옵션" icon={Settings2} className="other-card"><div className="weekly-display-options"><label className="weekly-cancel-toggle"><input type="checkbox" checked={includeCancelled} onChange={event=>setIncludeCancelled(event.target.checked)}/>해제 거래 포함</label><p>최근 자료는 신고 지연으로 추가될 수 있습니다.</p></div></FilterGroup>
-    </CollapsiblePanel>
+    </section>
+    {periodError&&!conditionOpen&&<p role="alert" className="notice error">{periodError}<button onClick={()=>setConditionOpen(true)}>기간 수정</button></p>}
+    {invalidArea&&!conditionOpen&&<p role="alert" className="notice error">최소 면적이 최대 면적보다 큽니다.<button onClick={()=>setConditionOpen(true)}>면적 수정</button></p>}
     {!!selected.length&&week&&<div className="weekly-results-context" id="transaction-results" tabIndex={-1}><strong>조회 결과 · {selected.length}{apartmentView?'개 아파트':'개 동'}</strong><span>{week.start} — {week.end}</span><small>{period.mode==='week'?'주간':period.mode==='month'?'월간':'직접 지정'} · {includeCancelled?'해제 포함':'유효 거래만'}</small></div>}
-    {!selected.length ? <section className="panel"><Empty title={apartmentView?'실거래가를 볼 아파트를 선택해 주세요.':'실거래가를 볼 동을 선택해 주세요.'}>{apartmentView?'위의 즐겨찾기 아파트나 지역·아파트 검색에서 조회할 단지를 선택하세요.':'서로 다른 시·구의 동도 함께 선택할 수 있습니다.'}</Empty></section>
-      : week&&<div className="weekly-stack">{selected.map(region=><TransactionResults key={region.region_id} region={region} week={week} dataset={datasets[region.region_code]} collected={!!manifest.districts[region.region_code]} minArea={minArea} maxArea={maxArea} selectedBands={selectedBands} includeCancelled={includeCancelled} mode={period.mode} onRetry={()=>setRetry(value=>value+1)}/>)}</div>}
+    {!selected.length ? <section className="panel"><Empty title={apartmentView?'실거래가를 볼 아파트를 선택해 주세요.':'실거래가를 볼 동을 선택해 주세요.'}>{apartmentView?'단지명으로 검색하거나 지역별 목록에서 선택하면 거래가격을 바로 볼 수 있습니다.':'서로 다른 시·구의 동도 함께 선택할 수 있습니다.'}</Empty></section>
+      : week&&<div className="weekly-stack">{selected.map(region=><TransactionResults key={region.region_id} region={region} resultActions={renderResultActions?.(region)} areaUnit={areaUnit} week={week} dataset={datasets[region.region_code]} collected={hasTradeCoverage(manifest,region)} minArea={minArea} maxArea={maxArea} selectedBands={selectedBands} includeCancelled={includeCancelled} mode={period.mode} onRetry={()=>setRetry(value=>value+1)}/>)}</div>}
   </div>;
 }

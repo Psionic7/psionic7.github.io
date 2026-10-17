@@ -1,3 +1,4 @@
+import {openQueryControls} from './query-controls.js';
 import React from 'react';
 import {afterEach,beforeEach,describe,expect,it,vi} from 'vitest';
 import {cleanup,fireEvent,render,screen,within,waitFor} from '@testing-library/react';
@@ -20,7 +21,7 @@ describe('Personal apartment watchlist',()=>{
     const second=makeApartmentFavorite(row(2,{jibun:'2'}),region),third=makeApartmentFavorite(row(3,{region_code:'11110',dong:'청운동'}),other);
     saveFavorites({apartments:[favorite,second,third]});
     const loader=vi.fn((_,code)=>Promise.resolve(code==='41465'?[row(1),row(2,{cancelled:1,price_man:900000,raw:{cdealDay:'2026-10-01'}}),row(3,{jibun:'2',price_man:120000}),row(4,{jibun:'3',price_man:990000})]:[row(1,{region_code:code,dong:'청운동',price_man:50000})]));
-    render(<App initialManifest={manifest} districtLoader={loader}/>);
+    render(<App initialManifest={manifest} districtLoader={loader}/>);await openQueryControls();
     await screen.findByRole('region',{name:label(third)+' 주간 거래 내역'});
     expect(loader).toHaveBeenCalledTimes(2);
     expect(within(table(favorite)).getAllByRole('row')).toHaveLength(3);
@@ -35,7 +36,7 @@ describe('Personal apartment watchlist',()=>{
   it('paginates and resets filters, restores favorites and period after reopening, and persists removals',async()=>{
     saveFavorites({apartments:[favorite]});
     const loader=vi.fn(()=>Promise.resolve(Array.from({length:52},(_,index)=>row(index+1,{area_m2:index===0?60:85,price_man:index===0?60000:100000}))));
-    const user=userEvent.setup(),first=render(<App initialManifest={manifest} districtLoader={loader}/>);
+    const user=userEvent.setup(),first=render(<App initialManifest={manifest} districtLoader={loader}/>);await openQueryControls();
     await screen.findByRole('region',{name:label(favorite)+' 주간 거래 내역'});
     await user.click(screen.getByRole('button',{name:label(favorite)+' 다음 거래 페이지'}));
     expect(within(table(favorite)).getAllByRole('row')).toHaveLength(3);
@@ -45,7 +46,7 @@ describe('Personal apartment watchlist',()=>{
     await user.click(screen.getByRole('button',{name:'최근 30일',exact:true}));
     expect(screen.getByLabelText('조회 시작일').value).toBe('2026-09-04');
     first.unmount();window.history.replaceState(null,'','/');
-    const second=render(<App initialManifest={manifest} districtLoader={loader}/>);
+    const second=render(<App initialManifest={manifest} districtLoader={loader}/>);await openQueryControls();
     await screen.findByRole('region',{name:label(favorite)+' 기간별 거래 내역'});
     expect(screen.getByLabelText('조회 시작일').value).toBe('2026-09-04');
     expect(screen.getByRole('button',{name:'10평대',exact:true}).getAttribute('aria-pressed')).toBe('true');
@@ -56,7 +57,7 @@ describe('Personal apartment watchlist',()=>{
     await user.click(within(screen.getByRole('group',{name:'즐겨찾기 아파트 선택'})).getByRole('button',{name:/즐겨찾기 해제/}));
     expect(screen.getByText('실거래가를 볼 아파트를 선택해 주세요.')).toBeTruthy();
     expect(readPreferences('viewer').apartments).toEqual([]);
-    second.unmount();render(<App initialManifest={manifest} districtLoader={loader}/>);
+    second.unmount();render(<App initialManifest={manifest} districtLoader={loader}/>);await openQueryControls();
     await screen.findByText('실거래가를 볼 아파트를 선택해 주세요.');
   });
   it('keeps weekly rows free of favorite buttons and preserves saved favorites across failures and empty periods',async()=>{
@@ -64,12 +65,12 @@ describe('Personal apartment watchlist',()=>{
     saveFavorites({apartments:[favorite]});
     let fail=false;
     const loader=vi.fn(()=>fail?Promise.reject(new Error('offline')):Promise.resolve([row(1),row(2)]));
-    const first=render(<App initialManifest={manifest} districtLoader={loader}/>);
+    const first=render(<App initialManifest={manifest} districtLoader={loader}/>);await openQueryControls();
     const trades=await screen.findByRole('region',{name:region.label+' 주간 거래 내역'});
     expect(within(trades).queryAllByRole('button')).toHaveLength(0);
     expect(readPreferences('viewer').apartments).toHaveLength(1);
     first.unmount();fail=true;window.history.replaceState(null,'','/?tab=apartments');
-    render(<App initialManifest={manifest} districtLoader={loader}/>);
+    render(<App initialManifest={manifest} districtLoader={loader}/>);await openQueryControls();
     await screen.findByRole('alert');
     expect(readPreferences('viewer').apartments).toHaveLength(1);
     fail=false;await user.click(screen.getByRole('button',{name:'다시 불러오기',exact:true}));
@@ -85,10 +86,10 @@ describe('Personal apartment watchlist',()=>{
     expect(validApartmentFavorites([favorite,{...favorite}])).toBe(false);
     expect(validApartmentFavorites([{...favorite,id:'forged'}])).toBe(false);
     saveFavorites({apartments:[{...favorite,region_code:'not-a-district'}]});
-    const loader=vi.fn();render(<App initialManifest={manifest} districtLoader={loader}/>);
+    const loader=vi.fn();render(<App initialManifest={manifest} districtLoader={loader}/>);await openQueryControls();
     await screen.findByText('실거래가를 볼 아파트를 선택해 주세요.');expect(loader).not.toHaveBeenCalled();
   });
 });
 
-it('master favorites aggregate only verified trade aliases and keep unrelated names out',async()=>{const master=makeApartmentFavorite({...row(1),apartment:'공식단지명',master_id:'hub:official1',trade_keys:[JSON.stringify(['풍덕천동','1','첫번째신고명']),JSON.stringify(['풍덕천동','2','두번째신고명'])]},region);saveFavorites({apartments:[master]});const loader=vi.fn(()=>Promise.resolve([row(1,{apartment:'첫번째신고명'}),row(2,{jibun:'2',apartment:'두번째신고명'}),row(3,{apartment:'무관한아파트'})]));render(<App initialManifest={manifest} districtLoader={loader}/>);const trades=await screen.findByRole('region',{name:label(master)+' 주간 거래 내역'});expect(within(trades).getAllByRole('row')).toHaveLength(3);expect(within(trades).queryByText('무관한아파트')).toBeNull();expect(readPreferences('viewer').apartments[0].master_id).toBe('hub:official1');});
-it('an apartment master without collected trades remains a saved favorite',async()=>{const master=makeApartmentFavorite({...row(1),master_id:'hub:no-trades',trade_keys:[]},region);saveFavorites({apartments:[master]});const loader=vi.fn();render(<App initialManifest={{...manifest,districts:{}}} districtLoader={loader}/>);await screen.findByText('이 아파트 지역은 아직 수집된 자료가 없습니다.');expect(loader).not.toHaveBeenCalled();expect(readPreferences('viewer').apartments).toEqual([master]);});
+it('master favorites aggregate only verified trade aliases and keep unrelated names out',async()=>{const master=makeApartmentFavorite({...row(1),apartment:'공식단지명',master_id:'hub:official1',trade_keys:[JSON.stringify(['풍덕천동','1','첫번째신고명']),JSON.stringify(['풍덕천동','2','두번째신고명'])]},region);saveFavorites({apartments:[master]});const loader=vi.fn(()=>Promise.resolve([row(1,{apartment:'첫번째신고명'}),row(2,{jibun:'2',apartment:'두번째신고명'}),row(3,{apartment:'무관한아파트'})]));render(<App initialManifest={manifest} districtLoader={loader}/>);await openQueryControls();const trades=await screen.findByRole('region',{name:label(master)+' 주간 거래 내역'});expect(within(trades).getAllByRole('row')).toHaveLength(3);expect(within(trades).queryByText('무관한아파트')).toBeNull();expect(readPreferences('viewer').apartments[0].master_id).toBe('hub:official1');});
+it('an apartment master without collected trades remains a saved favorite',async()=>{const master=makeApartmentFavorite({...row(1),master_id:'hub:no-trades',trade_keys:[]},region);saveFavorites({apartments:[master]});const loader=vi.fn();render(<App initialManifest={{...manifest,districts:{}}} districtLoader={loader}/>);await openQueryControls();await screen.findByText('이 아파트 지역은 아직 수집된 자료가 없습니다.');expect(loader).not.toHaveBeenCalled();expect(readPreferences('viewer').apartments).toEqual([master]);});
