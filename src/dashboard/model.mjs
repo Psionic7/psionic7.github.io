@@ -1,4 +1,5 @@
 import {apartmentKey} from '../domain.mjs';
+import {hasTradeCoverage} from '../coverage.js';
 import {publishedDay,recentRange,weekBounds} from '../weekly.mjs';
 export const overviewDurations=[7,30,90];
 export const validOverviewDays=value=>overviewDurations.includes(value);
@@ -23,7 +24,8 @@ export function buildOverview({manifest,regions,apartments,datasets,days=30}) {
   const previous={start:shiftDay(range.start,-dayCount(range)),end:shiftDay(range.start,-1)};
   const create=(item,type)=>{
     const code=item.region_code,source=manifest.districts[code],dataset=datasets[code];
-    const status=!source?'uncollected':dataset?.error?'error':Array.isArray(dataset?.rows)?'ready':'loading';
+    const covered=type==='dong'?hasTradeCoverage(manifest,item):!!source;
+    const status=!covered?'uncollected':dataset?.error?'error':Array.isArray(dataset?.rows)?'ready':'loading';
     return {item,type,status,count:0,previousCount:0,latest:null,partial:status==='ready'&&!coversRange(source.months,range),comparable:status==='ready'&&(!earliest||previous.start>=earliest)&&coversRange(source.months,range)&&coversRange(source.months,previous)};
   };
   const dongGroups=regions.map(item=>create(item,'dong')),apartmentGroups=apartments.map(item=>create(item,'apartment'));

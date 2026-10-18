@@ -17,7 +17,7 @@ import {checkPublic} from '../scripts/check-public.mjs';
 import {runDatabaseJob} from './job-runner.mjs';
 import {buildCatalog} from '../src/domain.mjs';
 
-export function createAdminServer({files=paths,staticRoot=path.join(ROOT,'admin-dist'),fetcher,addressFetcher,coordinateFetcher,masterCollector=collectApartmentMaster}={}) {
+export function createAdminServer({files=paths,staticRoot=path.join(ROOT,'admin-dist'),fetcher,addressFetcher,coordinateFetcher,masterCollector=collectApartmentMaster,spawnBuild=spawn,checkBuild=checkPublic}={}) {
   const token=randomBytes(32).toString('hex');
   let job={status:'idle',completed:0,total:0,rows:0},controller;
   const busy=()=>job.status==='running'||withDb(masterCollectionRunning);
@@ -145,12 +145,12 @@ export function createAdminServer({files=paths,staticRoot=path.join(ROOT,'admin-
           return json(res,200,{count:result.count,favorites:result.favorite_region_ids.length});
         }
         if(pathname==='/api/build') {
-          job={kind:'build',status:'running',completed:0,total:1,rows:0,message:'GitHub Pages 정적 파일을 빌드하고 있습니다.'};
-          const child=spawn(process.execPath,['node_modules/vite/bin/vite.js','build'],{cwd:ROOT,windowsHide:true,stdio:'ignore'});
-          const failed=()=>{job.status='failed';job.message='정적 빌드에 실패했습니다. 터미널에서 build.bat을 실행해 확인하세요.';};
+          const current={kind:'build',status:'running',completed:0,total:1,rows:0,message:'GitHub Pages 정적 파일을 빌드하고 있습니다.'};job=current;
+          const child=spawnBuild(process.execPath,['scripts/build.mjs'],{cwd:ROOT,windowsHide:true,stdio:'ignore'});
+          const failed=()=>{current.status='failed';current.message='정적 빌드에 실패했습니다. 터미널에서 build.bat을 실행해 확인하세요.';};
           child.on('error',failed);child.on('exit',code=>{
             if(code!==0)return failed();
-            try{fs.writeFileSync(path.join(ROOT,'docs/.nojekyll'),'');checkPublic();job.status='completed';job.completed=1;job.message='빌드·공개 파일 검사 완료. Git으로 커밋하고 푸시하면 배포됩니다.';}catch{job.status='failed';job.message='공개 파일 검사에 실패했습니다. check:publish 결과를 확인하세요.';}
+            try{checkBuild();current.status='completed';current.completed=1;current.message='빌드·공개 파일 검사 완료. Git으로 커밋하고 푸시하면 배포됩니다.';}catch{current.status='failed';current.message='공개 파일 검사에 실패했습니다. check:publish 결과를 확인하세요.';}
           });
           return json(res,202,{job});
         }

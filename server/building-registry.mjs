@@ -19,15 +19,17 @@ export async function fetchRegistryPage(key,legalCode,dataset,page,{signal,fetch
  // No parcel/date filters: enumerate the whole legal region independently of transaction history.
  const params={serviceKey:decoded,sigunguCd:legalCode.slice(0,5),bjdongCd:legalCode.slice(5),numOfRows:'100',pageNo:String(page)};
  url.search=new URLSearchParams({serviceKey:decoded,sigunguCd:legalCode.slice(0,5),bjdongCd:legalCode.slice(5),numOfRows:'100',pageNo:String(page),_type:'xml'}).toString();
- for(let attempt=0;attempt<8;attempt++){
+  const lastAttempt=7;
+  for(let attempt=0;attempt<=lastAttempt;attempt++){
  url.search=new URLSearchParams({...params,_type:attempt%2?'json':'xml',...(attempt?{_retry:String(Date.now())+'-'+attempt}:{})}).toString();
  signal?.throwIfAborted();let response;
- try{response=await fetcher(url,{headers:{Connection:'close','Cache-Control':'no-cache'},signal:signal?AbortSignal.any([signal,AbortSignal.timeout(30000)]):AbortSignal.timeout(30000)});}catch{signal?.throwIfAborted();if(attempt===7)throw new Error('건축물대장 API 연결 실패');await delay(Math.min(16000,retryDelay*2**attempt),undefined,{signal});continue;}
- if(!response.ok){if([429,500,502,503,504].includes(response.status)&&attempt<7){await delay(Math.min(16000,retryDelay*2**attempt),undefined,{signal});continue;}throw new Error(`건축물대장 요청 실패 (HTTP ${response.status}). 해당 서비스 활용 승인과 인증키를 확인하세요.`);}
- let raw;try{raw=await response.text();}catch{signal?.throwIfAborted();if(attempt===5)throw new Error('건축물대장 응답을 읽지 못했습니다.');await delay(Math.min(16000,retryDelay*2**attempt),undefined,{signal});continue;}
+ try{response=await fetcher(url,{headers:{Connection:'close','Cache-Control':'no-cache'},signal:signal?AbortSignal.any([signal,AbortSignal.timeout(30000)]):AbortSignal.timeout(30000)});}catch{signal?.throwIfAborted();if(attempt===lastAttempt)throw new Error('건축물대장 API 연결 실패');await delay(Math.min(16000,retryDelay*2**attempt),undefined,{signal});continue;}
+ if(!response.ok){if([429,500,502,503,504].includes(response.status)&&attempt<lastAttempt){await delay(Math.min(16000,retryDelay*2**attempt),undefined,{signal});continue;}throw new Error(`건축물대장 요청 실패 (HTTP ${response.status}). 해당 서비스 활용 승인과 인증키를 확인하세요.`);}
+  let raw;try{raw=await response.text();}catch{signal?.throwIfAborted();if(attempt===lastAttempt)throw new Error('건축물대장 응답을 읽지 못했습니다.');await delay(Math.min(16000,retryDelay*2**attempt),undefined,{signal});continue;}
  for(const value of new Set([key,decoded,encodeURIComponent(decoded)]))if(value)raw=raw.replaceAll(value,'[REDACTED]');
  try{return parseRegistryPage(raw);}catch(error){onDiagnostic?.({dataset,page,attempt,error:error.message,body:raw});if((/응답 형식|API 오류 \((01|04|05|23)\)/.test(error.message))&&attempt<5){await delay(Math.min(16000,retryDelay*2**attempt),undefined,{signal});continue;}throw error;}
  }
+  throw new Error('건축물대장 재시도 횟수를 초과했습니다.');
 }
 export async function readRegistryRegion(key,legalCode,{signal,fetcher=fetchRegistryPage,onProgress,pause=200,concurrency=2}={}){
  if(!Number.isInteger(concurrency)||concurrency<1||concurrency>4)throw new Error('건축물대장 동시 조회 수가 올바르지 않습니다.');

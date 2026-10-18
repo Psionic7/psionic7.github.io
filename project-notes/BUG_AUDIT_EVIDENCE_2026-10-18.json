@@ -1,0 +1,175 @@
+{
+  "date": "2026-10-18",
+  "baselineCommit": "4779aed",
+  "pushPerformed": false,
+  "applicationChangesDuringAudit": false,
+  "tests": {
+    "command": "pnpm test:all",
+    "node": {
+      "passed": 88,
+      "failed": 0
+    },
+    "ui": {
+      "files": 18,
+      "passed": 111,
+      "failed": 0
+    },
+    "totalPassed": 199
+  },
+  "environment": {
+    "url": "http://127.0.0.1:4173/",
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "localDataDay": "2026-10-03",
+    "isolatedBrowserContexts": true,
+    "realUserStorageModified": false,
+    "realCollectionDatabaseModified": false
+  },
+  "findings": [
+    {
+      "id": "B01",
+      "priority": "P1",
+      "method": "isolated browser input; historical monthly requests aborted after observation",
+      "dateError": [
+        "올바른 조회 날짜를 선택해 주세요."
+      ],
+      "monthlyRequestsAfterClearingDate": [
+        "/query-data/month-41465-200512-9f580e997642.json",
+        "/query-data/month-41465-200601-aa619667c18f.json",
+        "/query-data/month-41465-200602-f8aad47f1d2c.json",
+        "/query-data/month-41465-200603-8b2a83994171.json",
+        "/query-data/month-41465-200604-0d8a6f78608c.json",
+        "/query-data/month-41465-200605-49da77a63fc5.json"
+      ],
+      "pageErrors": [],
+      "caseId": "invalid_date_downloads_history"
+    },
+    {
+      "id": "B02",
+      "priority": "P1",
+      "method": "two tabs sharing isolated browser context",
+      "afterA": [
+        "hub:1000000000000002019922"
+      ],
+      "afterB": [
+        "hub:1000000000000002721542"
+      ],
+      "aStillShowsFavorite": "true",
+      "aAfterReload": "false",
+      "pageErrors": [],
+      "caseId": "two_tabs_overwrite_favorites"
+    },
+    {
+      "id": "B03",
+      "priority": "P1",
+      "method": "dynamic import request aborted; waited for application root disappearance",
+      "requests": [
+        "http://127.0.0.1:4173/assets/ApartmentMapPage-HFqTvtne.js"
+      ],
+      "errors": [
+        "Failed to fetch dynamically imported module: http://127.0.0.1:4173/assets/ApartmentMapPage-HFqTvtne.js"
+      ],
+      "applicationCount": 0,
+      "retryCount": 0,
+      "body": "",
+      "observationNote": "The first probe captured the loading fallback before rejection. This later targeted result waits for the failure and supersedes that early snapshot."
+    },
+    {
+      "id": "B04",
+      "priority": "P2",
+      "method": "HTTP 200 manifest response replaced with {}",
+      "applicationCount": 0,
+      "visibleBody": "",
+      "retryButtons": 0,
+      "pageErrors": [
+        "Cannot read properties of undefined (reading 'forEach')"
+      ],
+      "caseId": "malformed_manifest_blanks_application"
+    },
+    {
+      "id": "B05",
+      "priority": "P2",
+      "method": "public local data, pure model, isolated browser favorite",
+      "model": {
+        "id": "dashboard_coverage_inconsistency",
+        "region": "경기도 용인시 수지구 고기동",
+        "hasTradeCoverage": false,
+        "dashboardStatus": "ready",
+        "dashboardCount": 0,
+        "uncollected": 0
+      },
+      "browser": {
+        "id": "uncollected_dong_becomes_zero",
+        "favoriteCard": "즐겨찾기한 동\n1곳\n동 관리\n\n최근 30일의 유효 거래와 이전 같은 길이 기간의 변화 · 저장한 순서\n\n고기동\n경기도 용인시 수지구\n이전 기간과 동일\n0건\n최근 30일",
+        "summary": "동 유효 거래\n0건\n\n즐겨찾기 동 1곳 · 선택 기간\n\n아파트 유효 거래\n—건\n\n즐겨찾기 아파트 0곳 · 선택 기간\n\n마지막 유효 계약\n—\n\n관심 동·아파트의 전체 수집 자료 기준",
+        "alerts": [],
+        "pageErrors": []
+      },
+      "scopeNote": "Inconsistent coverage classification; not proof of missing upstream transactions."
+    },
+    {
+      "id": "B06",
+      "priority": "P2",
+      "method": "Storage.setItem throws in isolated browser context",
+      "visibleMin": "80",
+      "sharedUrlMin": "",
+      "alerts": [
+        "일부 설정을 이 브라우저에 저장하지 못했습니다. 저장 공간과 사이트 데이터 허용 설정을 확인해 주세요. 창을 닫으면 이번 변경이 남지 않을 수 있습니다."
+      ],
+      "pageErrors": [],
+      "caseId": "storage_denied_share_filter_mismatch"
+    },
+    {
+      "id": "B07",
+      "priority": "P2",
+      "method": "synthetic preference document in fake storage; never real user preferences",
+      "before": 2097249,
+      "regularSave": false,
+      "sizeAfterRegularSave": 2097249,
+      "afterReset": {
+        "version": 1,
+        "scopes": {
+          "viewer": {}
+        }
+      },
+      "caseId": "oversized_reset_erases_favorites"
+    },
+    {
+      "id": "B08",
+      "priority": "P2",
+      "method": "POST /api/reload with valid CSRF on temporary local admin server",
+      "status": 404,
+      "body": {
+        "error": "존재하지 않는 관리자 API"
+      },
+      "caseId": "admin_reload_endpoint_missing"
+    },
+    {
+      "id": "B09",
+      "priority": "P2",
+      "method": "source dependency analysis; actual build route not executed",
+      "directViteBuild": true,
+      "preparesBrowserData": false,
+      "buildScript": "node scripts/prepare-browser-data.mjs && vite build && node scripts/finish-build.mjs",
+      "caseId": "admin_build_skips_preparation"
+    },
+    {
+      "id": "B10",
+      "priority": "P3",
+      "method": "fake fetcher: six network failures, then two body-read failures",
+      "attempts": 8,
+      "returnedUndefined": true,
+      "error": null,
+      "caseId": "registry_retry_returns_undefined"
+    }
+  ],
+  "probeErrors": [],
+  "scopeLimits": [
+    "Not an exhaustive proof of absence of other bugs.",
+    "No live upstream collection, production administration, deployment or authentication changes.",
+    "B03, B04 and B06 use controlled failure injection; B07 uses synthetic legacy-size storage.",
+    "B09 confirmed from source paths, not from running a real administrator build."
+  ]
+}

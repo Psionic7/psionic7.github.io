@@ -10,6 +10,7 @@ test('monthly browser export preserves identities and cancellation dates without
   const source=[{...row,id:2,cancelled:1,deal_month:'202610',deal_date:'2026-10-01',raw:{cdealDay:'2026-10-02'}},row];
   const result=browserPayloads(new Map([['12345',source]])),manifest={districts:{'12345':{count:2,sha256:'source',browser:result.districts['12345']}}};
   writeBrowserPayloads(folder,result.payloads);writeBrowserRegistry(folder,manifest,result.districts);checkBrowserData(folder,manifest);
+  assert.throws(()=>checkBrowserData(folder,manifest,[],{requireSearch:true}),/통합 검색 자료가 없습니다/);
   const catalog=JSON.parse(fs.readFileSync(path.join(folder,result.districts['12345'].file)));
   assert.equal(catalog.catalog.length,1);assert.equal(catalog.latest[0].id,1);assert.deepEqual(Object.keys(catalog.months),['202609','202610']);
   const october=JSON.parse(fs.readFileSync(path.join(folder,catalog.months['202610'])));assert.equal(october[0].raw.cdealDay,'2026-10-02');assert.equal(october[0].jibun,'1');

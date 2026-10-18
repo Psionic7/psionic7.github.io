@@ -20,7 +20,7 @@ export function checkPublic(root=ROOT,secretsFile=paths.env,{checkIndex=true}={}
   for(const name of candidates) {if(privateName(name))throw new Error('게시 대상에 비공개 파일이 있습니다.');const file=path.join(root,name);if(fs.existsSync(file)&&fs.statSync(file).isFile()) checkedBytes(fs.readFileSync(file),secrets);}
   for(const sub of ['public/data','docs/data']) {
     const folder=path.join(root,sub),manifest=readJson(path.join(folder,'manifest.json'));
-    checkBrowserData(path.join(root,path.dirname(sub),'query-data'),manifest,secrets);
+    checkBrowserData(path.join(root,path.dirname(sub),'query-data'),manifest,secrets,{requireSearch:true});
     const known=new Set(manifest.regions.map(r=>r.region_id)),favorites=manifest.favorite_region_ids;
     if(!Array.isArray(favorites)||new Set(favorites).size!==favorites.length||favorites.some(id=>!known.has(id)||['suji','gwanggyo','bundang'].includes(id)))throw new Error('공개 즐겨찾기 목록 오류');
     const database=manifest.database||{file:'public.sqlite3',format:'sqlite3'};
@@ -61,6 +61,7 @@ export function checkPublic(root=ROOT,secretsFile=paths.env,{checkIndex=true}={}
     const data=validateApartmentMap({apartments:JSON.parse(apartments),boundaries:JSON.parse(boundaries)});
     if(data.apartments.length!==info.count||data.boundaries.features.length!==info.boundary_count)throw new Error('아파트 지도 건수 오류');
     const tilesFolder=path.join(root,path.dirname(sub),'map-data');
+    if(!fs.existsSync(tilesFolder))throw new Error('지도 경계 조각이 없습니다. 공개 빌드를 다시 실행하세요.');
     if(fs.existsSync(tilesFolder)){
       const tiles=readJson(path.join(tilesFolder,'manifest.json')),allowed=new Set(['manifest.json']);let features=0;const identities=new Set();
       if(tiles.version!==1||tiles.source_sha256!==info.boundaries.sha256||!Array.isArray(tiles.tiles))throw new Error('지도 경계 조각 버전 오류');

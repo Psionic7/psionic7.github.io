@@ -9,6 +9,17 @@ const scope={region_id:'dong_41117102',legal_code:'4111710200',region_code:'4111
 const title=(id,name='거래없는아파트',changes={})=>({mgmBldrgstPk:id,sigunguCd:'41117',bjdongCd:'10200',platGbCd:'0',bun:'0001',ji:'0000',bldNm:name,dongNm:id,mainAtchGbCd:'0',mainPurpsCd:'02000',mainPurpsCdNm:'공동주택',etcPurps:'아파트',newPlatPlc:'경기도 수원시 영통구 시험로 1',useAprDay:'20000103',hhldCnt:'50',grndFlrCnt:'15',naRoadCd:'411173012345',naBjdongCd:'10200',naUgrndCd:'0',naMainBun:'1',naSubBun:'0',...changes});
 const snapshot=(titles,basis=[],recap=[],attached=[],floors=[])=>Object.fromEntries(REGISTRY_DATASETS.map((key,i)=>{const items=[titles,basis,recap,attached,floors][i];return[key,{total:items.length,items,pages:[{page:1,total:items.length,items}]}];}));
 function fixture(){const db=new DatabaseSync(':memory:');initializeApartmentMaster(db);return db;}
+
+test('registry retry exhaustion always rejects even when body-read failures follow network failures',async()=>{
+ let attempts=0;
+ await assert.rejects(fetchRegistryPage('fixture-key',scope.legal_code,'getBrTitleInfo',1,{retryDelay:0,fetcher:async()=>{
+   attempts++;if(attempts<=6)throw new Error('offline');return {ok:true,text:async()=>{throw new Error('broken body');}};
+ }}),/응답을 읽지 못했습니다/);assert.equal(attempts,8);
+ let calls=0;const result=await fetchRegistryPage('fixture-key',scope.legal_code,'getBrTitleInfo',1,{retryDelay:0,fetcher:async()=>{
+   calls++;if(calls<=7)throw new Error('offline');return new Response(JSON.stringify({response:{header:{resultCode:'00'},body:{totalCount:0,items:{}}}}));
+ }});assert.equal(calls,8);assert.deepEqual(result,{total:0,items:[]});
+ const controller=new AbortController();controller.abort();await assert.rejects(fetchRegistryPage('fixture-key',scope.legal_code,'getBrTitleInfo',1,{signal:controller.signal,retryDelay:0,fetcher:async()=>{throw new Error('must not call');}}),{name:'AbortError'});
+});
 function populate(db,s=snapshot([title('b1'),title('b2')],[{mgmBldrgstPk:'b1',mgmUpBldrgstPk:'root'},{mgmBldrgstPk:'b2',mgmUpBldrgstPk:'root'}],[{mgmBldrgstPk:'root',bldNm:'독립단지',hhldCnt:'100',useAprDay:'20000103'}],[{mgmBldrgstPk:'root',atchSigunguCd:'41117',atchBjdongCd:'10200',atchPlatGbCd:'0',atchBun:'0002',atchJi:'0000'}])){const run=startMasterRun(db,[scope]);saveRegistrySnapshot(db,run,scope,s);rebuildApartmentMaster(db);db.prepare("UPDATE apartment_inventory_runs SET status='needs_review' WHERE id=?").run(run);return run;}
 const polygon={type:'Polygon',coordinates:[[[127,37],[127.01,37],[127.01,37.01],[127,37.01],[127,37]]]};
 test('registry JSON/XML keeps identifiers, validates auth and accepts an empty complete region',()=>{

@@ -1,0 +1,61 @@
+{
+  "date": "2026-10-18",
+  "baseline": "4779aed",
+  "viewport": {
+    "width": 390,
+    "height": 844
+  },
+  "isolatedContexts": true,
+  "cases": [
+    {
+      "id": "B01_invalid_date_no_month_download",
+      "passed": true,
+      "monthlyRequestsAfterClearingDate": 0,
+      "pageErrors": []
+    },
+    {
+      "id": "B02_multi_tab_add_remove_and_concurrent_add",
+      "passed": true,
+      "favoritesAfterConcurrentAdd": [
+        "hub:1000000000000002019922",
+        "hub:1000000000000002721542"
+      ],
+      "browserLocks": true,
+      "pageErrors": []
+    },
+    {
+      "id": "B03_chunk_failure_keeps_navigation",
+      "passed": true,
+      "applicationRetained": true,
+      "otherMenuWorks": true,
+      "pageErrors": []
+    },
+    {
+      "id": "B04_manifest_retry_recovers",
+      "passed": true,
+      "recovered": true,
+      "pageErrors": []
+    },
+    {
+      "id": "B05_dashboard_marks_unconfirmed_coverage",
+      "passed": true,
+      "favoriteCard": "즐겨찾기한 동\n1곳\n동 관리\n\n최근 30일의 유효 거래와 이전 같은 길이 기간의 변화 · 저장한 순서\n\n고기동\n경기도 용인시 수지구\n미수집",
+      "pageErrors": []
+    },
+    {
+      "id": "B06_blocked_storage_shared_filters_round_trip",
+      "passed": true,
+      "visibleMin": "80",
+      "sharedUrlMin": "80",
+      "pageErrors": []
+    },
+    {
+      "id": "normal_mobile_map_and_home_return",
+      "passed": true,
+      "restoredTab": "map",
+      "horizontalOverflow": false,
+      "pageErrors": []
+    }
+  ],
+  "errors": []
+}

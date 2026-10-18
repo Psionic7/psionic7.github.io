@@ -1,6 +1,8 @@
 import React,{lazy,Suspense,useCallback,useEffect,useMemo,useRef,useState} from 'react';
 import {House,Building2,Info,LayoutDashboard,Search,MapPinned,ArrowUpRight,Copy,Check,Database,SlidersHorizontal,Map as MapIcon,MapPin,Star,ChevronRight,ShieldCheck} from 'lucide-react';
 import StorageNotice from './StorageNotice.jsx';
+import ScreenBoundary from './ScreenBoundary.jsx';
+import {validateManifest} from './manifest.mjs';
 import BrandMark from './BrandMark.jsx';
 import HomeSearch from './HomeSearch.jsx';
 import {buildCatalog,formatNumber,monthLabel} from './domain.mjs';
@@ -48,7 +50,7 @@ export default function App({ initialManifest = null, districtLoader = loadDistr
     if (initialManifest) return;
     let active = true;
     setError('');
-    fetchJson(`/data/manifest.json?v=${__DATA_VERSION__}`, true).then(value => { if (active) setManifest(value); })
+    fetchJson(`/data/manifest.json?v=${__DATA_VERSION__}`, true).then(validateManifest).then(value => { if (active) setManifest(value); })
       .catch(reason => { if (active) setError(reason.message); });
     return () => { active = false; };
   }, [initialManifest, revision]);
@@ -58,20 +60,26 @@ export default function App({ initialManifest = null, districtLoader = loadDistr
     const check=async()=>{
       if(checking||document.visibilityState==='hidden'||Date.now()-lastCheck<300000)return;
       checking=true;lastCheck=Date.now();
-      try{const next=await fetchJson('/data/manifest.json?v='+__DATA_VERSION__,true);if(active&&next?.published_at&&next.districts&&Array.isArray(next.months)&&next.published_at!==manifest.published_at)setAvailableManifest(next);}catch{}finally{checking=false;}
+      try{const next=validateManifest(await fetchJson('/data/manifest.json?v='+__DATA_VERSION__,true));if(active&&next.published_at!==manifest.published_at)setAvailableManifest(next);}catch{}finally{checking=false;}
     };
     window.addEventListener('focus',check);document.addEventListener('visibilitychange',check);const timer=setInterval(check,300000);
     return()=>{active=false;clearInterval(timer);window.removeEventListener('focus',check);document.removeEventListener('visibilitychange',check);};
   },[initialManifest,manifest]);
   if (error) return <main className="startup"><h1>집의 기록</h1><div role="alert" className="notice error">{error}</div><button onClick={() => setRevision(value => value + 1)}>다시 불러오기</button></main>;
   if (!manifest) return <main className="startup"><h1>집의 기록</h1><Loading text="공개 데이터 목록을 불러오는 중입니다." /></main>;
-  const resetPreferences=kind=>{setUndo({document:snapshotPreferences(),url:window.location.search,kind});if(kind==='favorites')clearFavorites();else{resetQueries();window.history.replaceState(null,'','/?tab=apartments');}setRestoredScroll(0);setPreferencesRevision(value=>value+1);};
+  const resetPreferences=kind=>{
+    const document=snapshotPreferences();if(!document)return;
+    if(!(kind==='favorites'?clearFavorites():resetQueries()))return;
+    setUndo({document,url:window.location.search,kind});
+    if(kind!=='favorites')window.history.replaceState(null,'','/?tab=apartments');
+    setRestoredScroll(0);setPreferencesRevision(value=>value+1);
+  };
   const undoPreferences=()=>{
-    const current=snapshotPreferences(),viewer=current.scopes.viewer||{};
+    const current=snapshotPreferences();if(!current)return;const viewer=current.scopes.viewer||{};
     if(undo.kind==='favorites'){
       const before=undo.document.scopes.viewer||{};
-      current.scopes.viewer={...viewer,regions:[...new Set([...(before.regions||[]),...(viewer.regions||[])])],apartments:[...new Map([...(before.apartments||[]),...(viewer.apartments||[])].map(item=>[item.id,item])).values()]};restorePreferences(current);
-    }else restorePreferences({...undo.document,scopes:{...undo.document.scopes,viewer}});
+      current.scopes.viewer={...viewer,regions:[...new Set([...(before.regions||[]),...(viewer.regions||[])])],apartments:[...new Map([...(before.apartments||[]),...(viewer.apartments||[])].map(item=>[item.id,item])).values()]};if(!restorePreferences(current))return;
+    }else if(!restorePreferences({...undo.document,scopes:{...undo.document.scopes,viewer}}))return;
     window.history.replaceState(null,'','/'+undo.url);setUndo(null);setPreferencesRevision(value=>value+1);
   };
   return <Explorer key={preferencesRevision} manifest={manifest} districtLoader={districtLoader} onResetPreferences={resetPreferences} restoredScroll={restoredScroll} undo={undo} onUndo={undoPreferences} onLocationChange={onLocationChange} updateAvailable={!!availableManifest} onApplyUpdate={()=>{setManifest(availableManifest);setAvailableManifest(null);setPreferencesRevision(value=>value+1);}}/>;
@@ -79,7 +87,7 @@ export default function App({ initialManifest = null, districtLoader = loadDistr
 
 
 function Explorer({manifest,districtLoader,onResetPreferences,restoredScroll=0,undo,onUndo,onLocationChange,updateAvailable,onApplyUpdate}) {
-  useMemo(()=>applySharedFilters(new URLSearchParams(window.location.search)),[]);
+  const sharedFilters=useMemo(()=>applySharedFilters(new URLSearchParams(window.location.search)),[]);
   const catalog=useMemo(()=>buildCatalog(manifest.regions),[manifest]);
   const [apartmentFavorites,setApartmentFavorites]=useStoredState('viewer','apartments',[],validApartmentFavorites);
   const [regionFavorites,setRegionFavorites]=useStoredState('viewer','regions',[],validRegionFavorites);
@@ -95,8 +103,11 @@ function Explorer({manifest,districtLoader,onResetPreferences,restoredScroll=0,u
   const [copied,setCopied]=useState(false),[searchOpen,setSearchOpen]=useState(false);
   const [sharedOverview,setSharedOverview]=useState(()=>readSharedOverview(new URLSearchParams(window.location.search),catalog));
   const overviewRegions=sharedOverview?.regions||favorites,overviewApartments=sharedOverview?.apartments||apartmentFavorites;
-  const [filterRevision,setFilterRevision]=useState(0);
-  const onQueryChange=useCallback(()=>setFilterRevision(value=>value+1),[]);
+  const [queryFilters,setQueryFilters]=useState(()=>Object.fromEntries(['weekly','apartmentTransactions'].map(scope=>[scope,sharedFilters?.scope===scope?sharedFilters.filters:{...readPreferences(scope),areaUnit:readPreferences('display').areaUnit||'m2'}])));
+  const onQueryChange=useCallback(({scope,...filters})=>setQueryFilters(previous=>{
+    if(JSON.stringify(previous[scope])===JSON.stringify(filters))return previous;
+    return {...previous,[scope]:filters,[scope==='weekly'?'apartmentTransactions':'weekly']:{...previous[scope==='weekly'?'apartmentTransactions':'weekly'],areaUnit:filters.areaUnit}};
+  }),[]);
   const firstUrl=useRef(true),previousTab=useRef(tab);
   useEffect(()=>{
     if(!restoredScroll)return;let frame=0,id;
@@ -111,8 +122,8 @@ function Explorer({manifest,districtLoader,onResetPreferences,restoredScroll=0,u
   const toggleApartmentFavorite=item=>setApartmentFavorites(previous=>previous.some(saved=>sameApartmentFavorite(saved,item))?previous.filter(saved=>!sameApartmentFavorite(saved,item)):previous.length<1000?[...previous,item]:previous);
   const searchMapApartment=item=>{if(window.scrollY)window.scrollTo(0,0);setSearchOpen(false);setSelectedApartments([makeApartmentFavorite(item,item)]);setSearchRegionId('area_'+item.region_code);setApartmentFilters({province:'',city:'',district:'',search:''});setTab('apartments');};
   const searchMapRegion=item=>{setWeeklyIds([item.region_id]);setTab('weekly');};
-  const openOverviewDong=(item,range,includeCancelled=false)=>{setWeeklyIds([item.region_id]);setWeeklyPeriod(previous=>({...previous,mode:'custom',...range}));savePreferences('weekly',{...readPreferences('weekly'),minArea:'',maxArea:'',areaBands:[],includeCancelled});setTab('weekly');};
-  const openOverviewApartment=(item,range,includeCancelled=false)=>{setSelectedApartments([item]);setApartmentPeriod(previous=>({...previous,mode:'custom',...range}));setSearchRegionId('area_'+item.region_code);setApartmentFilters({province:'',city:'',district:'',search:''});savePreferences('apartmentTransactions',{...readPreferences('apartmentTransactions'),minArea:'',maxArea:'',areaBands:[],includeCancelled});setTab('apartments');};
+  const openOverviewDong=(item,range,includeCancelled=false)=>{setWeeklyIds([item.region_id]);setWeeklyPeriod(previous=>({...previous,mode:'custom',...range}));savePreferences('weekly',{...readPreferences('weekly'),minArea:'',maxArea:'',areaBands:[],includeCancelled});setQueryFilters(previous=>({...previous,weekly:{...previous.weekly,minArea:'',maxArea:'',areaBands:[],includeCancelled}}));setTab('weekly');};
+  const openOverviewApartment=(item,range,includeCancelled=false)=>{setSelectedApartments([item]);setApartmentPeriod(previous=>({...previous,mode:'custom',...range}));setSearchRegionId('area_'+item.region_code);setApartmentFilters({province:'',city:'',district:'',search:''});savePreferences('apartmentTransactions',{...readPreferences('apartmentTransactions'),minArea:'',maxArea:'',areaBands:[],includeCancelled});setQueryFilters(previous=>({...previous,apartmentTransactions:{...previous.apartmentTransactions,minArea:'',maxArea:'',areaBands:[],includeCancelled}}));setTab('apartments');};
   useEffect(()=>{savePreferences('overview',{days:dashboardDays});},[dashboardDays]);
   useEffect(()=>{savePreferences('explorer',{...readPreferences('explorer'),tab,weeklyIds,weeklyDay,weeklyPeriod});},[tab,weeklyIds,weeklyDay,weeklyPeriod]);
   useEffect(()=>{savePreferences('apartmentTransactions',{...readPreferences('apartmentTransactions'),selected:selectedApartments,regionId:searchRegionId,day:apartmentDay,period:apartmentPeriod});},[selectedApartments,searchRegionId,apartmentDay,apartmentPeriod]);
@@ -122,13 +133,13 @@ function Explorer({manifest,districtLoader,onResetPreferences,restoredScroll=0,u
     if(tab==='dashboard'){params.set('days',String(dashboardDays));if(sharedOverview)appendSharedOverview(params,sharedOverview);}
     if(tab==='weekly'){weeklyIds.forEach(id=>params.append('dong',id));appendTransactionPeriod(params,weeklyPeriod,weeklyDay);}
     if(tab==='apartments'){if(searchRegionId)params.set('region',searchRegionId);if(selectedApartments.length)selectedApartments.forEach(item=>params.append('apt',JSON.stringify(item)));else params.set('apt','');appendTransactionPeriod(params,apartmentPeriod,apartmentDay);}
-    if(tab==='weekly'||tab==='apartments')appendSharedFilters(params,tab);
+    if(tab==='weekly'||tab==='apartments')appendSharedFilters(params,queryFilters[tab==='weekly'?'weekly':'apartmentTransactions']);
     const url='?'+params;
     if(firstUrl.current){window.history.replaceState({...window.history.state,scrollY:restoredScroll},'',url+window.location.hash);firstUrl.current=false;}
     else if(window.location.search!==url)window.history.pushState({scrollY:previousTab.current===tab?window.scrollY:0},'',url);
     if(previousTab.current!==tab){document.getElementById('main-content')?.focus({preventScroll:true});if(window.scrollY)window.scrollTo(0,0);}
     previousTab.current=tab;onLocationChange();document.title=tabs.find(([id])=>id===tab)[1]+' · 집의 기록';
-  },[tab,weeklyIds,weeklyDay,weeklyPeriod,selectedApartments,searchRegionId,apartmentDay,apartmentPeriod,dashboardDays,filterRevision,sharedOverview]);
+  },[tab,weeklyIds,weeklyDay,weeklyPeriod,selectedApartments,searchRegionId,apartmentDay,apartmentPeriod,dashboardDays,queryFilters,sharedOverview]);
   const share=async()=>{const url=new URL(window.location.href);if(tab==='dashboard'&&!sharedOverview)appendSharedOverview(url.searchParams,{regions:overviewRegions,apartments:overviewApartments});try{await navigator.clipboard.writeText(url.href);setCopied(true);setTimeout(()=>setCopied(false),2500);}catch{window.prompt('이 주소를 복사해 주세요.',url.href);}};
   const activeLabel=tabs.find(([id])=>id===tab)[1];
   return <div className="app-shell public-shell" data-tab={tab} data-has-selection={(tab==='apartments'&&selectedApartments.length>0||tab==='weekly'&&weeklyIds.length>0)?'true':undefined}>
@@ -153,14 +164,14 @@ function Explorer({manifest,districtLoader,onResetPreferences,restoredScroll=0,u
     {undo&&<div className="undo-notice" role="status"><span>{undo.kind==='favorites'?'즐겨찾기를 삭제했습니다.':'조회 설정을 초기화했습니다. 즐겨찾기는 유지했습니다.'}</span><button onClick={onUndo}>되돌리기</button></div>}
     {tab==='dashboard'&&sharedOverview&&<div className="undo-notice" role="status"><span>공유된 관심 목록을 보고 있습니다. 내 즐겨찾기는 변경되지 않습니다.</span><button onClick={()=>setSharedOverview(null)}>내 대시보드 보기</button></div>}
     <section className="tab-content" role="tabpanel" aria-label={activeLabel}>
-      <Suspense fallback={<Loading text="조회 화면을 준비하고 있습니다."/>}>
+      <ScreenBoundary key={tab}><Suspense fallback={<Loading text="조회 화면을 준비하고 있습니다."/>}>
         {tab==='dashboard'?<Dashboard manifest={manifest} regions={overviewRegions} apartments={overviewApartments} days={dashboardDays} onDaysChange={setDashboardDays} districtLoader={districtLoader} onOpenDong={openOverviewDong} onOpenApartment={openOverviewApartment} onManageDongs={()=>setTab('regions')} onManageApartments={()=>setTab('map')} onSearch={()=>setTab('apartments')}/>
-        :tab==='apartments'?<ApartmentPage manifest={manifest} catalog={catalog} favorites={apartmentFavorites} favoriteRegions={favorites} selected={selectedApartments} onChange={setSelectedApartments} searchRegionId={searchRegionId} onSearchRegionChange={setSearchRegionId} searchFilters={apartmentFilters} onSearchFiltersChange={setApartmentFilters} day={apartmentDay} onDayChange={value=>setApartmentDay(weekBounds(value)?.start||'')} period={apartmentPeriod} onPeriodChange={setApartmentPeriod} districtLoader={districtLoader} onToggleFavorite={toggleApartmentFavorite} onQueryChange={onQueryChange}/>
-        :tab==='weekly'?<WeeklyPage manifest={manifest} catalog={catalog} favoriteRegions={favorites} selectedIds={weeklyIds} onChange={setWeeklyIds} day={weeklyDay} onDayChange={value=>setWeeklyDay(weekBounds(value)?.start||'')} period={weeklyPeriod} onPeriodChange={setWeeklyPeriod} districtLoader={districtLoader} onQueryChange={onQueryChange}/>
+        :tab==='apartments'?<ApartmentPage manifest={manifest} catalog={catalog} favorites={apartmentFavorites} favoriteRegions={favorites} selected={selectedApartments} onChange={setSelectedApartments} searchRegionId={searchRegionId} onSearchRegionChange={setSearchRegionId} searchFilters={apartmentFilters} onSearchFiltersChange={setApartmentFilters} day={apartmentDay} onDayChange={value=>setApartmentDay(weekBounds(value)?.start||'')} period={apartmentPeriod} onPeriodChange={setApartmentPeriod} districtLoader={districtLoader} onToggleFavorite={toggleApartmentFavorite} onQueryChange={onQueryChange} initialFilters={queryFilters.apartmentTransactions}/>
+        :tab==='weekly'?<WeeklyPage manifest={manifest} catalog={catalog} favoriteRegions={favorites} selectedIds={weeklyIds} onChange={setWeeklyIds} day={weeklyDay} onDayChange={value=>setWeeklyDay(weekBounds(value)?.start||'')} period={weeklyPeriod} onPeriodChange={setWeeklyPeriod} districtLoader={districtLoader} onQueryChange={onQueryChange} initialFilters={queryFilters.weekly}/>
         :tab==='map'?<ApartmentMapPage manifest={manifest} favorites={apartmentFavorites} onToggleFavorite={toggleApartmentFavorite} onOpenApartment={searchMapApartment}/>
         :tab==='regions'?<RegionMapPage manifest={manifest} catalog={catalog} favorites={regionFavorites} onToggleFavorite={toggleRegionFavorite} onOpenRegion={searchMapRegion}/>
         :<About manifest={manifest} onResetPreferences={onResetPreferences}/>}
-      </Suspense>
+      </Suspense></ScreenBoundary>
     </section><footer className="page-footer"><span>집의 기록 <span className="footer-divider">/</span> 국토교통부 아파트 매매 실거래가</span><span>신고 자료의 정정과 해제에 따라 값이 달라질 수 있습니다.</span></footer>
   </main></div></div>;
 }

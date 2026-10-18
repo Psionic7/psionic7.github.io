@@ -17,21 +17,21 @@ import {useDistrictDatasets} from './weekly/useDistrictDatasets.js';
 const optionalArea=value=>value==='' || areaPreference(value);
 const areaBands=[10,20,30];
 const validAreaBands=value=>Array.isArray(value) && value.length<=areaBands.length && new Set(value).size===value.length && value.every(band=>areaBands.includes(band));
-function useFilterPreference(scope,field,fallback,validate) {
-  return useStoredState(scope,field,()=>{const previous=scope==='apartmentTransactions'?readPreferences('favoriteDashboard')[field]:undefined;return validate(previous)?previous:fallback;},validate);
+function useFilterPreference(scope,field,fallback,validate,initialFilters) {
+  return useStoredState(scope,field,()=>{const previous=scope==='apartmentTransactions'?readPreferences('favoriteDashboard')[field]:undefined;return validate(previous)?previous:fallback;},validate,initialFilters?.[field]);
 }
-export default function TransactionPage({manifest,regions,day,onDayChange,period,onPeriodChange,districtLoader,apartmentView=false,searchRegionCode,renderSelection,filterScope='weekly',onQueryChange,renderResultActions}) {
+export default function TransactionPage({manifest,regions,day,onDayChange,period,onPeriodChange,districtLoader,apartmentView=false,searchRegionCode,renderSelection,filterScope='weekly',onQueryChange,renderResultActions,initialFilters}) {
   const selected=regions;
   const [controlsOpen,setControlsOpen]=useState(!regions.length&&!!searchRegionCode);
   const [conditionOpen,setConditionOpen]=useState(false);
 
-  const [areaUnit,setAreaUnit]=useStoredState('display','areaUnit','m2',unitPreference);
+  const [areaUnit,setAreaUnit]=useStoredState('display','areaUnit','m2',unitPreference,initialFilters?.areaUnit);
   // Store exact square metres; unit changes only affect the input display.
-  const [minArea,setMinArea]=useFilterPreference(filterScope,'minArea','',optionalArea);
-  const [maxArea,setMaxArea]=useFilterPreference(filterScope,'maxArea','',optionalArea);
-  const [selectedBands,setSelectedBands]=useFilterPreference(filterScope,'areaBands',[],validAreaBands);
-  const [includeCancelled,setIncludeCancelled]=useFilterPreference(filterScope,'includeCancelled',true,value=>typeof value==='boolean');
-  useEffect(()=>{onQueryChange?.();},[minArea,maxArea,selectedBands,includeCancelled,areaUnit,onQueryChange]);
+  const [minArea,setMinArea]=useFilterPreference(filterScope,'minArea','',optionalArea,initialFilters);
+  const [maxArea,setMaxArea]=useFilterPreference(filterScope,'maxArea','',optionalArea,initialFilters);
+  const [selectedBands,setSelectedBands]=useFilterPreference(filterScope,'areaBands',[],validAreaBands,initialFilters);
+  const [includeCancelled,setIncludeCancelled]=useFilterPreference(filterScope,'includeCancelled',true,value=>typeof value==='boolean',initialFilters);
+  useEffect(()=>{onQueryChange?.({scope:filterScope,minArea,maxArea,areaBands:selectedBands,includeCancelled,areaUnit});},[filterScope,minArea,maxArea,selectedBands,includeCancelled,areaUnit,onQueryChange]);
   const setArea=(setter,value)=>setter(value===''?'':areaM2(Math.max(0,Number(value)),areaUnit));
   const areaFiltered=minArea!=='' || maxArea!=='' || selectedBands.length>0;
   const selectBands=bands=>{
@@ -45,10 +45,6 @@ export default function TransactionPage({manifest,regions,day,onDayChange,period
   const [retry,setRetry]=useState(0);
   const selectedCodes=useMemo(()=>[...new Set(selected.map(region=>region.region_code))].sort(),[selected]);
   const codes=useMemo(()=>[...new Set([...selectedCodes,...(searchRegionCode?[searchRegionCode]:[])])].sort(),[selectedCodes,searchRegionCode]);
-  const requestRange=periodBounds(period,day);
-  const datasets=useDistrictDatasets(manifest,codes,districtLoader,retry,{...requestRange,catalogOnlyCodes:codes.filter(code=>!selectedCodes.includes(code))});
-  const knownMaxArea=useMemo(()=>selectedCodes.reduce((max,code)=>(datasets[code]?.rows||[]).reduce((value,row)=>Math.max(value,Number(row.area_m2)||0),max),300),[selectedCodes,datasets]);
-  const sliderCeiling=Math.max(Math.ceil(knownMaxArea/50)*50,minArea||0,maxArea||0);
   const latestDay=publishedDay(manifest.published_at),requestedRange=periodBounds(period,day);
   const firstMonth=manifest.months[0], earliestDay=firstMonth?`${firstMonth.slice(0,4)}-${firstMonth.slice(4)}-01`:undefined;
   let periodError=!requestedRange?'올바른 조회 날짜를 선택해 주세요.':'';
@@ -56,6 +52,12 @@ export default function TransactionPage({manifest,regions,day,onDayChange,period
   if(requestedRange&&period.mode==='custom'&&((earliestDay&&requestedRange.start<earliestDay)||(latestDay&&requestedRange.end>latestDay)))periodError='공개 자료 범위 안에서 시작일과 종료일을 선택해 주세요.';
   if(requestedRange&&period.mode==='month'&&((earliestDay&&period.month<earliestDay.slice(0,7))||(latestDay&&period.month>latestDay.slice(0,7))))periodError='공개 자료 범위 안에서 조회 월을 선택해 주세요.';
   const week=periodError?null:requestedRange;
+  // Invalid dates must never become an unbounded transaction request. Keep only
+  // the lightweight catalog available when the apartment selector needs it.
+  const requestCodes=week?codes:districtLoader.supportsRanges&&searchRegionCode?[searchRegionCode]:[];
+  const datasets=useDistrictDatasets(manifest,requestCodes,districtLoader,retry,{...week,catalogOnlyCodes:codes.filter(code=>!week||!selectedCodes.includes(code))});
+  const knownMaxArea=useMemo(()=>selectedCodes.reduce((max,code)=>(datasets[code]?.rows||[]).reduce((value,row)=>Math.max(value,Number(row.area_m2)||0),max),300),[selectedCodes,datasets]);
+  const sliderCeiling=Math.max(Math.ceil(knownMaxArea/50)*50,minArea||0,maxArea||0);
   return <div className="weekly-page">
     <div className="query-toolbar">
       <button className="query-selection-button" aria-expanded={controlsOpen} aria-controls="query-controls" onClick={()=>setControlsOpen(value=>!value)}>{selected.length?`${selected.length}${apartmentView?'개 단지':'개 동네'} 선택 · 변경 / 비교 추가`:apartmentView?'지역별 단지 목록에서 선택':'조회할 동네 선택'}<ListFilter size={17}/></button>

@@ -32,9 +32,10 @@ export function writeBrowserRegistry(folder,manifest,districts,secrets=[],extra=
   const sources=Object.fromEntries(Object.entries(districts).map(([code,meta])=>[code,{...meta,source_sha256:manifest.districts[code].sha256}]));
   atomicWrite(path.join(folder,'manifest.json'),checkedBytes(JSON.stringify({version:1,districts:sources,...extra}),secrets));
 }
-export function checkBrowserData(folder,manifest,secrets=[]) {
+export function checkBrowserData(folder,manifest,secrets=[],{requireSearch=false}={}) {
   const registryFile=path.join(folder,'manifest.json');
   const registry=fs.existsSync(registryFile)?JSON.parse(checkedBytes(fs.readFileSync(registryFile),secrets)):null;
+  if(requireSearch&&!registry?.search)throw new Error('통합 검색 자료가 없습니다. 공개 빌드를 다시 실행하세요.');
   const allowed=new Set(registry?['manifest.json']:[]);
   if(registry?.search){
     const meta=registry.search;if(!/^search-[a-f0-9]{12}\.json$/.test(meta.file))throw new Error('통합 검색 경로 오류');

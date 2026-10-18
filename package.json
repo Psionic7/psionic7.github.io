@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "node scripts/prepare-browser-data.mjs && vite --host 127.0.0.1",
-    "build": "node scripts/prepare-browser-data.mjs && vite build && node scripts/finish-build.mjs",
+    "build": "node scripts/build.mjs",
     "preview": "vite preview --host 127.0.0.1",
     "test": "vitest run",
     "test:domain": "node --test tests/domain.test.mjs tests/weekly.test.mjs tests/weekly-query.test.mjs",

@@ -6,6 +6,12 @@ const apartment={id:'favorite',region_code:'41465',apartment:'같은단지',dong
 const months=['202608','202609','202610'],manifest={months,published_at:'2026-10-03T00:00:00Z',districts:{'41465':{months}}};
 const row=(id,changes={})=>({id,region_code:'41465',dong:'풍덕천동',jibun:'1',apartment:'같은단지',deal_date:'2026-09-28',cancelled:0,price_man:100000,area_m2:85,floor:10,...changes});
 const build=(rows,changes={})=>buildOverview({manifest,regions:[region],apartments:[apartment],days:30,datasets:{'41465':{rows}},...changes});
+
+test('does not report a dong excluded from coverage as a ready zero even when its district is loaded',()=>{
+ const missing={...region,region_id:'dong_41465104',dongs:['고기동']};
+ const result=build([],{regions:[missing],apartments:[],manifest:{...manifest,districts:{'41465':{months,dongs:['풍덕천동']}}}});
+ assert.equal(result.dongGroups[0].status,'uncollected');assert.equal(result.uncollected,1);assert.equal(result.dongCount,null);assert.equal(result.dongGroups[0].comparable,false);
+});
 test('bounds counts by contract date and excludes cancellations, future dates and unrelated districts/lots from apartment summaries',()=>{
  const model=build([row(1,{deal_date:'2026-09-04'}),row(2,{deal_date:'2026-10-03',jibun:'2'}),row(3,{cancelled:1,price_man:900000}),row(4,{deal_date:'2026-08-05'}),row(5,{deal_date:'2026-09-03'}),row(6,{deal_date:'2026-10-04'}),row(7,{region_code:'11110'})]);
  assert.deepEqual(model.range,{start:'2026-09-04',end:'2026-10-03'});assert.deepEqual(model.previous,{start:'2026-08-05',end:'2026-09-03'});

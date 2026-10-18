@@ -1,4 +1,4 @@
-import {useEffect,useState} from 'react';
+import {useCallback,useEffect,useRef,useState} from 'react';
 import {hierarchy} from './domain.mjs';
 import {dateBounds,monthBounds,publishedDay,weekBounds} from './weekly.mjs';
 
@@ -18,7 +18,8 @@ function readDocument(strict=false) {
     if(raw.length>MAX_PREFERENCE_CHARACTERS)throw new Error('설정 크기 초과');
     const value=JSON.parse(raw);
     if(value.version===1 && object(value.scopes))return value;
-  }catch(error){if(strict&&!(error instanceof SyntaxError))throw error;}
+    throw new Error('설정 형식 오류');
+  }catch(error){if(strict)throw error;}
   return {version:1,scopes:{}};
 }
 
@@ -47,10 +48,10 @@ function writeDocument(document){
 export function clearPreferences() {
   try{window.localStorage.removeItem(PREFERENCES_KEY);storageProblem='';window.dispatchEvent(new Event(STORAGE_EVENT));}catch{reportStorageFailure();}
 }
-export const snapshotPreferences=()=>readDocument();
+export function snapshotPreferences(){try{return readDocument(true);}catch{reportStorageFailure();return null;}}
 export function restorePreferences(document){try{return writeDocument(document);}catch{reportStorageFailure();return false;}}
-export function resetQueries(){const document=readDocument();restorePreferences({version:1,scopes:{viewer:document.scopes.viewer||{}}});}
-export function clearFavorites(){savePreferences('viewer',{...readPreferences('viewer'),apartments:[],regions:[]});}
+export function resetQueries(){const document=snapshotPreferences();return !!document&&restorePreferences({version:1,scopes:{viewer:document.scopes.viewer||{}}});}
+export function clearFavorites(){return savePreferences('viewer',{...readPreferences('viewer'),apartments:[],regions:[]});}
 
 export const textPreference=value=>typeof value==='string' && value.length<=200;
 export const areaPreference=value=>typeof value==='number' && Number.isFinite(value) && value>=0 && value<=100000;
@@ -101,13 +102,40 @@ export function restoreExplorer(manifest,catalog,params) {
 }
 
 // Small selections are saved after every change, before the next browser visit.
-export function useStoredState(scope,field,fallback,validate) {
+export function useStoredState(scope,field,fallback,validate,initialValue) {
+  const [defaultValue]=useState(()=>typeof fallback==='function'?fallback():fallback);
   const [value,setValue]=useState(()=>{
+    if(validate(initialValue))return initialValue;
     const saved=readPreferences(scope)[field];
-    return validate(saved)?saved:typeof fallback==='function'?fallback():fallback;
+    return validate(saved)?saved:defaultValue;
   });
+  const current=useRef(value),validator=useRef(validate),initial=useRef(value),unsaved=useRef(false);
+  validator.current=validate;
   useEffect(()=>{
-    savePreferences(scope,{...readPreferences(scope),[field]:value});
-  },[scope,field,value]);
-  return [value,setValue];
+    const saved=readPreferences(scope)[field];
+    if(!validator.current(saved))savePreferences(scope,{...readPreferences(scope),[field]:initial.current});
+    const sync=event=>{
+      if(event.key!==PREFERENCES_KEY&&event.key!==null||unsaved.current)return;
+      const saved=readPreferences(scope)[field],next=validator.current(saved)?saved:defaultValue;
+      current.current=next;setValue(next);
+    };
+    window.addEventListener('storage',sync);
+    return()=>window.removeEventListener('storage',sync);
+  },[scope,field,defaultValue]);
+  const change=useCallback(update=>{
+    const apply=()=>{
+      const saved=readPreferences(scope)[field];
+      const previous=!unsaved.current&&validator.current(saved)?saved:current.current;
+      const next=typeof update==='function'?update(previous):update;
+      if(!validator.current(next))return;
+      current.current=next;setValue(next);
+      unsaved.current=!savePreferences(scope,{...readPreferences(scope),[field]:next});
+    };
+    // Serialize favorite operations across tabs as well as reading their latest
+    // value. Deletions remain deletions; stale arrays are never blindly merged.
+    if(scope==='viewer'&&window.navigator.locks?.request){
+      void window.navigator.locks.request(PREFERENCES_KEY+':viewer',apply).catch(reportStorageFailure);
+    }else apply();
+  },[scope,field]);
+  return [value,change];
 }

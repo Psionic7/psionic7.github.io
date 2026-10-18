@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import {once} from 'node:events';
+import {once,EventEmitter} from 'node:events';
 import http from 'node:http';
 import {gunzipSync} from 'node:zlib';
 import {connect,PUBLIC_SCHEMA,LOCAL_SCHEMA,regions,savedIds,saveFavorites,checkedBytes,initialize} from '../server/storage.mjs';
@@ -11,6 +11,7 @@ import {parsePage,normalize,collectMonth,monthsBetween,collectionTasks,fetchPage
 import {exportData,sha256} from '../server/export.mjs';
 import {createAdminServer} from '../server/index.mjs';
 import {parseAddressResult,collectAddresses} from '../server/addresses.mjs';
+import {buildPublic} from '../scripts/build.mjs';
 const raw={aptNm:' 아파트 ',umdNm:'청운동',jibun:'001-2',dealAmount:' 100,000 ',excluUseAr:'84.5',dealYear:'2026',dealMonth:'01',dealDay:'09',sggCd:'11110',floor:'-1',buildYear:'2000',cdealType:'',newField:'',leading:'0001'};
 const xml=(items,total=items.length)=>`<response><header><resultCode>000</resultCode></header><body><items>${items.map(item=>'<item>'+Object.entries(item).map(([k,v])=>`<${k}>${v}</${k}>`).join('')+'</item>').join('')}</items><totalCount>${total}</totalCount></body></response>`;
 function fixture(t) {
@@ -21,6 +22,29 @@ function fixture(t) {
   fs.writeFileSync(files.env,'MOLIT_SERVICE_KEY='+'fixturekey0123456789');
   const catalog=regions(db);db.close();return {root,files,catalog,closers};
 }
+
+test('public build prepares assets before Vite and stops immediately if preparation fails',()=>{
+ const steps=[];let prepared=false,built=false;
+ buildPublic({run:(_binary,args)=>{
+   if(args[0]==='scripts/prepare-browser-data.mjs')prepared=true;
+   if(args[0]==='node_modules/vite/bin/vite.js'){assert(prepared);assert.equal(args[1],'build');built=true;}
+   if(args[0]==='scripts/finish-build.mjs')assert(built);
+   steps.push(args[0]);
+ }});assert.equal(steps.length,3);
+ let calls=0;assert.throws(()=>buildPublic({run:()=>{calls++;throw new Error('preparation failed');}}),/preparation failed/);assert.equal(calls,1);
+});
+
+test('administrator build uses the shared pipeline and reports public validation failures without completing',async t=>{
+ const {files}=fixture(t),children=[],commands=[];let invalid=false,checks=0;
+ const server=createAdminServer({files,spawnBuild:(binary,args,options)=>{commands.push({binary,args,options});const child=new EventEmitter();children.push(child);return child;},checkBuild:()=>{checks++;if(invalid)throw new Error('missing artifacts');}});
+ server.listen(0,'127.0.0.1');await once(server,'listening');t.after(()=>new Promise(resolve=>server.close(resolve)));
+ const base=`http://127.0.0.1:${server.address().port}`,read=async()=>(await fetch(base+'/api/state')).json(),state=await read();
+ const start=()=>fetch(base+'/api/build',{method:'POST',headers:{'Content-Type':'application/json','X-Admin-CSRF':state.csrf},body:'{}'});
+ assert.equal((await start()).status,202);assert.deepEqual(commands[0].args,['scripts/build.mjs']);assert.equal(commands[0].options.windowsHide,true);
+ children[0].emit('exit',0);assert.equal((await read()).job.status,'completed');assert.equal(checks,1);
+ invalid=true;assert.equal((await start()).status,202);children[1].emit('exit',0);assert.equal((await read()).job.status,'failed');
+ assert.equal((await start()).status,202);children[2].emit('exit',1);assert.equal((await read()).job.status,'failed');assert.equal(checks,2);
+});
 test('XML preserves original text, empty fields and leading zeros; rejects DTD and authentication errors',()=>{
   assert.deepEqual(parsePage(xml([raw])).items,[raw]);
   assert.deepEqual(parsePage(xml([])),{total:0,items:[]});
