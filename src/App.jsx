@@ -21,6 +21,7 @@ const RegionMapPage=lazy(()=>import('./RegionMapPage.jsx'));
 const ApartmentPage=lazy(()=>import('./ApartmentPage.jsx'));
 const WeeklyPage=lazy(()=>import('./WeeklyPage.jsx'));
 const tabs=[['dashboard','대시보드',LayoutDashboard],['apartments','아파트별 실거래가',Search],['weekly','동 별 실거래가',Building2],['map','아파트 지도',MapPinned],['regions','지역 지도',MapIcon],['about','데이터 안내',Info]];
+const exploreTabs=['apartments','weekly','map','regions'];
 const mobileLabels={dashboard:'대시보드',apartments:'아파트',weekly:'동별 거래',map:'아파트 지도',regions:'지역 지도',about:'이용 안내'};
 const pageCopy={
   dashboard:['관심 목록','저장한 동네와 아파트의 실거래를 한곳에서 살펴보세요.','MY COLLECTION'],
@@ -86,6 +87,8 @@ function Explorer({manifest,districtLoader,onResetPreferences,restoredScroll=0,u
   const initial=useMemo(()=>restoreExplorer(manifest,catalog,new URLSearchParams(window.location.search)),[]);
   const apartmentInitial=useMemo(()=>restoreApartmentQuery(manifest,catalog,new URLSearchParams(window.location.search),apartmentFavorites),[]);
   const [tab,setTab]=useState(initial.tab),[weeklyIds,setWeeklyIds]=useState(initial.weeklyIds),[weeklyDay,setWeeklyDay]=useState(initial.weeklyDay),[weeklyPeriod,setWeeklyPeriod]=useState(initial.weeklyPeriod);
+  const [lastExploreTab,setLastExploreTab]=useStoredState('explorer','lastExploreTab',()=>exploreTabs.includes(initial.tab)?initial.tab:'apartments',value=>exploreTabs.includes(value));
+  useEffect(()=>{if(exploreTabs.includes(tab))setLastExploreTab(tab);},[tab,setLastExploreTab]);
   const [selectedApartments,setSelectedApartments]=useState(apartmentInitial.selected),[searchRegionId,setSearchRegionId]=useState(apartmentInitial.regionId),[apartmentDay,setApartmentDay]=useState(apartmentInitial.day),[apartmentPeriod,setApartmentPeriod]=useState(apartmentInitial.period);
   const [apartmentFilters,setApartmentFilters]=useState(apartmentInitial.filters);
   const [dashboardDays,setDashboardDays]=useState(()=>restoreOverviewDays(new URLSearchParams(window.location.search),readPreferences('overview').days));
@@ -133,7 +136,7 @@ function Explorer({manifest,districtLoader,onResetPreferences,restoredScroll=0,u
     <aside className="workspace-sidebar" aria-label="사이트 탐색">
       <a className="brand" href="/"><span className="brand-icon"><BrandMark/></span><span>집의 기록<small>HOME RECORDS</small></span></a>
       <p className="nav-caption">둘러보기</p>
-      <nav className="tabs" aria-label="주요 메뉴">{[['apartments','집 찾기',Search],['dashboard','관심 목록',Star],['about','데이터 안내',Info]].map(([id,label,Icon])=><button key={id} aria-label={label} data-short-label={label} aria-current={(id==='apartments'?['apartments','weekly','map','regions'].includes(tab):tab===id)?'page':undefined} onClick={()=>setTab(id)}><Icon size={20}/><span>{label}</span></button>)}</nav>
+      <nav className="tabs" aria-label="주요 메뉴">{[['apartments','집 찾기',Search],['dashboard','관심 목록',Star],['about','데이터 안내',Info]].map(([id,label,Icon])=><button key={id} aria-label={label} data-short-label={label} aria-current={(id==='apartments'?exploreTabs.includes(tab):tab===id)?'page':undefined} onClick={()=>setTab(id==='apartments'?(exploreTabs.includes(tab)?tab:lastExploreTab):id)}><Icon size={20}/><span>{label}</span></button>)}</nav>
       <div className="saved-summary"><p><Star size={15}/> 나의 컬렉션</p><button onClick={()=>setTab('dashboard')}><span>관심 동네</span><strong>{favorites.length}<small>곳</small></strong><ChevronRight size={14}/></button><button onClick={()=>setTab('dashboard')}><span>관심 아파트</span><strong>{apartmentFavorites.length}<small>곳</small></strong><ChevronRight size={14}/></button><span className="saved-note">현재 브라우저에 자동 저장</span></div>
       <div className="sidebar-bottom"><span className="source-indicator"><ShieldCheck size={17}/>공공데이터 기반</span><p>국토교통부 아파트 매매 실거래가<br/>서울 · 경기 지역 탐색</p><span className="sidebar-signature">집을 고르는 일에, 확실한 기록.</span></div>
     </aside>
@@ -144,7 +147,7 @@ function Explorer({manifest,districtLoader,onResetPreferences,restoredScroll=0,u
     <DataStatus key={tab} manifest={manifest}/>
     <StorageNotice/>
     {updateAvailable&&<div className="notice update-notice" role="status">새로 게시된 거래 자료가 있습니다.<button onClick={onApplyUpdate}>새 자료 불러오기</button></div>}
-    {['apartments','weekly','map','regions'].includes(tab)&&<nav className="explore-views" aria-label="조회 화면">{tabs.filter(([id])=>['apartments','weekly','map','regions'].includes(id)).map(([id,label,Icon])=><button key={id} aria-label={label} aria-current={tab===id?'page':undefined} onClick={()=>setTab(id)}><Icon size={17}/>{{apartments:'단지 거래',weekly:'동네 거래',map:'단지 지도',regions:'동네 지도'}[id]}</button>)}</nav>}
+    {exploreTabs.includes(tab)&&<nav className="explore-views" aria-label="조회 화면">{tabs.filter(([id])=>exploreTabs.includes(id)).map(([id,label,Icon])=><button key={id} aria-label={label} aria-current={tab===id?'page':undefined} onClick={()=>setTab(id)}><Icon size={17}/>{{apartments:'단지 거래',weekly:'동네 거래',map:'단지 지도',regions:'동네 지도'}[id]}</button>)}</nav>}
     {tab==='apartments'&&selectedApartments.length>0&&<button className="new-search-button" aria-expanded={searchOpen} onClick={()=>setSearchOpen(value=>!value)}><Search size={17}/>다른 집 찾기</button>}
     {tab==='apartments'&&(!selectedApartments.length||searchOpen)&&<HomeSearch manifest={manifest} catalog={catalog} onApartment={searchMapApartment} onRegion={item=>{if(item.dongs.length)searchMapRegion(item);else{setSelectedApartments([]);setSearchRegionId(item.region_id);setApartmentFilters({province:'',city:'',district:'',search:''});savePreferences('apartmentSearch',{...readPreferences('apartmentSearch'),query:''});setTab('apartments');document.getElementById('query-controls')?.scrollIntoView({block:'start'});}}}/>}
     {undo&&<div className="undo-notice" role="status"><span>{undo.kind==='favorites'?'즐겨찾기를 삭제했습니다.':'조회 설정을 초기화했습니다. 즐겨찾기는 유지했습니다.'}</span><button onClick={onUndo}>되돌리기</button></div>}
