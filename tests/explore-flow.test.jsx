@@ -31,10 +31,13 @@ it('coverage shortcuts search the district directly and a failed index can be re
  await userEvent.setup().click(await screen.findByRole('button',{name:'다시 시도'}));
  expect(await screen.findByRole('button',{name:/^e편한세상 수지 경기도/})).toBeTruthy();expect(loader).toHaveBeenCalledTimes(2);
 });
-it('opens a shared apartment with its price visible, conditions closed, and saves directly from the result',async()=>{
+it('shows shared apartment transactions first, opens its summary on demand, and saves directly from the result',async()=>{
  const params=new URLSearchParams({tab:'apartments',apt:JSON.stringify(item),period:'custom',from:'2026-09-01',to:'2026-10-03'});history.replaceState(null,'','/?'+params);
  render(<App initialManifest={manifest} districtLoader={async()=>[row(1),row(2,{deal_date:'2026-09-30',price_man:999000,cancelled:1}),row(3,{deal_date:'2026-09-02',price_man:160000})]}/>);
  const highlight=await screen.findByLabelText('최근 유효 거래');expect(highlight.textContent).toContain('16.80');expect(highlight.textContent).toContain('84.92');expect(highlight.textContent).toContain('2026-09-28');
+ expect(highlight.closest('details').open).toBe(false);
+ expect(highlight.compareDocumentPosition(screen.getByRole('region',{name:/기간별 거래 내역/}))&Node.DOCUMENT_POSITION_PRECEDING).toBeTruthy();
+ await userEvent.setup().click(screen.getByText('최근 유효 거래 요약'));expect(highlight.closest('details').open).toBe(true);
  expect(screen.queryByRole('searchbox',{name:'아파트 검색'})).toBeNull();expect(screen.getByRole('button',{name:/기간 \/ 조건/}).getAttribute('aria-expanded')).toBe('false');
  await userEvent.setup().click(screen.getByRole('button',{name:'e편한세상 수지 관심 단지 저장'}));expect(readPreferences('viewer').apartments).toEqual([item]);
  await userEvent.setup().click(screen.getByRole('button',{name:/기간 \/ 조건/}));expect(screen.getByLabelText('조회 시작일').value).toBe('2026-09-01');
