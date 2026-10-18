@@ -43,6 +43,11 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
           COLLECTION_STATE_KEY: ${{ secrets.COLLECTION_STATE_KEY }}
+      - name: Repair audited historical source differences once
+        id: repair
+        run: node --dns-result-order=ipv4first scripts/automation.mjs repair
+        env:
+          MOLIT_SERVICE_KEY: ${{ secrets.MOLIT_SERVICE_KEY }}
       - name: Collect saved regions and new road addresses
         if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.collect)
         run: node --dns-result-order=ipv4first scripts/automation.mjs collect
@@ -66,7 +71,7 @@ jobs:
           MOLIT_SERVICE_KEY: ${{ secrets.MOLIT_SERVICE_KEY }}
           JUSO_ADDRESS_SEARCH_KEY: ${{ secrets.JUSO_ADDRESS_SEARCH_KEY }}
       - name: Preserve collected working database
-        if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.collect)
+        if: steps.repair.outputs.changed == 'true' || github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.collect)
         run: node scripts/automation.mjs save
         env:
           GITHUB_TOKEN: ${{ github.token }}

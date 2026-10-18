@@ -1,0 +1,654 @@
+{
+  "date": "2026-10-18",
+  "verificationBase": "http://127.0.0.1:4173",
+  "verificationStartedAt": "2026-10-18T11:03:46.780Z",
+  "verificationFinishedAt": "2026-10-18T11:06:26.861Z",
+  "productionUpdated": false,
+  "beforeCount": 343543,
+  "afterCount": 343552,
+  "sourceCount": 343552,
+  "sourceDistrictMonths": 939,
+  "sourcePages": 982,
+  "sourceErrors": [],
+  "auditIssueCount": 0,
+  "sourceDifferences": [],
+  "pipeline": [
+    {
+      "scope": "local-db-to-public",
+      "code": "41117",
+      "expected": 111816,
+      "actual": 111816,
+      "missing": 0,
+      "extra": 0
+    },
+    {
+      "scope": "public-to-docs",
+      "code": "41117",
+      "expected": 111816,
+      "actual": 111816,
+      "missing": 0,
+      "extra": 0
+    },
+    {
+      "scope": "local-vs-live-different-snapshots",
+      "code": "41117",
+      "expected": 111816,
+      "actual": 111816,
+      "missing": 0,
+      "extra": 0
+    },
+    {
+      "scope": "raw-fields-to-normalized",
+      "code": "41117",
+      "rows": 111816,
+      "errors": 0
+    },
+    {
+      "scope": "local-db-to-public",
+      "code": "41135",
+      "expected": 110102,
+      "actual": 110102,
+      "missing": 0,
+      "extra": 0
+    },
+    {
+      "scope": "public-to-docs",
+      "code": "41135",
+      "expected": 110102,
+      "actual": 110102,
+      "missing": 0,
+      "extra": 0
+    },
+    {
+      "scope": "local-vs-live-different-snapshots",
+      "code": "41135",
+      "expected": 110102,
+      "actual": 110102,
+      "missing": 0,
+      "extra": 0
+    },
+    {
+      "scope": "raw-fields-to-normalized",
+      "code": "41135",
+      "rows": 110102,
+      "errors": 0
+    },
+    {
+      "scope": "local-db-to-public",
+      "code": "41465",
+      "expected": 121634,
+      "actual": 121634,
+      "missing": 0,
+      "extra": 0
+    },
+    {
+      "scope": "public-to-docs",
+      "code": "41465",
+      "expected": 121634,
+      "actual": 121634,
+      "missing": 0,
+      "extra": 0
+    },
+    {
+      "scope": "local-vs-live-different-snapshots",
+      "code": "41465",
+      "expected": 121634,
+      "actual": 121634,
+      "missing": 0,
+      "extra": 0
+    },
+    {
+      "scope": "raw-fields-to-normalized",
+      "code": "41465",
+      "rows": 121634,
+      "errors": 0
+    },
+    {
+      "scope": "live-full-to-catalog-identities",
+      "code": "41117",
+      "expected": 149,
+      "actual": 149,
+      "missing": 0
+    },
+    {
+      "scope": "live-full-to-browser-months",
+      "code": "41117",
+      "rows": 111816,
+      "months": 256,
+      "issues": []
+    },
+    {
+      "scope": "live-full-to-catalog-identities",
+      "code": "41135",
+      "expected": 194,
+      "actual": 194,
+      "missing": 0
+    },
+    {
+      "scope": "live-full-to-browser-months",
+      "code": "41135",
+      "rows": 110102,
+      "months": 250,
+      "issues": []
+    },
+    {
+      "scope": "live-full-to-catalog-identities",
+      "code": "41465",
+      "expected": 269,
+      "actual": 269,
+      "missing": 0
+    },
+    {
+      "scope": "live-full-to-browser-months",
+      "code": "41465",
+      "rows": 121634,
+      "months": 251,
+      "issues": []
+    }
+  ],
+  "search": {
+    "identities": 612,
+    "items": 594,
+    "missing": [],
+    "ambiguous": []
+  },
+  "repairedLinks": [
+    {
+      "code": "41117",
+      "dong": "원천동",
+      "jibun": "35",
+      "apartment": "주공",
+      "status": "matched",
+      "method": "shared_registry_address",
+      "count": 1912,
+      "publishedMasterIds": [
+        "hub:10841241201",
+        "hub:10841241202",
+        "hub:10841241203",
+        "hub:10841241204",
+        "hub:10841241205",
+        "hub:10841241206",
+        "hub:10841241207",
+        "hub:10841241208"
+      ]
+    },
+    {
+      "code": "41117",
+      "dong": "원천동",
+      "jibun": "71-1",
+      "apartment": "아주",
+      "status": "matched",
+      "method": "shared_registry_address",
+      "count": 208,
+      "publishedMasterIds": [
+        "hub:10841241212",
+        "hub:10841241213",
+        "hub:10841241215",
+        "hub:10841241216"
+      ]
+    },
+    {
+      "code": "41135",
+      "dong": "분당동",
+      "jibun": "39",
+      "apartment": "샛별마을(삼부)",
+      "status": "matched",
+      "method": "shared_registry_address",
+      "count": 638,
+      "publishedMasterIds": [
+        "hub:10891117722",
+        "hub:10891117726"
+      ]
+    },
+    {
+      "code": "41135",
+      "dong": "분당동",
+      "jibun": "66",
+      "apartment": "장안타운(건영)",
+      "status": "matched",
+      "method": "unique_registry_parcel",
+      "count": 1664,
+      "publishedMasterIds": [
+        "hub:10891117939"
+      ]
+    },
+    {
+      "code": "41135",
+      "dong": "수내동",
+      "jibun": "51",
+      "apartment": "파크타운(대림)",
+      "status": "matched",
+      "method": "unique_registry_parcel",
+      "count": 736,
+      "publishedMasterIds": [
+        "hub:10891118113"
+      ]
+    },
+    {
+      "code": "41135",
+      "dong": "수내동",
+      "jibun": "54",
+      "apartment": "파크타운(삼익)",
+      "status": "matched",
+      "method": "unique_registry_parcel",
+      "count": 574,
+      "publishedMasterIds": [
+        "hub:10891117927"
+      ]
+    },
+    {
+      "code": "41135",
+      "dong": "수내동",
+      "jibun": "55",
+      "apartment": "파크타운(롯데)",
+      "status": "matched",
+      "method": "unique_registry_parcel",
+      "count": 728,
+      "publishedMasterIds": [
+        "hub:10891117714"
+      ]
+    },
+    {
+      "code": "41135",
+      "dong": "이매동",
+      "jibun": "100",
+      "apartment": "이매촌(삼성)",
+      "status": "matched",
+      "method": "parcel_and_official_name",
+      "count": 1015,
+      "publishedMasterIds": [
+        "hub:10891117948"
+      ]
+    },
+    {
+      "code": "41135",
+      "dong": "이매동",
+      "jibun": "140",
+      "apartment": "아름마을(풍림)",
+      "status": "matched",
+      "method": "shared_registry_address",
+      "count": 777,
+      "publishedMasterIds": [
+        "hub:10891117751",
+        "hub:10891118041"
+      ]
+    },
+    {
+      "code": "41135",
+      "dong": "정자동",
+      "jibun": "121",
+      "apartment": "상록마을(우성)1",
+      "status": "matched",
+      "method": "shared_registry_address",
+      "count": 1701,
+      "publishedMasterIds": [
+        "hub:10891118021",
+        "hub:10891118130"
+      ]
+    },
+    {
+      "code": "41135",
+      "dong": "정자동",
+      "jibun": "124",
+      "apartment": "상록마을(라이프1차)",
+      "status": "matched",
+      "method": "shared_registry_address",
+      "count": 293,
+      "publishedMasterIds": [
+        "hub:10891118014",
+        "hub:10891118022"
+      ]
+    },
+    {
+      "code": "41135",
+      "dong": "정자동",
+      "jibun": "125",
+      "apartment": "상록마을(라이프2차)",
+      "status": "matched",
+      "method": "unique_registry_parcel",
+      "count": 356,
+      "publishedMasterIds": [
+        "hub:10891118023"
+      ]
+    },
+    {
+      "code": "41465",
+      "dong": "상현동",
+      "jibun": "99",
+      "apartment": "벽산블루밍",
+      "status": "matched",
+      "method": "shared_registry_address",
+      "count": 1067,
+      "publishedMasterIds": [
+        "hub:11161181317",
+        "hub:11161181398"
+      ]
+    },
+    {
+      "code": "41465",
+      "dong": "성복동",
+      "jibun": "155",
+      "apartment": "성동마을엘지빌리지1차",
+      "status": "matched",
+      "method": "shared_registry_address",
+      "count": 838,
+      "publishedMasterIds": [
+        "hub:11161184104",
+        "hub:11161184105",
+        "hub:11161184106",
+        "hub:11161184107",
+        "hub:11161184108",
+        "hub:11161184109",
+        "hub:11161184110",
+        "hub:11161184111",
+        "hub:11161184112",
+        "hub:11161184113",
+        "hub:11161184114",
+        "hub:11161184115",
+        "hub:11161184116",
+        "hub:11161184117",
+        "hub:11161184118",
+        "hub:11161184119",
+        "hub:11161184120"
+      ]
+    },
+    {
+      "code": "41465",
+      "dong": "풍덕천동",
+      "jibun": "1167",
+      "apartment": "진산마을삼성5차",
+      "status": "matched",
+      "method": "parcel_and_official_name",
+      "count": 2051,
+      "publishedMasterIds": [
+        "hub:11161181121"
+      ]
+    }
+  ],
+  "affectedLinkedTrades": 14558,
+  "browser": {
+    "groups": [
+      {
+        "apartment": "샛별마을(삼부)",
+        "masterId": "hub:10891117722",
+        "month": "2026-09",
+        "keys": 1,
+        "stale-master": {
+          "expected": 1,
+          "visible": 1,
+          "badge": "1건"
+        },
+        "direct": {
+          "expected": 1,
+          "visible": 1,
+          "badge": "1건"
+        }
+      },
+      {
+        "apartment": "주공",
+        "masterId": "hub:10841241201",
+        "month": "2026-10",
+        "keys": 1,
+        "stale-master": {
+          "expected": 5,
+          "visible": 5,
+          "badge": "5건"
+        },
+        "direct": {
+          "expected": 5,
+          "visible": 5,
+          "badge": "5건"
+        }
+      },
+      {
+        "apartment": "아주",
+        "masterId": "hub:10841241212",
+        "month": "2026-07",
+        "keys": 1,
+        "stale-master": {
+          "expected": 2,
+          "visible": 2,
+          "badge": "2건"
+        },
+        "direct": {
+          "expected": 2,
+          "visible": 2,
+          "badge": "2건"
+        }
+      },
+      {
+        "apartment": "장안타운(건영)",
+        "masterId": "hub:10891117939",
+        "month": "2026-10",
+        "keys": 1,
+        "stale-master": {
+          "expected": 1,
+          "visible": 1,
+          "badge": "1건"
+        },
+        "direct": {
+          "expected": 1,
+          "visible": 1,
+          "badge": "1건"
+        }
+      },
+      {
+        "apartment": "파크타운(대림)",
+        "masterId": "hub:10891118113",
+        "month": "2026-09",
+        "keys": 1,
+        "stale-master": {
+          "expected": 1,
+          "visible": 1,
+          "badge": "1건"
+        },
+        "direct": {
+          "expected": 1,
+          "visible": 1,
+          "badge": "1건"
+        }
+      },
+      {
+        "apartment": "파크타운(삼익)",
+        "masterId": "hub:10891117927",
+        "month": "2026-09",
+        "keys": 1,
+        "stale-master": {
+          "expected": 1,
+          "visible": 1,
+          "badge": "1건"
+        },
+        "direct": {
+          "expected": 1,
+          "visible": 1,
+          "badge": "1건"
+        }
+      },
+      {
+        "apartment": "파크타운(롯데)",
+        "masterId": "hub:10891117714",
+        "month": "2026-10",
+        "keys": 1,
+        "stale-master": {
+          "expected": 1,
+          "visible": 1,
+          "badge": "1건"
+        },
+        "direct": {
+          "expected": 1,
+          "visible": 1,
+          "badge": "1건"
+        }
+      },
+      {
+        "apartment": "이매촌(삼성)",
+        "masterId": "hub:10891117948",
+        "month": "2026-09",
+        "keys": 1,
+        "stale-master": {
+          "expected": 2,
+          "visible": 2,
+          "badge": "2건"
+        },
+        "direct": {
+          "expected": 2,
+          "visible": 2,
+          "badge": "2건"
+        }
+      },
+      {
+        "apartment": "아름마을(풍림)",
+        "masterId": "hub:10891117751",
+        "month": "2026-07",
+        "keys": 1,
+        "stale-master": {
+          "expected": 3,
+          "visible": 3,
+          "badge": "3건"
+        },
+        "direct": {
+          "expected": 3,
+          "visible": 3,
+          "badge": "3건"
+        }
+      },
+      {
+        "apartment": "상록마을(우성)1",
+        "masterId": "hub:10891118021",
+        "month": "2026-09",
+        "keys": 1,
+        "stale-master": {
+          "expected": 1,
+          "visible": 1,
+          "badge": "1건"
+        },
+        "direct": {
+          "expected": 1,
+          "visible": 1,
+          "badge": "1건"
+        }
+      },
+      {
+        "apartment": "상록마을(라이프1차)",
+        "masterId": "hub:10891118014",
+        "month": "2026-09",
+        "keys": 1,
+        "stale-master": {
+          "expected": 1,
+          "visible": 1,
+          "badge": "1건"
+        },
+        "direct": {
+          "expected": 1,
+          "visible": 1,
+          "badge": "1건"
+        }
+      },
+      {
+        "apartment": "상록마을(라이프2차)",
+        "masterId": "hub:10891118023",
+        "month": "2026-07",
+        "keys": 1,
+        "stale-master": {
+          "expected": 1,
+          "visible": 1,
+          "badge": "1건"
+        },
+        "direct": {
+          "expected": 1,
+          "visible": 1,
+          "badge": "1건"
+        }
+      },
+      {
+        "apartment": "벽산블루밍",
+        "masterId": "hub:11161181317",
+        "month": "2026-10",
+        "keys": 1,
+        "stale-master": {
+          "expected": 1,
+          "visible": 1,
+          "badge": "1건"
+        },
+        "direct": {
+          "expected": 1,
+          "visible": 1,
+          "badge": "1건"
+        }
+      },
+      {
+        "apartment": "성동마을엘지빌리지1차",
+        "masterId": "hub:11161184104",
+        "month": "2026-10",
+        "keys": 1,
+        "stale-master": {
+          "expected": 1,
+          "visible": 1,
+          "badge": "1건"
+        },
+        "direct": {
+          "expected": 1,
+          "visible": 1,
+          "badge": "1건"
+        }
+      },
+      {
+        "apartment": "진산마을삼성5차",
+        "masterId": "hub:11161181121",
+        "month": "2026-10",
+        "keys": 1,
+        "stale-master": {
+          "expected": 1,
+          "visible": 1,
+          "badge": "1건"
+        },
+        "direct": {
+          "expected": 1,
+          "visible": 1,
+          "badge": "1건"
+        }
+      }
+    ],
+    "errors": []
+  },
+  "sqlite": [
+    {
+      "scope": "repaired",
+      "archiveHashValid": true,
+      "rawHashValid": true,
+      "integrity": {
+        "integrity_check": "ok"
+      },
+      "count": 343552,
+      "districts": [
+        {
+          "code": "41117",
+          "jsonRows": 111816,
+          "sqliteRows": 111816,
+          "allFieldsMatch": true
+        },
+        {
+          "code": "41135",
+          "jsonRows": 110102,
+          "sqliteRows": 110102,
+          "allFieldsMatch": true
+        },
+        {
+          "code": "41465",
+          "jsonRows": 121634,
+          "sqliteRows": 121634,
+          "allFieldsMatch": true
+        }
+      ]
+    },
+    {
+      "scope": "public-vs-docs-sqlite",
+      "identical": true
+    }
+  ],
+  "tests": {
+    "node": 104,
+    "ui": 119,
+    "browserQueries": 30
+  }
+}

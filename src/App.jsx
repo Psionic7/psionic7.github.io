@@ -13,7 +13,7 @@ import {readPreferences,restoreExplorer,savePreferences,useStoredState,snapshotP
 import {applySharedFilters,appendSharedFilters,readSharedOverview,appendSharedOverview} from './query-state.js';
 import DataStatus from './DataStatus.jsx';
 import PreferenceControls from './PreferenceControls.jsx';
-import {validApartmentFavorites,sameApartmentFavorite,makeApartmentFavorite} from './apartment-favorites.js';
+import {validApartmentFavorites,sameApartmentFavorite,makeApartmentFavorite,refreshApartmentFavorites} from './apartment-favorites.js';
 import {validRegionFavorites} from './region-favorites.js';
 import {restoreApartmentQuery,appendTransactionPeriod} from './apartment-query.js';
 import {restoreOverviewDays} from './dashboard/model.mjs';
@@ -103,6 +103,27 @@ function Explorer({manifest,districtLoader,onResetPreferences,restoredScroll=0,u
   const [copied,setCopied]=useState(false),[searchOpen,setSearchOpen]=useState(false);
   const [sharedOverview,setSharedOverview]=useState(()=>readSharedOverview(new URLSearchParams(window.location.search),catalog));
   const overviewRegions=sharedOverview?.regions||favorites,overviewApartments=sharedOverview?.apartments||apartmentFavorites;
+  const [currentMasterApartments,setCurrentMasterApartments]=useState(null);
+  const hasMasterApartments=[...apartmentFavorites,...selectedApartments,...(sharedOverview?.apartments||[])].some(item=>item.master_id);
+  useEffect(()=>{
+    if(!hasMasterApartments)return;
+    let active=true;
+    import('./apartment-map-data.js').then(module=>module.loadApartmentMap()).then(({apartments})=>{
+      if(!active)return;
+      setCurrentMasterApartments(apartments);
+    }).catch(()=>{/* Keep saved selections available during a metadata outage. */});
+    return()=>{active=false;};
+  },[hasMasterApartments,manifest.published_at,setApartmentFavorites]);
+  useEffect(()=>{
+    if(!currentMasterApartments)return;
+    if(refreshApartmentFavorites(apartmentFavorites,currentMasterApartments)!==apartmentFavorites)setApartmentFavorites(previous=>refreshApartmentFavorites(previous,currentMasterApartments));
+    setSelectedApartments(previous=>refreshApartmentFavorites(previous,currentMasterApartments));
+    setSharedOverview(previous=>{
+      if(!previous)return previous;
+      const next=refreshApartmentFavorites(previous.apartments,currentMasterApartments);
+      return next===previous.apartments?previous:{...previous,apartments:next};
+    });
+  },[currentMasterApartments,apartmentFavorites,selectedApartments,sharedOverview,setApartmentFavorites]);
   const [queryFilters,setQueryFilters]=useState(()=>Object.fromEntries(['weekly','apartmentTransactions'].map(scope=>[scope,sharedFilters?.scope===scope?sharedFilters.filters:{...readPreferences(scope),areaUnit:readPreferences('display').areaUnit||'m2'}])));
   const onQueryChange=useCallback(({scope,...filters})=>setQueryFilters(previous=>{
     if(JSON.stringify(previous[scope])===JSON.stringify(filters))return previous;

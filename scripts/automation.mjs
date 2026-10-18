@@ -7,13 +7,16 @@ import {addressKey, collectAddresses} from '../server/addresses.mjs';
 import {exportData} from '../server/export.mjs';
 import {decryptState, encryptState} from '../server/cloud-state.mjs';
 import {cloudGithub} from '../server/cloud-github.mjs';
-import {validateConfig, recentMonths, CONFIG_PATH} from '../automation/config.mjs';
+import {validateConfig, CONFIG_PATH} from '../automation/config.mjs';
+import {refreshPlan, repairTradeData} from '../server/trade-refresh.mjs';
+import {linkMasterTrades} from '../server/apartment-master.mjs';
 
 export async function collectConfigured(db, config, {now, tradeKey = serviceKey(), jusoKey = addressKey(), collector = collectMonth, addressCollector = collectAddresses, onProgress = console.log} = {}) {
   const catalog = regions(db), settings = validateConfig(config, catalog);
   if (!tradeKey || !jusoKey) throw new Error('실거래 API 키와 도로명주소 API 키를 설정하세요.');
   const selected = catalog.filter(r => settings.region_ids.includes(r.region_id));
-  const tasks = collectionTasks(selected, recentMonths(settings.recent_months, now));
+  const plan = refreshPlan(db, settings, now);
+  const tasks = collectionTasks(selected, plan.months);
   let count = 0;
   for (const task of tasks) {
     const n = await collector(db, tradeKey, task.code, task.month, task.name);
@@ -21,6 +24,8 @@ export async function collectConfigured(db, config, {now, tradeKey = serviceKey(
     onProgress(`${task.name} ${task.month}: ${n}건`);
   }
   const addresses = await addressCollector(db, jusoKey, {limit: settings.address_limit});
+  if (plan.history.length) db.prepare('INSERT OR REPLACE INTO metadata VALUES(?,?)').run('historical_refresh_cursor', plan.history.at(-1));
+  db.prepare('INSERT OR REPLACE INTO metadata VALUES(?,?)').run('last_refresh', JSON.stringify({finished_at: new Date().toISOString(), recent_months: plan.recent, historical_months: plan.history}));
   // Keep three recent source responses for each district/month in cloud state.
   // Historical transactions remain intact; repeated daily XML cannot grow without bound.
   db.exec(`BEGIN;
@@ -54,6 +59,13 @@ export async function runAutomation(action) {
     const db = connect();
     try {saveFavorites(config.region_ids, paths.favorites, regions(db));} finally {db.close();}
     console.log('자동 수집 DB 복원 완료');
+  } else if (action === 'repair') {
+    const db = connect();
+    try {
+      const result = await repairTradeData(db, serviceKey());
+      if (process.env.GITHUB_OUTPUT) fs.appendFileSync(process.env.GITHUB_OUTPUT, `changed=${result.changed}\n`);
+      console.log(`원천 재대조: ${result.tasks}개 지역·월`);
+    } finally {db.close();}
   } else if (action === 'collect') {
     const settings = {...config};
     if (process.env.INPUT_RECENT_MONTHS) settings.recent_months = Number(process.env.INPUT_RECENT_MONTHS);
@@ -61,6 +73,10 @@ export async function runAutomation(action) {
     try {const result = await collectConfigured(db, settings); console.log(`수집 완료: ${result.tasks}개 지역·월, ${result.rows}건, 새 주소 ${result.addresses.completed}건`);}
     finally {db.close();}
   } else if (action === 'export') {
+    const db = connect();
+    try {
+      if (db.prepare("SELECT name FROM sqlite_master WHERE name='apartment_complexes'").get() && db.prepare('SELECT 1 FROM apartment_complexes WHERE active=1 LIMIT 1').get()) linkMasterTrades(db);
+    } finally {db.close();}
     const manifest = exportData();
     const status = {prepared_at: new Date().toISOString(), published_at: manifest.published_at, count: manifest.count, run_url: process.env.GITHUB_SERVER_URL && `${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}`};
     atomicWrite(path.join(ROOT, 'public/automation-status.json'), JSON.stringify(status) + '\n');
@@ -69,7 +85,7 @@ export async function runAutomation(action) {
     const github = cloudGithub(process.env.GITHUB_TOKEN, process.env.GITHUB_REPOSITORY);
     await github.save(encryptState(fs.readFileSync(paths.db), process.env.COLLECTION_STATE_KEY));
     console.log('자동 수집 DB 보관 완료');
-  } else throw new Error('restore, collect, export, save 중 하나를 지정하세요.');
+  } else throw new Error('restore, repair, collect, export, save 중 하나를 지정하세요.');
 }
 if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {
   try {await runAutomation(process.argv[2]);}

@@ -1,4 +1,5 @@
 import os from 'node:os';
+import {resolveTradeCandidates} from './trade-link-resolution.mjs';
 import {APARTMENT_MASTER_SCHEMA,BUILDING_INVENTORY_SCHEMA} from './apartment-master-schema.mjs';
 import {approvalDate,buildingClassification,isResidentialClassification,numeric,parcel,registryCoordinateCodes,text} from './building-registry.mjs';
 import {normalizeApartmentName} from './apartment-boundaries.mjs';
@@ -94,8 +95,10 @@ export function linkMasterTrades(db,tradeDb=db){
  const complexes=db.prepare('SELECT * FROM apartment_complexes WHERE active=1').all(),byId=new Map(complexes.map(c=>[c.apartment_id,c])),aliases=new Map();for(const a of db.prepare('SELECT * FROM apartment_aliases').all()){if(!aliases.has(a.apartment_id))aliases.set(a.apartment_id,new Set());aliases.get(a.apartment_id).add(normalizeApartmentName(a.name));}
  const byParcel=new Map();for(const p of db.prepare('SELECT p.*,c.region_code FROM apartment_parcels p JOIN apartment_complexes c USING(apartment_id) WHERE c.active=1').all()){const key=JSON.stringify([p.legal_code.slice(0,5),p.legal_code.slice(0,8),p.jibun]);if(!byParcel.has(key))byParcel.set(key,new Set());byParcel.get(key).add(p.apartment_id);}
  const dongCodes=new Map(db.prepare('SELECT legal_code,dong FROM apartment_inventory_regions').all().map(r=>[r.legal_code.slice(0,5)+'|'+r.dong,r.legal_code.slice(0,8)])),rows=tradeDb.prepare('SELECT region_code,dong,jibun,apartment,min(build_year) AS year FROM trades GROUP BY region_code,dong,jibun,apartment').all();
- const insert=db.prepare('INSERT OR REPLACE INTO apartment_trade_links VALUES(?,?,?,?,?,?,?,?,?)'),counts={matched:0,ambiguous:0,unmatched:0},at=new Date().toISOString();db.exec('BEGIN');try{db.prepare('DELETE FROM apartment_trade_links').run();for(const t of rows){const ids=[...(byParcel.get(JSON.stringify([t.region_code,dongCodes.get(t.region_code+'|'+t.dong),t.jibun]))||[])],name=normalizeApartmentName(t.apartment),named=ids.filter(id=>aliases.get(id)?.has(name)),validYear=id=>!t.year||!byId.get(id).build_year||Number(t.year)===byId.get(id).build_year;
- let candidates=named.length?named:ids;if(candidates.length===1&&!validYear(candidates[0]))candidates=[];const status=candidates.length===1?'matched':candidates.length>1?'ambiguous':'unmatched';counts[status]++;insert.run(t.region_code,t.dong,t.jibun,t.apartment,status==='matched'?candidates[0]:null,status,named.length?'parcel_and_official_name':status==='matched'?'unique_registry_parcel':'review',JSON.stringify(ids),at);}db.exec('COMMIT');}catch(e){db.exec('ROLLBACK');throw e;}return counts;
+ const insert=db.prepare('INSERT OR REPLACE INTO apartment_trade_links VALUES(?,?,?,?,?,?,?,?,?)'),counts={matched:0,ambiguous:0,unmatched:0},at=new Date().toISOString();db.exec('BEGIN');try{db.prepare('DELETE FROM apartment_trade_links').run();for(const t of rows){const ids=[...(byParcel.get(JSON.stringify([t.region_code,dongCodes.get(t.region_code+'|'+t.dong),t.jibun]))||[])];
+ const resolved=resolveTradeCandidates(t,ids.map(id=>byId.get(id)),aliases),shared=resolved.method==='shared_registry_address';
+ const status=resolved.ids.length===1||shared?'matched':resolved.ids.length?'ambiguous':'unmatched';
+ counts[status]++;insert.run(t.region_code,t.dong,t.jibun,t.apartment,status==='matched'?resolved.ids[0]:null,status,resolved.method,JSON.stringify(resolved.ids),at);}db.exec('COMMIT');}catch(e){db.exec('ROLLBACK');throw e;}return counts;
 }
 export function masterMapData(db,catalog,scopeIds){
  const stats=masterStats(db,scopeIds),selected=new Set(stats.regions.map(r=>r.region_id));
@@ -112,7 +115,7 @@ export function masterMapData(db,catalog,scopeIds){
   const parcelInfo=db.prepare('SELECT attributes_json FROM apartment_parcels WHERE apartment_id=? AND attributes_json IS NOT NULL ORDER BY relation LIMIT 1').get(c.apartment_id);
   const parcelAttrs=parcelInfo?.attributes_json?JSON.parse(parcelInfo.attributes_json):{};
   const zoningNames=[...new Set(db.prepare('SELECT z.properties_json FROM apartment_zoning_links l JOIN apartment_zoning_features z USING(feature_id) WHERE l.apartment_id=?').all(c.apartment_id).map(z=>text(JSON.parse(z.properties_json).uname)).filter(Boolean))];
-  const trades=db.prepare("SELECT region_code,dong,jibun,trade_name FROM apartment_trade_links WHERE apartment_id=? AND region_code=? AND status='matched'").all(c.apartment_id,regionCode);
+  const trades=db.prepare("SELECT region_code,dong,jibun,trade_name FROM apartment_trade_links WHERE region_code=? AND status='matched' AND (apartment_id=? OR (method='shared_registry_address' AND EXISTS(SELECT 1 FROM json_each(candidates_json) WHERE value=?)))").all(regionCode,c.apartment_id,c.apartment_id);
   const tradeKeys=trades.map(t=>JSON.stringify([t.dong,t.jibun,t.trade_name]));
   const nameAliases=[...new Set([...db.prepare('SELECT name FROM apartment_aliases WHERE apartment_id=?').all(c.apartment_id).map(a=>a.name),...trades.map(t=>t.trade_name)].filter(Boolean))];
   const favorite=makeApartmentFavorite({master_id:c.apartment_id,trade_keys:tradeKeys,apartment:displayName,dong,jibun:e?.jibun||c.jibun,road_address:e?.road_address||c.road_address},{region_code:regionCode,region_name:regionName});

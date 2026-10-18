@@ -60,6 +60,24 @@ test('separate trade links match verified parcels and retain renamed/historical 
  const db=fixture();try{populate(db);db.exec('CREATE TABLE trades(region_code TEXT,dong TEXT,jibun TEXT,apartment TEXT,build_year INTEGER)');const insert=db.prepare('INSERT INTO trades VALUES(?,?,?,?,?)');insert.run('41117','원천동','1','거래없는아파트',2000);insert.run('41117','원천동','2','독립단지',2000);insert.run('41117','원천동','1','철거된옛단지',1980);const r=linkMasterTrades(db);assert.equal(r.matched,2);assert.equal(r.unmatched,1);assert.equal(db.prepare('SELECT count(*) AS n FROM apartment_complexes WHERE active=1').get().n,1);}finally{db.close();}
 });
 
+test('master export links duplicate building roots without merging IDs or assigning attached neighbours their trades',()=>{
+ const db=fixture();try{
+  populate(db,snapshot([title('b1','주공'),title('b2','주공'),title('b3','주공',{bun:'0002',newPlatPlc:'경기도 수원시 영통구 이웃로 2'})],[],[],[{mgmBldrgstPk:'b3',atchSigunguCd:'41117',atchBjdongCd:'10200',atchPlatGbCd:'0',atchBun:'0001',atchJi:'0000'}]));
+  db.exec('CREATE TABLE trades(region_code TEXT,dong TEXT,jibun TEXT,apartment TEXT,build_year INTEGER)');
+  db.prepare('INSERT INTO trades VALUES(?,?,?,?,?)').run(scope.region_code,scope.dong,'1','주공',2000);
+  assert.deepEqual(linkMasterTrades(db),{matched:1,ambiguous:0,unmatched:0});
+  const data=masterMapData(db,[scope],[scope.region_id]),key=JSON.stringify([scope.dong,'1','주공']);
+  assert.equal(data.apartments.length,3);
+  assert.deepEqual(data.apartments.find(p=>p.id==='hub:b1').trade_keys,[key]);
+  assert.deepEqual(data.apartments.find(p=>p.id==='hub:b2').trade_keys,[key]);
+  assert.deepEqual(data.apartments.find(p=>p.id==='hub:b3').trade_keys,[]);
+  db.prepare('UPDATE apartment_complexes SET road_address=? WHERE apartment_id=?').run('다른 주소','hub:b2');
+  assert.equal(linkMasterTrades(db).ambiguous,1);
+  assert(data.apartments.every(p=>p.id.startsWith('hub:')));
+  assert(masterMapData(db,[scope],[scope.region_id]).apartments.every(p=>p.trade_keys.length===0));
+ }finally{db.close();}
+});
+
 test('empty HTTP 200 responses retry in alternate formats and preserve large registry identifiers',async()=>{let calls=0,diagnostics=0;const raw='{"response":{"header":{"resultCode":"00"},"body":{"totalCount":1,"items":{"item":{"mgmBldrgstPk":9999999999999999999}}}}}';const p=await fetchRegistryPage('fixture-key',scope.legal_code,'getBrTitleInfo',1,{retryDelay:1,onDiagnostic:()=>diagnostics++,fetcher:async(_url,options)=>{assert.equal(options.headers.Connection,'close');calls++;return new Response(calls===1?'':raw,{status:200});}});assert.equal(calls,2);assert.equal(diagnostics,1);assert.equal(p.items[0].mgmBldrgstPk,'9999999999999999999');});
 
 test('a failing page batch waits for every in-flight cache write before returning',async()=>{let completed=false;await assert.rejects(readRegistryRegion('test',scope.legal_code,{pause:0,fetcher:async(_k,_c,_d,p)=>{if(p===1)return{total:3,items:[title('b1')]};if(p===2)throw new Error('page failed');await new Promise(r=>setTimeout(r,15));completed=true;return{total:3,items:[title('b3')]};}}),/page failed/);assert.equal(completed,true);});

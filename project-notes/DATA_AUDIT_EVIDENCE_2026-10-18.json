@@ -1,0 +1,1027 @@
+{
+  "date": "2026-10-18",
+  "baselineCommit": "e7a419e",
+  "source": "https://www.data.go.kr/data/15126469/openapi.do",
+  "sourceEndpoint": "https://apis.data.go.kr/1613000/RTMSDataSvcAptTrade/getRTMSDataSvcAptTrade",
+  "scope": {
+    "start": "200010",
+    "end": "202610",
+    "districts": [
+      "41117",
+      "41135",
+      "41465"
+    ],
+    "totalMonths": 939
+  },
+  "firstAuditStartedAt": "2026-10-18T07:12:54.316Z",
+  "sourceRetrievedBetween": {
+    "first": "2026-10-18T07:15:27.453Z",
+    "last": "2026-10-18T07:17:01.151Z"
+  },
+  "cachedVerificationFinishedAt": "2026-10-18T07:25:03.924Z",
+  "live": {
+    "published_at": "2026-10-17T18:03:54.339Z",
+    "exported_at": "2026-10-18T07:03:58.547Z",
+    "count": 343543,
+    "checkedAt": "2026-10-18T07:23:41.551Z"
+  },
+  "local": {
+    "published_at": "2026-10-03T13:45:18.472Z",
+    "count": 343038,
+    "docsCount": 343038,
+    "manifestIdentical": true,
+    "integrity": {
+      "quick_check": "ok"
+    }
+  },
+  "totals": {
+    "source": 343552,
+    "published": 343543,
+    "sourceOnly": 10,
+    "publishedOnly": 1,
+    "statusChanges": 2,
+    "sourcePages": 982,
+    "browserMonthFiles": 757,
+    "browserRows": 343543
+  },
+  "differences": [
+    {
+      "type": "cancellation_changed",
+      "region_code": "41117",
+      "deal_month": "202607",
+      "deal_date": "2026-07-29",
+      "apartment": "벽적골우성",
+      "dong": "영통동",
+      "jibun": "973-3",
+      "price_man": 54000,
+      "area_m2": 59.84,
+      "floor": 14,
+      "build_year": 1998,
+      "cancelled": 1,
+      "cancellation_day": "26.10.06",
+      "published_cancelled": 0,
+      "published_cancellation_day": ""
+    },
+    {
+      "type": "cancellation_changed",
+      "region_code": "41117",
+      "deal_month": "202608",
+      "deal_date": "2026-08-25",
+      "apartment": "신나무실진흥",
+      "dong": "영통동",
+      "jibun": "963-2",
+      "price_man": 50000,
+      "area_m2": 59.965,
+      "floor": 18,
+      "build_year": 1997,
+      "cancelled": 1,
+      "cancellation_day": "26.10.17",
+      "published_cancelled": 0,
+      "published_cancellation_day": ""
+    },
+    {
+      "type": "published_only",
+      "region_code": "41135",
+      "deal_month": "202605",
+      "deal_date": "2026-05-06",
+      "apartment": "삼성아데나루체",
+      "dong": "정자동",
+      "jibun": "170-1",
+      "price_man": 158000,
+      "area_m2": 84.96,
+      "floor": 3,
+      "build_year": 2004,
+      "cancelled": 0,
+      "cancellation_day": "",
+      "published_cancelled": 0,
+      "published_cancellation_day": ""
+    },
+    {
+      "type": "source_only",
+      "region_code": "41117",
+      "deal_month": "202605",
+      "deal_date": "2026-05-02",
+      "apartment": "광교중흥에스클래스",
+      "dong": "원천동",
+      "jibun": "589",
+      "price_man": 200000,
+      "area_m2": 109.5277,
+      "floor": 28,
+      "build_year": 2019,
+      "cancelled": 1,
+      "cancellation_day": "26.10.16",
+      "published_cancelled": "",
+      "published_cancellation_day": ""
+    },
+    {
+      "type": "source_only",
+      "region_code": "41117",
+      "deal_month": "202605",
+      "deal_date": "2026-05-04",
+      "apartment": "센트럴하이츠",
+      "dong": "망포동",
+      "jibun": "718",
+      "price_man": 59300,
+      "area_m2": 59.557,
+      "floor": 1,
+      "build_year": 2010,
+      "cancelled": 1,
+      "cancellation_day": "26.10.06",
+      "published_cancelled": "",
+      "published_cancellation_day": ""
+    },
+    {
+      "type": "source_only",
+      "region_code": "41117",
+      "deal_month": "202607",
+      "deal_date": "2026-07-03",
+      "apartment": "힐스테이트영통",
+      "dong": "망포동",
+      "jibun": "728",
+      "price_man": 138000,
+      "area_m2": 84.8897,
+      "floor": 25,
+      "build_year": 2017,
+      "cancelled": 1,
+      "cancellation_day": "26.10.12",
+      "published_cancelled": "",
+      "published_cancellation_day": ""
+    },
+    {
+      "type": "source_only",
+      "region_code": "41135",
+      "deal_month": "202605",
+      "deal_date": "2026-05-15",
+      "apartment": "이매촌(삼성)",
+      "dong": "이매동",
+      "jibun": "100",
+      "price_man": 120800,
+      "area_m2": 59.535,
+      "floor": 4,
+      "build_year": 1994,
+      "cancelled": 0,
+      "cancellation_day": "",
+      "published_cancelled": "",
+      "published_cancellation_day": ""
+    },
+    {
+      "type": "source_only",
+      "region_code": "41465",
+      "deal_month": "202605",
+      "deal_date": "2026-05-29",
+      "apartment": "신봉마을동일하이빌3단지",
+      "dong": "신봉동",
+      "jibun": "985",
+      "price_man": 85000,
+      "area_m2": 167.896,
+      "floor": 9,
+      "build_year": 2010,
+      "cancelled": 1,
+      "cancellation_day": "26.10.06",
+      "published_cancelled": "",
+      "published_cancellation_day": ""
+    },
+    {
+      "type": "source_only",
+      "region_code": "41465",
+      "deal_month": "202606",
+      "deal_date": "2026-06-12",
+      "apartment": "광교상현솔하임",
+      "dong": "상현동",
+      "jibun": "1219",
+      "price_man": 29000,
+      "area_m2": 28.222,
+      "floor": 4,
+      "build_year": 2021,
+      "cancelled": 0,
+      "cancellation_day": "",
+      "published_cancelled": "",
+      "published_cancellation_day": ""
+    },
+    {
+      "type": "source_only",
+      "region_code": "41465",
+      "deal_month": "202606",
+      "deal_date": "2026-06-15",
+      "apartment": "용인 죽전 효성해링턴 플레이스",
+      "dong": "죽전동",
+      "jibun": "1492",
+      "price_man": 67000,
+      "area_m2": 59.553,
+      "floor": 13,
+      "build_year": 2018,
+      "cancelled": 0,
+      "cancellation_day": "",
+      "published_cancelled": "",
+      "published_cancellation_day": ""
+    },
+    {
+      "type": "source_only",
+      "region_code": "41465",
+      "deal_month": "202606",
+      "deal_date": "2026-06-17",
+      "apartment": "성복역 서희스타힐스",
+      "dong": "성복동",
+      "jibun": "168-10",
+      "price_man": 90500,
+      "area_m2": 84.092,
+      "floor": 22,
+      "build_year": 2018,
+      "cancelled": 0,
+      "cancellation_day": "",
+      "published_cancelled": "",
+      "published_cancellation_day": ""
+    },
+    {
+      "type": "source_only",
+      "region_code": "41465",
+      "deal_month": "202607",
+      "deal_date": "2026-07-24",
+      "apartment": "광교상현마을현대",
+      "dong": "상현동",
+      "jibun": "853",
+      "price_man": 106000,
+      "area_m2": 79.336,
+      "floor": 11,
+      "build_year": 2001,
+      "cancelled": 1,
+      "cancellation_day": "26.10.06",
+      "published_cancelled": "",
+      "published_cancellation_day": ""
+    },
+    {
+      "type": "source_only",
+      "region_code": "41465",
+      "deal_month": "202607",
+      "deal_date": "2026-07-28",
+      "apartment": "서원마을현대홈타운",
+      "dong": "상현동",
+      "jibun": "85-6",
+      "price_man": 99000,
+      "area_m2": 59.9328,
+      "floor": 8,
+      "build_year": 2001,
+      "cancelled": 1,
+      "cancellation_day": "26.10.08",
+      "published_cancelled": "",
+      "published_cancellation_day": ""
+    }
+  ],
+  "masterLinks": {
+    "ambiguousGroups": 15,
+    "ambiguousRows": 14557,
+    "validRows": 14382,
+    "withPublishedCandidates": 15,
+    "stillUnlinked": 15,
+    "unmatchedGroups": 238,
+    "unmatchedRows": 128938
+  },
+  "ambiguousGroups": [
+    {
+      "code": "41117",
+      "dong": "원천동",
+      "jibun": "35",
+      "apartment": "주공",
+      "status": "ambiguous",
+      "count": 1912,
+      "recentMonth": "202610",
+      "recentCount": 0,
+      "validCount": 1898,
+      "candidateIds": [
+        "hub:10841241201",
+        "hub:10841241202",
+        "hub:10841241203",
+        "hub:10841241204",
+        "hub:10841241205",
+        "hub:10841241206",
+        "hub:10841241207",
+        "hub:10841241208"
+      ],
+      "publishedCandidates": [
+        {
+          "id": "hub:10841241201",
+          "apartment": "주공아파트",
+          "keys": 0
+        },
+        {
+          "id": "hub:10841241202",
+          "apartment": "주공아파트",
+          "keys": 0
+        },
+        {
+          "id": "hub:10841241203",
+          "apartment": "주공아파트",
+          "keys": 0
+        },
+        {
+          "id": "hub:10841241204",
+          "apartment": "주공아파트",
+          "keys": 0
+        },
+        {
+          "id": "hub:10841241205",
+          "apartment": "주공아파트",
+          "keys": 0
+        },
+        {
+          "id": "hub:10841241206",
+          "apartment": "주공아파트",
+          "keys": 0
+        },
+        {
+          "id": "hub:10841241207",
+          "apartment": "주공아파트",
+          "keys": 0
+        },
+        {
+          "id": "hub:10841241208",
+          "apartment": "주공아파트",
+          "keys": 0
+        }
+      ],
+      "linkedByPublishedMaster": false
+    },
+    {
+      "code": "41117",
+      "dong": "원천동",
+      "jibun": "71-1",
+      "apartment": "아주",
+      "status": "ambiguous",
+      "count": 208,
+      "recentMonth": "202607",
+      "recentCount": 0,
+      "validCount": 205,
+      "candidateIds": [
+        "hub:10841241212",
+        "hub:10841241213",
+        "hub:10841241215",
+        "hub:10841241216"
+      ],
+      "publishedCandidates": [
+        {
+          "id": "hub:10841241212",
+          "apartment": "아주아파트",
+          "keys": 0
+        },
+        {
+          "id": "hub:10841241213",
+          "apartment": "아주아파트",
+          "keys": 0
+        },
+        {
+          "id": "hub:10841241215",
+          "apartment": "아주아파트",
+          "keys": 0
+        },
+        {
+          "id": "hub:10841241216",
+          "apartment": "아주아파트",
+          "keys": 0
+        }
+      ],
+      "linkedByPublishedMaster": false
+    },
+    {
+      "code": "41135",
+      "dong": "분당동",
+      "jibun": "39",
+      "apartment": "샛별마을(삼부)",
+      "status": "ambiguous",
+      "count": 638,
+      "recentMonth": "202609",
+      "recentCount": 0,
+      "validCount": 634,
+      "candidateIds": [
+        "hub:10891117722",
+        "hub:10891117726"
+      ],
+      "publishedCandidates": [
+        {
+          "id": "hub:10891117722",
+          "apartment": "단지명 미확인 (분당동 39)",
+          "keys": 0
+        },
+        {
+          "id": "hub:10891117726",
+          "apartment": "샛별마을",
+          "keys": 0
+        }
+      ],
+      "linkedByPublishedMaster": false
+    },
+    {
+      "code": "41135",
+      "dong": "분당동",
+      "jibun": "66",
+      "apartment": "장안타운(건영)",
+      "status": "ambiguous",
+      "count": 1664,
+      "recentMonth": "202610",
+      "recentCount": 0,
+      "validCount": 1647,
+      "candidateIds": [
+        "hub:10891117729",
+        "hub:10891117730",
+        "hub:10891117939",
+        "hub:10891117940",
+        "hub:10891117941",
+        "hub:10891118107"
+      ],
+      "publishedCandidates": [
+        {
+          "id": "hub:10891117729",
+          "apartment": "67건영아파트",
+          "keys": 0
+        },
+        {
+          "id": "hub:10891117730",
+          "apartment": "69건영아파트",
+          "keys": 0
+        },
+        {
+          "id": "hub:10891117939",
+          "apartment": "66건영아파트",
+          "keys": 0
+        },
+        {
+          "id": "hub:10891117940",
+          "apartment": "68건영아파트",
+          "keys": 0
+        },
+        {
+          "id": "hub:10891117941",
+          "apartment": "70건영아파트",
+          "keys": 0
+        },
+        {
+          "id": "hub:10891118107",
+          "apartment": "71건영아파트",
+          "keys": 0
+        }
+      ],
+      "linkedByPublishedMaster": false
+    },
+    {
+      "code": "41135",
+      "dong": "수내동",
+      "jibun": "51",
+      "apartment": "파크타운(대림)",
+      "status": "ambiguous",
+      "count": 736,
+      "recentMonth": "202609",
+      "recentCount": 0,
+      "validCount": 730,
+      "candidateIds": [
+        "hub:10891117926",
+        "hub:10891118113"
+      ],
+      "publishedCandidates": [
+        {
+          "id": "hub:10891117926",
+          "apartment": "파크타운",
+          "keys": 1
+        },
+        {
+          "id": "hub:10891118113",
+          "apartment": "파크타운",
+          "keys": 0
+        }
+      ],
+      "linkedByPublishedMaster": false
+    },
+    {
+      "code": "41135",
+      "dong": "수내동",
+      "jibun": "54",
+      "apartment": "파크타운(삼익)",
+      "status": "ambiguous",
+      "count": 574,
+      "recentMonth": "202609",
+      "recentCount": 0,
+      "validCount": 571,
+      "candidateIds": [
+        "hub:10891117926",
+        "hub:10891117927"
+      ],
+      "publishedCandidates": [
+        {
+          "id": "hub:10891117926",
+          "apartment": "파크타운",
+          "keys": 1
+        },
+        {
+          "id": "hub:10891117927",
+          "apartment": "파크타운",
+          "keys": 0
+        }
+      ],
+      "linkedByPublishedMaster": false
+    },
+    {
+      "code": "41135",
+      "dong": "수내동",
+      "jibun": "55",
+      "apartment": "파크타운(롯데)",
+      "status": "ambiguous",
+      "count": 728,
+      "recentMonth": "202610",
+      "recentCount": 0,
+      "validCount": 720,
+      "candidateIds": [
+        "hub:10891117926",
+        "hub:10891117714"
+      ],
+      "publishedCandidates": [
+        {
+          "id": "hub:10891117926",
+          "apartment": "파크타운",
+          "keys": 1
+        },
+        {
+          "id": "hub:10891117714",
+          "apartment": "파크타운",
+          "keys": 0
+        }
+      ],
+      "linkedByPublishedMaster": false
+    },
+    {
+      "code": "41135",
+      "dong": "이매동",
+      "jibun": "100",
+      "apartment": "이매촌(삼성)",
+      "status": "ambiguous",
+      "count": 1014,
+      "recentMonth": "202609",
+      "recentCount": 0,
+      "validCount": 1002,
+      "candidateIds": [
+        "hub:10891117948",
+        "hub:10891118036"
+      ],
+      "publishedCandidates": [
+        {
+          "id": "hub:10891117948",
+          "apartment": "이매촌삼성아파트",
+          "keys": 0
+        },
+        {
+          "id": "hub:10891118036",
+          "apartment": "이매촌삼성아파트",
+          "keys": 0
+        }
+      ],
+      "linkedByPublishedMaster": false
+    },
+    {
+      "code": "41135",
+      "dong": "이매동",
+      "jibun": "140",
+      "apartment": "아름마을(풍림)",
+      "status": "ambiguous",
+      "count": 777,
+      "recentMonth": "202607",
+      "recentCount": 0,
+      "validCount": 768,
+      "candidateIds": [
+        "hub:10891117751",
+        "hub:10891117752",
+        "hub:10891117944",
+        "hub:10891118041"
+      ],
+      "publishedCandidates": [
+        {
+          "id": "hub:10891117751",
+          "apartment": "아름마을",
+          "keys": 0
+        },
+        {
+          "id": "hub:10891117752",
+          "apartment": "아름마을",
+          "keys": 0
+        },
+        {
+          "id": "hub:10891117944",
+          "apartment": "아름마을",
+          "keys": 0
+        },
+        {
+          "id": "hub:10891118041",
+          "apartment": "아름마을관리실.노인정",
+          "keys": 0
+        }
+      ],
+      "linkedByPublishedMaster": false
+    },
+    {
+      "code": "41135",
+      "dong": "정자동",
+      "jibun": "121",
+      "apartment": "상록마을(우성)1",
+      "status": "ambiguous",
+      "count": 1701,
+      "recentMonth": "202609",
+      "recentCount": 0,
+      "validCount": 1680,
+      "candidateIds": [
+        "hub:10891118021",
+        "hub:10891118130"
+      ],
+      "publishedCandidates": [
+        {
+          "id": "hub:10891118021",
+          "apartment": "상록마을",
+          "keys": 0
+        },
+        {
+          "id": "hub:10891118130",
+          "apartment": "상록마을",
+          "keys": 0
+        }
+      ],
+      "linkedByPublishedMaster": false
+    },
+    {
+      "code": "41135",
+      "dong": "정자동",
+      "jibun": "124",
+      "apartment": "상록마을(라이프1차)",
+      "status": "ambiguous",
+      "count": 293,
+      "recentMonth": "202609",
+      "recentCount": 0,
+      "validCount": 290,
+      "candidateIds": [
+        "hub:10891118014",
+        "hub:10891118022"
+      ],
+      "publishedCandidates": [
+        {
+          "id": "hub:10891118014",
+          "apartment": "상록마을",
+          "keys": 0
+        },
+        {
+          "id": "hub:10891118022",
+          "apartment": "상록마을",
+          "keys": 0
+        }
+      ],
+      "linkedByPublishedMaster": false
+    },
+    {
+      "code": "41135",
+      "dong": "정자동",
+      "jibun": "125",
+      "apartment": "상록마을(라이프2차)",
+      "status": "ambiguous",
+      "count": 356,
+      "recentMonth": "202607",
+      "recentCount": 0,
+      "validCount": 350,
+      "candidateIds": [
+        "hub:10891118014",
+        "hub:10891118023"
+      ],
+      "publishedCandidates": [
+        {
+          "id": "hub:10891118014",
+          "apartment": "상록마을",
+          "keys": 0
+        },
+        {
+          "id": "hub:10891118023",
+          "apartment": "상록마을",
+          "keys": 0
+        }
+      ],
+      "linkedByPublishedMaster": false
+    },
+    {
+      "code": "41465",
+      "dong": "상현동",
+      "jibun": "99",
+      "apartment": "벽산블루밍",
+      "status": "ambiguous",
+      "count": 1067,
+      "recentMonth": "202610",
+      "recentCount": 0,
+      "validCount": 1049,
+      "candidateIds": [
+        "hub:11161181317",
+        "hub:11161181398"
+      ],
+      "publishedCandidates": [
+        {
+          "id": "hub:11161181317",
+          "apartment": "벽산블루밍아파트",
+          "keys": 0
+        },
+        {
+          "id": "hub:11161181398",
+          "apartment": "벽산블루밍아파트",
+          "keys": 0
+        }
+      ],
+      "linkedByPublishedMaster": false
+    },
+    {
+      "code": "41465",
+      "dong": "성복동",
+      "jibun": "155",
+      "apartment": "성동마을엘지빌리지1차",
+      "status": "ambiguous",
+      "count": 838,
+      "recentMonth": "202610",
+      "recentCount": 0,
+      "validCount": 826,
+      "candidateIds": [
+        "hub:11161184104",
+        "hub:11161184105",
+        "hub:11161184106",
+        "hub:11161184107",
+        "hub:11161184108",
+        "hub:11161184109",
+        "hub:11161184110",
+        "hub:11161184111",
+        "hub:11161184112",
+        "hub:11161184113",
+        "hub:11161184114",
+        "hub:11161184115",
+        "hub:11161184116",
+        "hub:11161184117",
+        "hub:11161184118",
+        "hub:11161184119",
+        "hub:11161184120"
+      ],
+      "publishedCandidates": [
+        {
+          "id": "hub:11161184104",
+          "apartment": "성동마을 엘지빌리지1차",
+          "keys": 0
+        },
+        {
+          "id": "hub:11161184105",
+          "apartment": "성동마을 엘지빌리지1차",
+          "keys": 0
+        },
+        {
+          "id": "hub:11161184106",
+          "apartment": "성동마을 엘지빌리지1차",
+          "keys": 0
+        },
+        {
+          "id": "hub:11161184107",
+          "apartment": "성동마을 엘지빌리지1차",
+          "keys": 0
+        },
+        {
+          "id": "hub:11161184108",
+          "apartment": "성동마을 엘지빌리지1차",
+          "keys": 0
+        },
+        {
+          "id": "hub:11161184109",
+          "apartment": "성동마을 엘지빌리지1차",
+          "keys": 0
+        },
+        {
+          "id": "hub:11161184110",
+          "apartment": "성동마을 엘지빌리지1차",
+          "keys": 0
+        },
+        {
+          "id": "hub:11161184111",
+          "apartment": "성동마을 엘지빌리지1차",
+          "keys": 0
+        },
+        {
+          "id": "hub:11161184112",
+          "apartment": "성동마을 엘지빌리지1차",
+          "keys": 0
+        },
+        {
+          "id": "hub:11161184113",
+          "apartment": "성동마을 엘지빌리지1차",
+          "keys": 0
+        },
+        {
+          "id": "hub:11161184114",
+          "apartment": "성동마을 엘지빌리지1차",
+          "keys": 0
+        },
+        {
+          "id": "hub:11161184115",
+          "apartment": "성동마을 엘지빌리지1차",
+          "keys": 0
+        },
+        {
+          "id": "hub:11161184116",
+          "apartment": "성동마을 엘지빌리지1차",
+          "keys": 0
+        },
+        {
+          "id": "hub:11161184117",
+          "apartment": "성동마을 엘지빌리지1차",
+          "keys": 0
+        },
+        {
+          "id": "hub:11161184118",
+          "apartment": "성동마을 엘지빌리지1차",
+          "keys": 0
+        },
+        {
+          "id": "hub:11161184119",
+          "apartment": "성동마을 엘지빌리지1차",
+          "keys": 0
+        },
+        {
+          "id": "hub:11161184120",
+          "apartment": "성동마을 엘지빌리지1차",
+          "keys": 0
+        }
+      ],
+      "linkedByPublishedMaster": false
+    },
+    {
+      "code": "41465",
+      "dong": "풍덕천동",
+      "jibun": "1167",
+      "apartment": "진산마을삼성5차",
+      "status": "ambiguous",
+      "count": 2051,
+      "recentMonth": "202610",
+      "recentCount": 0,
+      "validCount": 2012,
+      "candidateIds": [
+        "hub:11161181121",
+        "hub:11161181138"
+      ],
+      "publishedCandidates": [
+        {
+          "id": "hub:11161181121",
+          "apartment": "진산마을삼성5차아파트",
+          "keys": 0
+        },
+        {
+          "id": "hub:11161181138",
+          "apartment": "진산마을삼성5차아파트",
+          "keys": 0
+        }
+      ],
+      "linkedByPublishedMaster": false
+    }
+  ],
+  "search": {
+    "tradeIdentities": 612,
+    "searchItems": 594,
+    "missing": [],
+    "ambiguous": []
+  },
+  "checks": {
+    "upstreamMonthErrors": [],
+    "archivedMonths": 939,
+    "archivedProblems": [],
+    "pipelineProblems": [],
+    "sqlite": [
+      {
+        "scope": "local",
+        "archiveHashValid": true,
+        "rawHashValid": true,
+        "integrity": {
+          "integrity_check": "ok"
+        },
+        "count": 343038,
+        "districts": [
+          {
+            "code": "41117",
+            "jsonRows": 111576,
+            "sqliteRows": 111576,
+            "allFieldsMatch": true
+          },
+          {
+            "code": "41135",
+            "jsonRows": 110005,
+            "sqliteRows": 110005,
+            "allFieldsMatch": true
+          },
+          {
+            "code": "41465",
+            "jsonRows": 121457,
+            "sqliteRows": 121457,
+            "allFieldsMatch": true
+          }
+        ]
+      },
+      {
+        "scope": "live",
+        "archiveHashValid": true,
+        "rawHashValid": true,
+        "integrity": {
+          "integrity_check": "ok"
+        },
+        "count": 343543,
+        "districts": [
+          {
+            "code": "41117",
+            "jsonRows": 111813,
+            "sqliteRows": 111813,
+            "allFieldsMatch": true
+          },
+          {
+            "code": "41135",
+            "jsonRows": 110102,
+            "sqliteRows": 110102,
+            "allFieldsMatch": true
+          },
+          {
+            "code": "41465",
+            "jsonRows": 121628,
+            "sqliteRows": 121628,
+            "allFieldsMatch": true
+          }
+        ]
+      },
+      {
+        "scope": "public-vs-docs-sqlite",
+        "identical": true
+      }
+    ],
+    "browser": [
+      {
+        "apartment": "주공",
+        "dong": "원천동",
+        "month": "2026-10",
+        "masterId": "hub:10841241201",
+        "masterTradeKeys": 0,
+        "master": {
+          "rows": 0,
+          "resultBadge": [
+            "0건"
+          ],
+          "emptyText": [
+            "선택 기간에 조회되는 거래가 없습니다.기간이나 다른 아파트를 선택해 보세요."
+          ],
+          "errors": []
+        },
+        "direct": {
+          "rows": 5,
+          "resultBadge": [
+            "5건"
+          ],
+          "emptyText": [],
+          "errors": []
+        }
+      },
+      {
+        "apartment": "진산마을삼성5차",
+        "dong": "풍덕천동",
+        "month": "2026-10",
+        "masterId": "hub:11161181121",
+        "masterTradeKeys": 0,
+        "master": {
+          "rows": 0,
+          "resultBadge": [
+            "0건"
+          ],
+          "emptyText": [
+            "선택 기간에 조회되는 거래가 없습니다.기간이나 다른 아파트를 선택해 보세요."
+          ],
+          "errors": []
+        },
+        "direct": {
+          "rows": 1,
+          "resultBadge": [
+            "1건"
+          ],
+          "emptyText": [],
+          "errors": []
+        }
+      }
+    ]
+  },
+  "transientFileRecovery": [
+    {
+      "code": "41465",
+      "month": "201311",
+      "firstStatus": 503,
+      "retryStatus": 200,
+      "rows": 558,
+      "verifiedAt": "2026-10-18T07:22:18.122Z",
+      "missing": 0,
+      "extra": 0
+    }
+  ],
+  "unavailableDetailedAPI": {
+    "status": 403,
+    "compared": false
+  },
+  "mutation": {
+    "sourceDatabase": false,
+    "publicData": false,
+    "collectionConfig": false,
+    "applicationUI": false,
+    "commit": false,
+    "push": false
+  }
+}
