@@ -12,3 +12,5 @@
 .map-unlocated{margin-top:20px;padding:18px;border:1px solid #dce6ed;border-radius:10px;background:#f8fbfc}.map-unlocated h3{font-size:15px;margin:0 0 8px}.map-unlocated article{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 0;border-top:1px solid #dce6ed}.map-unlocated article p{font-size:12px;color:#536c7b;margin:6px 0}.map-unlocated article span{font-size:12px;color:#758995}
 
 .public-apartment-icon svg{width:18px;height:18px}.public-apartment-icon{border-radius:8px;background:#2858df;box-shadow:0 2px 6px #17203335}.complex-swatch{background:#7399f544;border-color:#2858df}
+
+.map-detail-status{position:absolute;z-index:700;left:50px;top:10px;right:10px;margin:0;padding:8px 10px;border-radius:8px;background:#fffffff2;color:#344054;font-size:12px;pointer-events:none}.map-detail-status.error{background:#fff6ed;pointer-events:auto}.map-detail-status button{margin-left:8px;font-size:12px}

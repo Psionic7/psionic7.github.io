@@ -1,0 +1,723 @@
+{
+  "date": "2026-10-18",
+  "measurementType": "Same-host laboratory before/after comparison",
+  "baseline": "HEAD docs/index.html and docs/assets served by matched gzip server at127.0.0.1:4175; unchanged local data",
+  "improved": "Updated docs at127.0.0.1:4174, same gzip server and local data",
+  "environment": {
+    "viewport": "1440x1000 or 390x844",
+    "mobileSimulation": "1.6 Mbps down / 0.75 Mbps up / 150ms latency / 4x CPU",
+    "limitations": "Laboratory browser samples on this PC, not field p75 Web Vitals. Encoded bytes are CDP loadingFinished bytes including headers; browser cache is zero/near-zero transfer."
+  },
+  "startedAt": "2026-10-18T00:01:08.969Z",
+  "finishedAt": "2026-10-18T00:02:17.322Z",
+  "units": {
+    "MB": 1000000,
+    "MiB": 1048576,
+    "readyMs": "Scenario target became visible, not official TTI",
+    "heapUsedBytes": "JavaScript heap only, not browser total RAM",
+    "approxBlockingMs": "Sum of long task duration over50ms, not official Lighthouse TBT or INP"
+  },
+  "cases": [
+    {
+      "name": "baseline_initial_1_cold",
+      "readyMs": 1379,
+      "settledMs": 2529,
+      "transferBytes": 408516,
+      "requestCount": 28,
+      "byCategory": {
+        "document": {
+          "requests": 1,
+          "transferBytes": 763,
+          "decodedDataBytes": 1011
+        },
+        "javascript": {
+          "requests": 8,
+          "transferBytes": 102566,
+          "decodedDataBytes": 309000
+        },
+        "styles": {
+          "requests": 5,
+          "transferBytes": 20432,
+          "decodedDataBytes": 96302
+        },
+        "fonts": {
+          "requests": 10,
+          "transferBytes": 250942,
+          "decodedDataBytes": 558568
+        },
+        "manifest_or_legacy_data": {
+          "requests": 1,
+          "transferBytes": 33347,
+          "decodedDataBytes": 264001
+        },
+        "other": {
+          "requests": 3,
+          "transferBytes": 466,
+          "decodedDataBytes": 1203
+        }
+      },
+      "heapUsedBytes": 4200204,
+      "paths": 0,
+      "domElements": 499,
+      "approxBlockingMs": 0,
+      "fcpMs": 1272,
+      "lcpMs": 1468,
+      "pageErrors": [],
+      "failed": [],
+      "overflow": false
+    },
+    {
+      "name": "baseline_initial_2_cold",
+      "readyMs": 611,
+      "settledMs": 1704,
+      "transferBytes": 403477,
+      "requestCount": 28,
+      "byCategory": {
+        "document": {
+          "requests": 1,
+          "transferBytes": 763,
+          "decodedDataBytes": 1011
+        },
+        "javascript": {
+          "requests": 8,
+          "transferBytes": 102566,
+          "decodedDataBytes": 309000
+        },
+        "styles": {
+          "requests": 5,
+          "transferBytes": 20432,
+          "decodedDataBytes": 96302
+        },
+        "fonts": {
+          "requests": 10,
+          "transferBytes": 245903,
+          "decodedDataBytes": 530084
+        },
+        "manifest_or_legacy_data": {
+          "requests": 1,
+          "transferBytes": 33347,
+          "decodedDataBytes": 264001
+        },
+        "other": {
+          "requests": 3,
+          "transferBytes": 466,
+          "decodedDataBytes": 1203
+        }
+      },
+      "heapUsedBytes": 4226616,
+      "paths": 0,
+      "domElements": 499,
+      "approxBlockingMs": 0,
+      "fcpMs": 508,
+      "lcpMs": 616,
+      "pageErrors": [],
+      "failed": [],
+      "overflow": false
+    },
+    {
+      "name": "baseline_initial_3_cold",
+      "readyMs": 616,
+      "settledMs": 1646,
+      "transferBytes": 403477,
+      "requestCount": 28,
+      "byCategory": {
+        "document": {
+          "requests": 1,
+          "transferBytes": 763,
+          "decodedDataBytes": 1011
+        },
+        "javascript": {
+          "requests": 8,
+          "transferBytes": 102566,
+          "decodedDataBytes": 309000
+        },
+        "styles": {
+          "requests": 5,
+          "transferBytes": 20432,
+          "decodedDataBytes": 96302
+        },
+        "fonts": {
+          "requests": 10,
+          "transferBytes": 245903,
+          "decodedDataBytes": 530084
+        },
+        "manifest_or_legacy_data": {
+          "requests": 1,
+          "transferBytes": 33347,
+          "decodedDataBytes": 264001
+        },
+        "other": {
+          "requests": 3,
+          "transferBytes": 466,
+          "decodedDataBytes": 1203
+        }
+      },
+      "heapUsedBytes": 4214188,
+      "paths": 0,
+      "domElements": 499,
+      "approxBlockingMs": 0,
+      "fcpMs": 516,
+      "lcpMs": 604,
+      "pageErrors": [],
+      "failed": [],
+      "overflow": false
+    },
+    {
+      "name": "baseline_map_cold",
+      "readyMs": 5001,
+      "settledMs": 5884,
+      "transferBytes": 3418045,
+      "requestCount": 48,
+      "byCategory": {
+        "document": {
+          "requests": 1,
+          "transferBytes": 763,
+          "decodedDataBytes": 1011
+        },
+        "javascript": {
+          "requests": 9,
+          "transferBytes": 142554,
+          "decodedDataBytes": 447823
+        },
+        "styles": {
+          "requests": 5,
+          "transferBytes": 25930,
+          "decodedDataBytes": 106992
+        },
+        "fonts": {
+          "requests": 15,
+          "transferBytes": 336908,
+          "decodedDataBytes": 620944
+        },
+        "manifest_or_legacy_data": {
+          "requests": 1,
+          "transferBytes": 33347,
+          "decodedDataBytes": 264001
+        },
+        "other": {
+          "requests": 2,
+          "transferBytes": 466,
+          "decodedDataBytes": 802
+        },
+        "apartment_map_data": {
+          "requests": 3,
+          "transferBytes": 2483004,
+          "decodedDataBytes": 11002409
+        },
+        "map_tiles": {
+          "requests": 12,
+          "transferBytes": 395073,
+          "decodedDataBytes": 391326
+        }
+      },
+      "heapUsedBytes": 74803284,
+      "paths": 3,
+      "domElements": 645,
+      "approxBlockingMs": 679,
+      "fcpMs": 1560,
+      "lcpMs": 5216,
+      "pageErrors": [],
+      "failed": [],
+      "overflow": false
+    },
+    {
+      "name": "baseline_map_zoom14",
+      "readyMs": 2720,
+      "settledMs": 2720,
+      "transferBytes": 444075,
+      "requestCount": 13,
+      "byCategory": {
+        "other": {
+          "requests": 1,
+          "transferBytes": 0,
+          "decodedDataBytes": 26
+        },
+        "map_tiles": {
+          "requests": 12,
+          "transferBytes": 444075,
+          "decodedDataBytes": 440668
+        }
+      },
+      "heapUsedBytes": 60974428,
+      "paths": 9397,
+      "domElements": 11399,
+      "approxBlockingMs": 421,
+      "fcpMs": 1560,
+      "lcpMs": 5216,
+      "pageErrors": [],
+      "failed": [],
+      "overflow": false
+    },
+    {
+      "name": "baseline_mobile_initial_cold",
+      "readyMs": 2563,
+      "settledMs": 3453,
+      "transferBytes": 387070,
+      "requestCount": 27,
+      "byCategory": {
+        "document": {
+          "requests": 1,
+          "transferBytes": 763,
+          "decodedDataBytes": 1011
+        },
+        "javascript": {
+          "requests": 8,
+          "transferBytes": 102566,
+          "decodedDataBytes": 309000
+        },
+        "styles": {
+          "requests": 5,
+          "transferBytes": 20432,
+          "decodedDataBytes": 96302
+        },
+        "fonts": {
+          "requests": 9,
+          "transferBytes": 229496,
+          "decodedDataBytes": 513704
+        },
+        "manifest_or_legacy_data": {
+          "requests": 1,
+          "transferBytes": 33347,
+          "decodedDataBytes": 264001
+        },
+        "other": {
+          "requests": 3,
+          "transferBytes": 466,
+          "decodedDataBytes": 1203
+        }
+      },
+      "heapUsedBytes": 4271132,
+      "paths": 0,
+      "domElements": 499,
+      "approxBlockingMs": 175,
+      "fcpMs": 1728,
+      "lcpMs": 2892,
+      "pageErrors": [],
+      "failed": [],
+      "overflow": false
+    },
+    {
+      "name": "baseline_mobile_map_cold",
+      "readyMs": 21338,
+      "settledMs": 22486,
+      "transferBytes": 3192300,
+      "requestCount": 39,
+      "byCategory": {
+        "document": {
+          "requests": 1,
+          "transferBytes": 763,
+          "decodedDataBytes": 1011
+        },
+        "javascript": {
+          "requests": 9,
+          "transferBytes": 142554,
+          "decodedDataBytes": 447823
+        },
+        "styles": {
+          "requests": 5,
+          "transferBytes": 25930,
+          "decodedDataBytes": 106992
+        },
+        "fonts": {
+          "requests": 11,
+          "transferBytes": 263844,
+          "decodedDataBytes": 547996
+        },
+        "manifest_or_legacy_data": {
+          "requests": 1,
+          "transferBytes": 33347,
+          "decodedDataBytes": 264001
+        },
+        "other": {
+          "requests": 3,
+          "transferBytes": 466,
+          "decodedDataBytes": 828
+        },
+        "apartment_map_data": {
+          "requests": 3,
+          "transferBytes": 2483004,
+          "decodedDataBytes": 11002409
+        },
+        "map_tiles": {
+          "requests": 6,
+          "transferBytes": 242392,
+          "decodedDataBytes": 240496
+        }
+      },
+      "heapUsedBytes": 100480712,
+      "paths": 3,
+      "domElements": 639,
+      "approxBlockingMs": 4646,
+      "fcpMs": 1740,
+      "lcpMs": 21872,
+      "pageErrors": [],
+      "failed": [],
+      "overflow": false
+    },
+    {
+      "name": "improved_initial_1_cold",
+      "readyMs": 202,
+      "settledMs": 725,
+      "transferBytes": 159436,
+      "requestCount": 19,
+      "byCategory": {
+        "document": {
+          "requests": 1,
+          "transferBytes": 764,
+          "decodedDataBytes": 1011
+        },
+        "javascript": {
+          "requests": 9,
+          "transferBytes": 104371,
+          "decodedDataBytes": 313138
+        },
+        "styles": {
+          "requests": 5,
+          "transferBytes": 20485,
+          "decodedDataBytes": 96978
+        },
+        "manifest_or_legacy_data": {
+          "requests": 1,
+          "transferBytes": 33347,
+          "decodedDataBytes": 264001
+        },
+        "other": {
+          "requests": 3,
+          "transferBytes": 469,
+          "decodedDataBytes": 1221
+        }
+      },
+      "heapUsedBytes": 4203300,
+      "paths": 0,
+      "domElements": 500,
+      "approxBlockingMs": 0,
+      "fcpMs": 92,
+      "lcpMs": 200,
+      "pageErrors": [],
+      "failed": [],
+      "overflow": false
+    },
+    {
+      "name": "improved_initial_2_cold",
+      "readyMs": 184,
+      "settledMs": 709,
+      "transferBytes": 159436,
+      "requestCount": 19,
+      "byCategory": {
+        "document": {
+          "requests": 1,
+          "transferBytes": 764,
+          "decodedDataBytes": 1011
+        },
+        "javascript": {
+          "requests": 9,
+          "transferBytes": 104371,
+          "decodedDataBytes": 313138
+        },
+        "styles": {
+          "requests": 5,
+          "transferBytes": 20485,
+          "decodedDataBytes": 96978
+        },
+        "manifest_or_legacy_data": {
+          "requests": 1,
+          "transferBytes": 33347,
+          "decodedDataBytes": 264001
+        },
+        "other": {
+          "requests": 3,
+          "transferBytes": 469,
+          "decodedDataBytes": 1221
+        }
+      },
+      "heapUsedBytes": 4212192,
+      "paths": 0,
+      "domElements": 500,
+      "approxBlockingMs": 0,
+      "fcpMs": 100,
+      "lcpMs": 188,
+      "pageErrors": [],
+      "failed": [],
+      "overflow": false
+    },
+    {
+      "name": "improved_initial_3_cold",
+      "readyMs": 193,
+      "settledMs": 717,
+      "transferBytes": 159436,
+      "requestCount": 19,
+      "byCategory": {
+        "document": {
+          "requests": 1,
+          "transferBytes": 764,
+          "decodedDataBytes": 1011
+        },
+        "javascript": {
+          "requests": 9,
+          "transferBytes": 104371,
+          "decodedDataBytes": 313138
+        },
+        "styles": {
+          "requests": 5,
+          "transferBytes": 20485,
+          "decodedDataBytes": 96978
+        },
+        "manifest_or_legacy_data": {
+          "requests": 1,
+          "transferBytes": 33347,
+          "decodedDataBytes": 264001
+        },
+        "other": {
+          "requests": 3,
+          "transferBytes": 469,
+          "decodedDataBytes": 1221
+        }
+      },
+      "heapUsedBytes": 4221668,
+      "paths": 0,
+      "domElements": 500,
+      "approxBlockingMs": 0,
+      "fcpMs": 92,
+      "lcpMs": 184,
+      "pageErrors": [],
+      "failed": [],
+      "overflow": false
+    },
+    {
+      "name": "improved_map_cold",
+      "readyMs": 951,
+      "settledMs": 1736,
+      "transferBytes": 648836,
+      "requestCount": 33,
+      "byCategory": {
+        "document": {
+          "requests": 1,
+          "transferBytes": 764,
+          "decodedDataBytes": 1011
+        },
+        "javascript": {
+          "requests": 10,
+          "transferBytes": 145222,
+          "decodedDataBytes": 454381
+        },
+        "styles": {
+          "requests": 5,
+          "transferBytes": 26055,
+          "decodedDataBytes": 107982
+        },
+        "manifest_or_legacy_data": {
+          "requests": 1,
+          "transferBytes": 33347,
+          "decodedDataBytes": 264001
+        },
+        "other": {
+          "requests": 2,
+          "transferBytes": 469,
+          "decodedDataBytes": 814
+        },
+        "apartment_map_data": {
+          "requests": 2,
+          "transferBytes": 47880,
+          "decodedDataBytes": 559870
+        },
+        "map_tiles": {
+          "requests": 12,
+          "transferBytes": 395099,
+          "decodedDataBytes": 391326
+        }
+      },
+      "heapUsedBytes": 6186728,
+      "paths": 3,
+      "domElements": 643,
+      "approxBlockingMs": 0,
+      "fcpMs": 88,
+      "lcpMs": 1232,
+      "pageErrors": [],
+      "failed": [],
+      "overflow": false
+    },
+    {
+      "name": "improved_map_zoom14",
+      "readyMs": 252,
+      "settledMs": 253,
+      "transferBytes": 977533,
+      "requestCount": 21,
+      "byCategory": {
+        "other": {
+          "requests": 9,
+          "transferBytes": 533430,
+          "decodedDataBytes": 2209637
+        },
+        "map_tiles": {
+          "requests": 12,
+          "transferBytes": 444103,
+          "decodedDataBytes": 440668
+        }
+      },
+      "heapUsedBytes": 16716128,
+      "paths": 1152,
+      "domElements": 1921,
+      "approxBlockingMs": 11,
+      "fcpMs": 88,
+      "lcpMs": 1232,
+      "pageErrors": [],
+      "failed": [],
+      "overflow": false
+    },
+    {
+      "name": "improved_mobile_initial_cold",
+      "readyMs": 2026,
+      "settledMs": 2556,
+      "transferBytes": 159436,
+      "requestCount": 19,
+      "byCategory": {
+        "document": {
+          "requests": 1,
+          "transferBytes": 764,
+          "decodedDataBytes": 1011
+        },
+        "javascript": {
+          "requests": 9,
+          "transferBytes": 104371,
+          "decodedDataBytes": 313138
+        },
+        "styles": {
+          "requests": 5,
+          "transferBytes": 20485,
+          "decodedDataBytes": 96978
+        },
+        "manifest_or_legacy_data": {
+          "requests": 1,
+          "transferBytes": 33347,
+          "decodedDataBytes": 264001
+        },
+        "other": {
+          "requests": 3,
+          "transferBytes": 469,
+          "decodedDataBytes": 1221
+        }
+      },
+      "heapUsedBytes": 4314540,
+      "paths": 0,
+      "domElements": 500,
+      "approxBlockingMs": 115,
+      "fcpMs": 1188,
+      "lcpMs": 2192,
+      "pageErrors": [],
+      "failed": [],
+      "overflow": false
+    },
+    {
+      "name": "improved_mobile_map_cold",
+      "readyMs": 3250,
+      "settledMs": 5312,
+      "transferBytes": 496097,
+      "requestCount": 28,
+      "byCategory": {
+        "document": {
+          "requests": 1,
+          "transferBytes": 764,
+          "decodedDataBytes": 1011
+        },
+        "javascript": {
+          "requests": 10,
+          "transferBytes": 145222,
+          "decodedDataBytes": 454381
+        },
+        "styles": {
+          "requests": 5,
+          "transferBytes": 26055,
+          "decodedDataBytes": 107982
+        },
+        "manifest_or_legacy_data": {
+          "requests": 1,
+          "transferBytes": 33347,
+          "decodedDataBytes": 264001
+        },
+        "other": {
+          "requests": 3,
+          "transferBytes": 469,
+          "decodedDataBytes": 840
+        },
+        "apartment_map_data": {
+          "requests": 2,
+          "transferBytes": 47880,
+          "decodedDataBytes": 559870
+        },
+        "map_tiles": {
+          "requests": 6,
+          "transferBytes": 242360,
+          "decodedDataBytes": 240496
+        }
+      },
+      "heapUsedBytes": 6147412,
+      "paths": 3,
+      "domElements": 637,
+      "approxBlockingMs": 175,
+      "fcpMs": 1192,
+      "lcpMs": 4044,
+      "pageErrors": [],
+      "failed": [],
+      "overflow": false
+    }
+  ],
+  "functionalChecks": [
+    {
+      "query": "벽적골우성",
+      "count": 1
+    },
+    {
+      "query": "주공그린빌3",
+      "count": 1
+    },
+    {
+      "query": "꽃메마을힐스테이트",
+      "count": 3
+    },
+    {
+      "searchedApartmentOpened": "꽃메마을힐스테이트(4차3단지)"
+    },
+    {
+      "mobileRows": 20,
+      "scrollHeight": 4241,
+      "overflow": false
+    },
+    {
+      "nextPage": "계약일 최신순 · 페이지당 20건 · 2 / 3 페이지"
+    },
+    {
+      "mobileListRemainsWithoutMap": true
+    }
+  ],
+  "mapAndStorageChecks": [
+    {
+      "favoriteKeepsPopup": true,
+      "favoriteKeepsMap": true,
+      "paneUnchanged": true,
+      "storedFavorites": 1
+    },
+    {
+      "favoriteRemoved": true
+    },
+    {
+      "mapToTrades": true
+    },
+    {
+      "boundaryFailureRetainsMarkers": true
+    },
+    {
+      "boundaryRetrySucceeded": true
+    },
+    {
+      "storageFailureVisible": true
+    }
+  ],
+  "errors": [],
+  "limits": [
+    "Three desktop initial visits per version, other scenarios one visit per version.",
+    "Map tiles and baseline fonts are external resources, connection state may vary.",
+    "Local snapshot2026-10-03 is older than production2026-10-18.",
+    "Not field p75 or a real-device benchmark.",
+    "Mobile height baseline in original report uses production data and cannot be treated as a controlled identical-data comparison."
+  ]
+}

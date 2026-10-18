@@ -1,5 +1,6 @@
 import React,{lazy,Suspense,useCallback,useEffect,useMemo,useRef,useState} from 'react';
 import {House,Building2,Info,LayoutDashboard,Search,MapPinned,ArrowUpRight,Copy,Check,Database,SlidersHorizontal,Map as MapIcon,MapPin,Star,ChevronRight,ShieldCheck} from 'lucide-react';
+import StorageNotice from './StorageNotice.jsx';
 import BrandMark from './BrandMark.jsx';
 import HomeSearch from './HomeSearch.jsx';
 import {buildCatalog,formatNumber,monthLabel} from './domain.mjs';
@@ -33,6 +34,7 @@ const timestamp=value=>new Date(value).toLocaleString('ko-KR',{timeZone:'Asia/Se
 export default function App({ initialManifest = null, districtLoader = loadDistrict }) {
   const [manifest, setManifest] = useState(initialManifest), [error, setError] = useState('');
   const [revision, setRevision] = useState(0);
+  const [availableManifest,setAvailableManifest]=useState(null);
   const [preferencesRevision,setPreferencesRevision]=useState(0);
   const [undo,setUndo]=useState(null),[restoredScroll,setRestoredScroll]=useState(0);
   const locationRef=useRef(window.location.search);
@@ -49,6 +51,17 @@ export default function App({ initialManifest = null, districtLoader = loadDistr
       .catch(reason => { if (active) setError(reason.message); });
     return () => { active = false; };
   }, [initialManifest, revision]);
+  useEffect(()=>{
+    if(initialManifest||!manifest)return;
+    let active=true,lastCheck=Date.now(),checking=false;
+    const check=async()=>{
+      if(checking||document.visibilityState==='hidden'||Date.now()-lastCheck<300000)return;
+      checking=true;lastCheck=Date.now();
+      try{const next=await fetchJson('/data/manifest.json?v='+__DATA_VERSION__,true);if(active&&next?.published_at&&next.districts&&Array.isArray(next.months)&&next.published_at!==manifest.published_at)setAvailableManifest(next);}catch{}finally{checking=false;}
+    };
+    window.addEventListener('focus',check);document.addEventListener('visibilitychange',check);const timer=setInterval(check,300000);
+    return()=>{active=false;clearInterval(timer);window.removeEventListener('focus',check);document.removeEventListener('visibilitychange',check);};
+  },[initialManifest,manifest]);
   if (error) return <main className="startup"><h1>집의 기록</h1><div role="alert" className="notice error">{error}</div><button onClick={() => setRevision(value => value + 1)}>다시 불러오기</button></main>;
   if (!manifest) return <main className="startup"><h1>집의 기록</h1><Loading text="공개 데이터 목록을 불러오는 중입니다." /></main>;
   const resetPreferences=kind=>{setUndo({document:snapshotPreferences(),url:window.location.search,kind});if(kind==='favorites')clearFavorites();else{resetQueries();window.history.replaceState(null,'','/?tab=apartments');}setRestoredScroll(0);setPreferencesRevision(value=>value+1);};
@@ -60,11 +73,11 @@ export default function App({ initialManifest = null, districtLoader = loadDistr
     }else restorePreferences({...undo.document,scopes:{...undo.document.scopes,viewer}});
     window.history.replaceState(null,'','/'+undo.url);setUndo(null);setPreferencesRevision(value=>value+1);
   };
-  return <Explorer key={preferencesRevision} manifest={manifest} districtLoader={districtLoader} onResetPreferences={resetPreferences} restoredScroll={restoredScroll} undo={undo} onUndo={undoPreferences} onLocationChange={onLocationChange}/>;
+  return <Explorer key={preferencesRevision} manifest={manifest} districtLoader={districtLoader} onResetPreferences={resetPreferences} restoredScroll={restoredScroll} undo={undo} onUndo={undoPreferences} onLocationChange={onLocationChange} updateAvailable={!!availableManifest} onApplyUpdate={()=>{setManifest(availableManifest);setAvailableManifest(null);setPreferencesRevision(value=>value+1);}}/>;
 }
 
 
-function Explorer({manifest,districtLoader,onResetPreferences,restoredScroll=0,undo,onUndo,onLocationChange}) {
+function Explorer({manifest,districtLoader,onResetPreferences,restoredScroll=0,undo,onUndo,onLocationChange,updateAvailable,onApplyUpdate}) {
   useMemo(()=>applySharedFilters(new URLSearchParams(window.location.search)),[]);
   const catalog=useMemo(()=>buildCatalog(manifest.regions),[manifest]);
   const [apartmentFavorites,setApartmentFavorites]=useStoredState('viewer','apartments',[],validApartmentFavorites);
@@ -115,7 +128,7 @@ function Explorer({manifest,districtLoader,onResetPreferences,restoredScroll=0,u
   },[tab,weeklyIds,weeklyDay,weeklyPeriod,selectedApartments,searchRegionId,apartmentDay,apartmentPeriod,dashboardDays,filterRevision,sharedOverview]);
   const share=async()=>{const url=new URL(window.location.href);if(tab==='dashboard'&&!sharedOverview)appendSharedOverview(url.searchParams,{regions:overviewRegions,apartments:overviewApartments});try{await navigator.clipboard.writeText(url.href);setCopied(true);setTimeout(()=>setCopied(false),2500);}catch{window.prompt('이 주소를 복사해 주세요.',url.href);}};
   const activeLabel=tabs.find(([id])=>id===tab)[1];
-  return <div className="app-shell public-shell" data-tab={tab} data-has-selection={tab==='apartments'&&selectedApartments.length>0?'true':undefined}>
+  return <div className="app-shell public-shell" data-tab={tab} data-has-selection={(tab==='apartments'&&selectedApartments.length>0||tab==='weekly'&&weeklyIds.length>0)?'true':undefined}>
     <a className="skip-content" href="#main-content">본문으로 건너뛰기</a>
     <aside className="workspace-sidebar" aria-label="사이트 탐색">
       <a className="brand" href="/"><span className="brand-icon"><BrandMark/></span><span>집의 기록<small>HOME RECORDS</small></span></a>
@@ -129,6 +142,8 @@ function Explorer({manifest,districtLoader,onResetPreferences,restoredScroll=0,u
     <main className="main-content" id="main-content" tabIndex={-1}>
     <header className="page-header"><div><h1>{pageCopy[tab][0]}</h1><p>{pageCopy[tab][1]}</p></div><span className="header-location"><MapPin size={14}/>{Object.keys(manifest.districts).length}개 시군구 거래 자료</span></header>
     <DataStatus key={tab} manifest={manifest}/>
+    <StorageNotice/>
+    {updateAvailable&&<div className="notice update-notice" role="status">새로 게시된 거래 자료가 있습니다.<button onClick={onApplyUpdate}>새 자료 불러오기</button></div>}
     {['apartments','weekly','map','regions'].includes(tab)&&<nav className="explore-views" aria-label="조회 화면">{tabs.filter(([id])=>['apartments','weekly','map','regions'].includes(id)).map(([id,label,Icon])=><button key={id} aria-label={label} aria-current={tab===id?'page':undefined} onClick={()=>setTab(id)}><Icon size={17}/>{{apartments:'단지 거래',weekly:'동네 거래',map:'단지 지도',regions:'동네 지도'}[id]}</button>)}</nav>}
     {tab==='apartments'&&selectedApartments.length>0&&<button className="new-search-button" aria-expanded={searchOpen} onClick={()=>setSearchOpen(value=>!value)}><Search size={17}/>다른 집 찾기</button>}
     {tab==='apartments'&&(!selectedApartments.length||searchOpen)&&<HomeSearch manifest={manifest} catalog={catalog} onApartment={searchMapApartment} onRegion={item=>{if(item.dongs.length)searchMapRegion(item);else{setSelectedApartments([]);setSearchRegionId(item.region_id);setApartmentFilters({province:'',city:'',district:'',search:''});savePreferences('apartmentSearch',{...readPreferences('apartmentSearch'),query:''});setTab('apartments');document.getElementById('query-controls')?.scrollIntoView({block:'start'});}}}/>}

@@ -8,6 +8,7 @@ import {randomUUID} from 'node:crypto';
 import {ROOT,paths,readJson,secretValues,checkedBytes,connect} from '../server/storage.mjs';
 import {sha256} from '../server/export.mjs';
 import {validateApartmentMap} from '../src/apartment-map-data.js';
+import {validBounds} from '../src/map-bounds.mjs';
 import {checkBrowserData} from '../server/browser-export.mjs';
 const privateName=name=>name.split('/').some(p=>['local','admin-dist','.venv','.streamlit'].includes(p)) || /(^|\/)(\.env[^/]*|collection_regions\.json|my_real_estate\.sqlite3|secrets\.toml)$/.test(name);
 export function checkPublic(root=ROOT,secretsFile=paths.env,{checkIndex=true}={}) {
@@ -59,6 +60,19 @@ export function checkPublic(root=ROOT,secretsFile=paths.env,{checkIndex=true}={}
     if(sha256(apartments)!==info.apartments.sha256||sha256(boundaries)!==info.boundaries.sha256)throw new Error('아파트 지도 체크섬 오류');
     const data=validateApartmentMap({apartments:JSON.parse(apartments),boundaries:JSON.parse(boundaries)});
     if(data.apartments.length!==info.count||data.boundaries.features.length!==info.boundary_count)throw new Error('아파트 지도 건수 오류');
+    const tilesFolder=path.join(root,path.dirname(sub),'map-data');
+    if(fs.existsSync(tilesFolder)){
+      const tiles=readJson(path.join(tilesFolder,'manifest.json')),allowed=new Set(['manifest.json']);let features=0;const identities=new Set();
+      if(tiles.version!==1||tiles.source_sha256!==info.boundaries.sha256||!Array.isArray(tiles.tiles))throw new Error('지도 경계 조각 버전 오류');
+      for(const tile of tiles.tiles){
+        if(!/^tile-\d+_\d+-[a-f0-9]{12}\.json$/.test(tile.file)||!validBounds(tile.bbox)||allowed.has(tile.file))throw new Error('지도 경계 조각 경로 오류');
+        allowed.add(tile.file);const bytes=checkedBytes(fs.readFileSync(path.join(tilesFolder,tile.file)),secrets);
+        if(sha256(bytes)!==tile.sha256||bytes.length!==tile.bytes)throw new Error('지도 경계 조각 체크섬 오류');
+        const part=validateApartmentMap({apartments:data.apartments,boundaries:JSON.parse(bytes)});
+        for(const f of part.boundaries.features){const key=JSON.stringify(f);if(identities.has(key)||!validBounds(f.bbox))throw new Error('지도 경계 조각 중복 오류');identities.add(key);features++;}
+      }
+      if(features!==info.boundary_count||tiles.feature_count!==features||fs.readdirSync(tilesFolder).some(file=>!allowed.has(file)))throw new Error('지도 경계 조각 건수 오류');
+    }
     if(info.version===2){if(info.data_mode!=='registry_master'||typeof info.coverage?.complete!=='boolean'||info.coverage.complexes!==info.count||!Array.isArray(info.coverage.regions)||!info.coverage.regions.length||info.coverage.regions.some(r=>r.status!=='scanned')||!info.attribution?.includes('V-World')||!info.license?.includes('kogl.or.kr'))throw new Error('아파트 마스터 수집 완전성 / 출처 오류');}
     else if(!info.attribution?.includes('OpenStreetMap')||!info.license?.includes('opendatacommons.org'))throw new Error('아파트 지도 출처 누락');
   }

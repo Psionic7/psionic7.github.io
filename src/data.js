@@ -1,13 +1,16 @@
-const pending = new Map();
+import {createJsonCache} from './json-cache.mjs';
+const sizes=new WeakMap();
+export const jsonCharacterSize=value=>sizes.get(value)||0;
 export async function fetchJson(path, fresh = false) {
-  const response = await fetch(path, { cache: fresh ? 'no-store' : 'default' });
-  if (!response.ok) throw new Error(`데이터를 불러오지 못했습니다 (${response.status}).`);
-  return response.json();
+  const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),30000);
+  try{
+    const response=await fetch(path,{cache:fresh?'no-store':'default',signal:controller.signal});
+    if(!response.ok)throw new Error('데이터를 불러오지 못했습니다 ('+response.status+').');
+    if(typeof response.text!=='function')return await response.json();
+    const text=await response.text(),value=JSON.parse(text);if(value&&typeof value==='object')sizes.set(value,text.length);return value;
+  }catch(error){if(controller.signal.aborted)throw new Error('응답이 지연되고 있습니다. 잠시 후 다시 불러와 주세요.');throw error;}finally{clearTimeout(timer);}
 }
-function cachedJson(path){
-  if(!pending.has(path))pending.set(path,fetchJson(path).catch(error=>{pending.delete(path);throw error;}));
-  return pending.get(path);
-}
+export const cachedJson=createJsonCache(fetchJson,{sizeOf:jsonCharacterSize});
 export async function loadDistrict(manifest, code,request={}) {
   const district = manifest.districts[code];
   if (!district) return [];

@@ -1,0 +1,3102 @@
+{
+  "date": "2026-10-18",
+  "base": "https://psionic7.github.io",
+  "units": {
+    "transferBytes": "CDP encodedDataLength incl. headers; compressed payload where enabled",
+    "MB": 1000000,
+    "MiB": 1048576,
+    "readyMs": "Scenario target became visible; not official TTI or complete map tiles",
+    "nonStandardLayoutShiftSum": "Raw no-recent-input layout shift sum; NOT official session-window CLS",
+    "approxBlockingMs": "Sum max(long task duration - 50ms, 0); NOT official Lighthouse TBT or INP"
+  },
+  "environment": {
+    "viewport": "1440x1000 or 390x844",
+    "mobileSimulation": "1.6 Mbps down / 0.75 Mbps up / 150ms latency / 4x CPU",
+    "limitations": "Laboratory browser samples on this PC, not field p75 Web Vitals. Encoded bytes are CDP loadingFinished bytes including headers; browser cache is zero/near-zero transfer."
+  },
+  "production": {
+    "publishedAt": "2026-10-17T18:03:54.339Z",
+    "count": 343543,
+    "regionCatalogEntries": 1215,
+    "collectedDongCount": 26,
+    "districts": {
+      "41117": {
+        "count": 111813,
+        "collectedDongs": [
+          "망포동",
+          "매탄동",
+          "신동",
+          "영통동",
+          "원천동",
+          "이의동",
+          "하동"
+        ],
+        "months": 256
+      },
+      "41135": {
+        "count": 110102,
+        "collectedDongs": [
+          "구미동",
+          "금곡동",
+          "대장동",
+          "백현동",
+          "분당동",
+          "삼평동",
+          "서현동",
+          "수내동",
+          "야탑동",
+          "운중동",
+          "이매동",
+          "정자동",
+          "판교동"
+        ],
+        "months": 250
+      },
+      "41465": {
+        "count": 121628,
+        "collectedDongs": [
+          "동천동",
+          "상현동",
+          "성복동",
+          "신봉동",
+          "죽전동",
+          "풍덕천동"
+        ],
+        "months": 251
+      }
+    },
+    "map": {
+      "count": 467,
+      "boundaryCount": 8928,
+      "located": 466,
+      "unlocated": 1,
+      "unnamed": 7,
+      "scannedRegions": 21,
+      "complete": false
+    }
+  },
+  "localSnapshot": {
+    "publishedAt": "2026-10-03T13:45:18.472Z",
+    "count": 343038,
+    "warning": "Local source data older than production. Do not infer production staleness from this snapshot."
+  },
+  "measurements": {
+    "startedAt": "2026-10-17T23:29:33.296Z",
+    "finishedAt": "2026-10-17T23:30:41.684Z",
+    "cases": [
+      {
+        "name": "desktop_initial_cold",
+        "mobile": false,
+        "readyMs": 3875,
+        "settledMs": 5274,
+        "requestCount": 28,
+        "transferBytes": 405558,
+        "decodedDataBytes": 1202033,
+        "cacheHits": 0,
+        "unfinished": 0,
+        "failed": [],
+        "byCategory": {
+          "document": {
+            "requests": 1,
+            "transferBytes": 968,
+            "decodedDataBytes": 1011
+          },
+          "javascript": {
+            "requests": 8,
+            "transferBytes": 103045,
+            "decodedDataBytes": 309000
+          },
+          "styles": {
+            "requests": 5,
+            "transferBytes": 20976,
+            "decodedDataBytes": 96302
+          },
+          "fonts": {
+            "requests": 10,
+            "transferBytes": 245903,
+            "decodedDataBytes": 530084
+          },
+          "manifest_or_legacy_data": {
+            "requests": 1,
+            "transferBytes": 34027,
+            "decodedDataBytes": 264433
+          },
+          "other": {
+            "requests": 3,
+            "transferBytes": 639,
+            "decodedDataBytes": 1203
+          }
+        },
+        "heapUsedBytes": 4177560,
+        "url": "https://psionic7.github.io/?tab=apartments&apt=&period=week&week=2026-10-12&filters=1&min=&max=&bands=&cancelled=1&unit=m2",
+        "title": "아파트별 실거래가 · 집의 기록",
+        "fcpMs": 3536,
+        "lcpMs": 3840,
+        "nav": {
+          "ttfbMs": 937.7999999970198,
+          "domInteractiveMs": 948.6000000014901,
+          "domContentLoadedMs": 3479.60000000149,
+          "loadMs": 3479.6999999955297
+        },
+        "longTaskCount": 0,
+        "longTaskMs": 0,
+        "approxBlockingMs": 0,
+        "maxEventMs": 0,
+        "domElements": 494,
+        "paths": 0,
+        "overflow": false,
+        "tinyButtons": [],
+        "namelessButtons": [],
+        "statusText": [
+          "거래 자료 3개 시군구\n자료 기준일 2026-10-18"
+        ],
+        "htmlDescription": "관심 지역의 아파트 실거래가. 국토교통부 원천 데이터와 지역별 거래 대시보드.",
+        "canonical": null,
+        "pageErrors": [],
+        "nonStandardLayoutShiftSum": 0.07046902314362702,
+        "largestRequests": [
+          {
+            "url": "https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700&display=swap",
+            "status": 200,
+            "encodedBytes": 93192,
+            "decodedDataBytes": 377620,
+            "encoding": "gzip",
+            "cacheControl": "private, max-age=86400, stale-while-revalidate=604800"
+          },
+          {
+            "url": "https://psionic7.github.io/assets/styles-Dzt_ISxH.js",
+            "status": 200,
+            "encodedBytes": 67687,
+            "decodedDataBytes": 214662,
+            "encoding": "gzip",
+            "cacheControl": "max-age=600"
+          },
+          {
+            "url": "https://psionic7.github.io/data/manifest.json?v=89757d928801281f",
+            "status": 200,
+            "encodedBytes": 34027,
+            "decodedDataBytes": 264433,
+            "encoding": "gzip",
+            "cacheControl": "max-age=600"
+          },
+          {
+            "url": "https://fonts.gstatic.com/s/notosanskr/v40/PbykFmXiEBPT4ITbgNA5CgmG0X7t.woff2",
+            "status": 200,
+            "encodedBytes": 25909,
+            "decodedDataBytes": 25880,
+            "encoding": "",
+            "cacheControl": "public, max-age=31536000"
+          },
+          {
+            "url": "https://fonts.gstatic.com/s/notosanskr/v40/PbykFmXiEBPT4ITbgNA5Cgm20xz64px_1hVWr0wuPNGmlQNMEfD4.119.woff2",
+            "status": 200,
+            "encodedBytes": 16597,
+            "decodedDataBytes": 16568,
+            "encoding": "",
+            "cacheControl": "public, max-age=31536000"
+          }
+        ]
+      },
+      {
+        "name": "desktop_warm_reload",
+        "mobile": false,
+        "readyMs": 303,
+        "settledMs": 809,
+        "requestCount": 27,
+        "transferBytes": 34917,
+        "decodedDataBytes": 1201632,
+        "cacheHits": 25,
+        "unfinished": 0,
+        "failed": [],
+        "byCategory": {
+          "document": {
+            "requests": 1,
+            "transferBytes": 923,
+            "decodedDataBytes": 1011
+          },
+          "javascript": {
+            "requests": 8,
+            "transferBytes": 0,
+            "decodedDataBytes": 309000
+          },
+          "styles": {
+            "requests": 5,
+            "transferBytes": 0,
+            "decodedDataBytes": 96302
+          },
+          "fonts": {
+            "requests": 10,
+            "transferBytes": 0,
+            "decodedDataBytes": 530084
+          },
+          "manifest_or_legacy_data": {
+            "requests": 1,
+            "transferBytes": 33994,
+            "decodedDataBytes": 264433
+          },
+          "other": {
+            "requests": 2,
+            "transferBytes": 0,
+            "decodedDataBytes": 802
+          }
+        },
+        "heapUsedBytes": 6526500,
+        "url": "https://psionic7.github.io/?tab=apartments&apt=&period=week&week=2026-10-12&filters=1&min=&max=&bands=&cancelled=1&unit=m2",
+        "title": "아파트별 실거래가 · 집의 기록",
+        "fcpMs": 136,
+        "lcpMs": 224,
+        "nav": {
+          "ttfbMs": 16.100000001490116,
+          "domInteractiveMs": 73.79999999701977,
+          "domContentLoadedMs": 75.39999999850988,
+          "loadMs": 81.79999999701977
+        },
+        "longTaskCount": 0,
+        "longTaskMs": 0,
+        "approxBlockingMs": 0,
+        "maxEventMs": 0,
+        "domElements": 494,
+        "paths": 0,
+        "overflow": false,
+        "tinyButtons": [],
+        "namelessButtons": [],
+        "statusText": [
+          "거래 자료 3개 시군구\n자료 기준일 2026-10-18"
+        ],
+        "htmlDescription": "관심 지역의 아파트 실거래가. 국토교통부 원천 데이터와 지역별 거래 대시보드.",
+        "canonical": null,
+        "pageErrors": [],
+        "nonStandardLayoutShiftSum": 0.06912784708658855,
+        "largestRequests": [
+          {
+            "url": "https://psionic7.github.io/data/manifest.json?v=89757d928801281f",
+            "status": 200,
+            "encodedBytes": 33994,
+            "decodedDataBytes": 264433,
+            "encoding": "gzip",
+            "cacheControl": "max-age=600"
+          },
+          {
+            "url": "https://psionic7.github.io/?tab=apartments&apt=&period=week&week=2026-10-12&filters=1&min=&max=&bands=&cancelled=1&unit=m2",
+            "status": 200,
+            "encodedBytes": 923,
+            "decodedDataBytes": 1011,
+            "encoding": "gzip",
+            "cacheControl": "max-age=600"
+          }
+        ]
+      },
+      {
+        "name": "desktop_first_search",
+        "mobile": false,
+        "readyMs": 147,
+        "settledMs": 147,
+        "requestCount": 5,
+        "transferBytes": 49543,
+        "decodedDataBytes": 559870,
+        "cacheHits": 0,
+        "unfinished": 3,
+        "failed": [],
+        "byCategory": {
+          "apartment_map_data": {
+            "requests": 2,
+            "transferBytes": 49543,
+            "decodedDataBytes": 559870
+          },
+          "fonts": {
+            "requests": 3,
+            "transferBytes": 0,
+            "decodedDataBytes": 0
+          }
+        },
+        "heapUsedBytes": 8447832,
+        "url": "https://psionic7.github.io/?tab=apartments&apt=&period=week&week=2026-10-12&filters=1&min=&max=&bands=&cancelled=1&unit=m2",
+        "title": "아파트별 실거래가 · 집의 기록",
+        "fcpMs": 136,
+        "lcpMs": 224,
+        "nav": {
+          "ttfbMs": 16.100000001490116,
+          "domInteractiveMs": 73.79999999701977,
+          "domContentLoadedMs": 75.39999999850988,
+          "loadMs": 81.79999999701977
+        },
+        "longTaskCount": 0,
+        "longTaskMs": 0,
+        "approxBlockingMs": 0,
+        "maxEventMs": 24,
+        "domElements": 648,
+        "paths": 0,
+        "overflow": false,
+        "tinyButtons": [],
+        "namelessButtons": [],
+        "statusText": [
+          "거래 자료 3개 시군구\n자료 기준일 2026-10-18"
+        ],
+        "htmlDescription": "관심 지역의 아파트 실거래가. 국토교통부 원천 데이터와 지역별 거래 대시보드.",
+        "canonical": null,
+        "pageErrors": [],
+        "nonStandardLayoutShiftSum": 0.33098289177035106,
+        "largestRequests": [
+          {
+            "url": "https://psionic7.github.io/apartment-map/apartments-fc2e4677a857.json",
+            "status": 200,
+            "encodedBytes": 47099,
+            "decodedDataBytes": 548637,
+            "encoding": "gzip",
+            "cacheControl": "max-age=600"
+          },
+          {
+            "url": "https://fonts.gstatic.com/s/notosanskr/v40/PbykFmXiEBPT4ITbgNA5Cgm20xz64px_1hVWr0wuPNGmlQNMEfD4.102.woff2",
+            "status": 200,
+            "encodedBytes": 26365,
+            "decodedDataBytes": 26336,
+            "encoding": "",
+            "cacheControl": "public, max-age=31536000"
+          },
+          {
+            "url": "https://fonts.gstatic.com/s/notosanskr/v40/PbykFmXiEBPT4ITbgNA5Cgm20xz64px_1hVWr0wuPNGmlQNMEfD4.108.woff2",
+            "status": 200,
+            "encodedBytes": 19729,
+            "decodedDataBytes": 19700,
+            "encoding": "",
+            "cacheControl": "public, max-age=31536000"
+          },
+          {
+            "url": "https://fonts.gstatic.com/s/notosanskr/v40/PbykFmXiEBPT4ITbgNA5Cgm20xz64px_1hVWr0wuPNGmlQNMEfD4.110.woff2",
+            "status": 200,
+            "encodedBytes": 17497,
+            "decodedDataBytes": 17464,
+            "encoding": "",
+            "cacheControl": "public, max-age=31536000"
+          },
+          {
+            "url": "https://psionic7.github.io/apartment-map/manifest.json",
+            "status": 200,
+            "encodedBytes": 2444,
+            "decodedDataBytes": 11233,
+            "encoding": "gzip",
+            "cacheControl": "max-age=600"
+          }
+        ]
+      },
+      {
+        "name": "desktop_repeat_search",
+        "mobile": false,
+        "readyMs": 371,
+        "settledMs": 371,
+        "requestCount": 3,
+        "transferBytes": 19853,
+        "decodedDataBytes": 577262,
+        "cacheHits": 1,
+        "unfinished": 0,
+        "failed": [],
+        "byCategory": {
+          "apartment_map_data": {
+            "requests": 2,
+            "transferBytes": 2426,
+            "decodedDataBytes": 559870
+          },
+          "fonts": {
+            "requests": 1,
+            "transferBytes": 17427,
+            "decodedDataBytes": 17392
+          }
+        },
+        "heapUsedBytes": 9856028,
+        "url": "https://psionic7.github.io/?tab=apartments&apt=&period=week&week=2026-10-12&filters=1&min=&max=&bands=&cancelled=1&unit=m2",
+        "title": "아파트별 실거래가 · 집의 기록",
+        "fcpMs": 136,
+        "lcpMs": 224,
+        "nav": {
+          "ttfbMs": 16.100000001490116,
+          "domInteractiveMs": 73.79999999701977,
+          "domContentLoadedMs": 75.39999999850988,
+          "loadMs": 81.79999999701977
+        },
+        "longTaskCount": 0,
+        "longTaskMs": 0,
+        "approxBlockingMs": 0,
+        "maxEventMs": 32,
+        "domElements": 648,
+        "paths": 0,
+        "overflow": false,
+        "tinyButtons": [],
+        "namelessButtons": [],
+        "statusText": [
+          "거래 자료 3개 시군구\n자료 기준일 2026-10-18"
+        ],
+        "htmlDescription": "관심 지역의 아파트 실거래가. 국토교통부 원천 데이터와 지역별 거래 대시보드.",
+        "canonical": null,
+        "pageErrors": [],
+        "nonStandardLayoutShiftSum": 0.33098289177035106,
+        "largestRequests": [
+          {
+            "url": "https://fonts.gstatic.com/s/notosanskr/v40/PbykFmXiEBPT4ITbgNA5Cgm20xz64px_1hVWr0wuPNGmlQNMEfD4.111.woff2",
+            "status": 200,
+            "encodedBytes": 17427,
+            "decodedDataBytes": 17392,
+            "encoding": "",
+            "cacheControl": "public, max-age=31536000"
+          },
+          {
+            "url": "https://psionic7.github.io/apartment-map/manifest.json",
+            "status": 200,
+            "encodedBytes": 2426,
+            "decodedDataBytes": 11233,
+            "encoding": "gzip",
+            "cacheControl": "max-age=600"
+          }
+        ]
+      },
+      {
+        "name": "desktop_select_apartment",
+        "mobile": false,
+        "readyMs": 591,
+        "settledMs": 591,
+        "requestCount": 3,
+        "transferBytes": 29954,
+        "decodedDataBytes": 208678,
+        "cacheHits": 1,
+        "unfinished": 0,
+        "failed": [],
+        "byCategory": {
+          "monthly_query_data": {
+            "requests": 2,
+            "transferBytes": 29954,
+            "decodedDataBytes": 208277
+          },
+          "other": {
+            "requests": 1,
+            "transferBytes": 0,
+            "decodedDataBytes": 401
+          }
+        },
+        "heapUsedBytes": 10173392,
+        "url": "https://psionic7.github.io/?tab=apartments&region=area_41465&apt=%7B%22region_code%22%3A%2241465%22%2C%22region_name%22%3A%22%EA%B2%BD%EA%B8%B0%EB%8F%84+%EC%9A%A9%EC%9D%B8%EC%8B%9C+%EC%88%98%EC%A7%80%EA%B5%AC%22%2C%22apartment%22%3A%22%EA%B4%91%EA%B5%90+%ED%98%84%EB%8C%80%ED%94%84%EB%A0%88%EB%AF%B8%EC%98%A4%EC%95%84%ED%8C%8C%ED%8A%B8%22%2C%22dong%22%3A%22%EC%83%81%ED%98%84%EB%8F%99%22%2C%22jibun%22%3A%22168-1%22%2C%22road_address%22%3A%22%EA%B2%BD%EA%B8%B0%EB%8F%84+%EC%9A%A9%EC%9D%B8%EC%8B%9C+%EC%88%98%EC%A7%80%EA%B5%AC+%EC%88%98%EC%A7%80%EB%A1%9C+41+%28%EC%83%81%ED%98%84%EB%8F%99%29%22%2C%22id%22%3A%22hub%3A11160101060030%22%2C%22key%22%3A%22%5B%5C%22%EC%83%81%ED%98%84%EB%8F%99%5C%22%2C%5C%22168-1%5C%22%2C%5C%22%EA%B4%91%EA%B5%90+%ED%98%84%EB%8C%80%ED%94%84%EB%A0%88%EB%AF%B8%EC%98%A4%EC%95%84%ED%8C%8C%ED%8A%B8%5C%22%5D%22%2C%22master_id%22%3A%22hub%3A11160101060030%22%2C%22trade_keys%22%3A%5B%22%5B%5C%22%EC%83%81%ED%98%84%EB%8F%99%5C%22%2C%5C%22168-1%5C%22%2C%5C%22%EA%B4%91%EA%B5%90%ED%98%84%EB%8C%80%ED%94%84%EB%A0%88%EB%AF%B8%EC%98%A4%5C%22%5D%22%5D%7D&period=week&week=2026-10-12&filters=1&min=&max=&bands=&cancelled=1&unit=m2",
+        "title": "아파트별 실거래가 · 집의 기록",
+        "fcpMs": 136,
+        "lcpMs": 224,
+        "nav": {
+          "ttfbMs": 16.100000001490116,
+          "domInteractiveMs": 73.79999999701977,
+          "domContentLoadedMs": 75.39999999850988,
+          "loadMs": 81.79999999701977
+        },
+        "longTaskCount": 0,
+        "longTaskMs": 0,
+        "approxBlockingMs": 0,
+        "maxEventMs": 40,
+        "domElements": 1305,
+        "paths": 0,
+        "overflow": false,
+        "tinyButtons": [],
+        "namelessButtons": [],
+        "statusText": [
+          "거래 자료 3개 시군구\n자료 기준일 2026-10-18"
+        ],
+        "htmlDescription": "관심 지역의 아파트 실거래가. 국토교통부 원천 데이터와 지역별 거래 대시보드.",
+        "canonical": null,
+        "pageErrors": [],
+        "nonStandardLayoutShiftSum": 0.33098289177035106,
+        "largestRequests": [
+          {
+            "url": "https://psionic7.github.io/query-data/catalog-41465-c60a750c2f84.json",
+            "status": 200,
+            "encodedBytes": 26013,
+            "decodedDataBytes": 178140,
+            "encoding": "gzip",
+            "cacheControl": "max-age=600"
+          },
+          {
+            "url": "https://psionic7.github.io/query-data/month-41465-202610-96c75d3f838c.json",
+            "status": 200,
+            "encodedBytes": 3941,
+            "decodedDataBytes": 30137,
+            "encoding": "gzip",
+            "cacheControl": "max-age=600"
+          }
+        ]
+      },
+      {
+        "name": "desktop_change_90days",
+        "mobile": false,
+        "readyMs": 334,
+        "settledMs": 334,
+        "requestCount": 5,
+        "transferBytes": 37863,
+        "decodedDataBytes": 394580,
+        "cacheHits": 1,
+        "unfinished": 1,
+        "failed": [],
+        "byCategory": {
+          "monthly_query_data": {
+            "requests": 3,
+            "transferBytes": 37863,
+            "decodedDataBytes": 394179
+          },
+          "other": {
+            "requests": 1,
+            "transferBytes": 0,
+            "decodedDataBytes": 401
+          },
+          "fonts": {
+            "requests": 1,
+            "transferBytes": 0,
+            "decodedDataBytes": 0
+          }
+        },
+        "heapUsedBytes": 7765724,
+        "url": "https://psionic7.github.io/?tab=apartments&region=area_41465&apt=%7B%22region_code%22%3A%2241465%22%2C%22region_name%22%3A%22%EA%B2%BD%EA%B8%B0%EB%8F%84+%EC%9A%A9%EC%9D%B8%EC%8B%9C+%EC%88%98%EC%A7%80%EA%B5%AC%22%2C%22apartment%22%3A%22%EA%B4%91%EA%B5%90+%ED%98%84%EB%8C%80%ED%94%84%EB%A0%88%EB%AF%B8%EC%98%A4%EC%95%84%ED%8C%8C%ED%8A%B8%22%2C%22dong%22%3A%22%EC%83%81%ED%98%84%EB%8F%99%22%2C%22jibun%22%3A%22168-1%22%2C%22road_address%22%3A%22%EA%B2%BD%EA%B8%B0%EB%8F%84+%EC%9A%A9%EC%9D%B8%EC%8B%9C+%EC%88%98%EC%A7%80%EA%B5%AC+%EC%88%98%EC%A7%80%EB%A1%9C+41+%28%EC%83%81%ED%98%84%EB%8F%99%29%22%2C%22id%22%3A%22hub%3A11160101060030%22%2C%22key%22%3A%22%5B%5C%22%EC%83%81%ED%98%84%EB%8F%99%5C%22%2C%5C%22168-1%5C%22%2C%5C%22%EA%B4%91%EA%B5%90+%ED%98%84%EB%8C%80%ED%94%84%EB%A0%88%EB%AF%B8%EC%98%A4%EC%95%84%ED%8C%8C%ED%8A%B8%5C%22%5D%22%2C%22master_id%22%3A%22hub%3A11160101060030%22%2C%22trade_keys%22%3A%5B%22%5B%5C%22%EC%83%81%ED%98%84%EB%8F%99%5C%22%2C%5C%22168-1%5C%22%2C%5C%22%EA%B4%91%EA%B5%90%ED%98%84%EB%8C%80%ED%94%84%EB%A0%88%EB%AF%B8%EC%98%A4%5C%22%5D%22%5D%7D&period=custom&from=2026-07-21&to=2026-10-18&filters=1&min=&max=&bands=&cancelled=1&unit=m2",
+        "title": "아파트별 실거래가 · 집의 기록",
+        "fcpMs": 136,
+        "lcpMs": 224,
+        "nav": {
+          "ttfbMs": 16.100000001490116,
+          "domInteractiveMs": 73.79999999701977,
+          "domContentLoadedMs": 75.39999999850988,
+          "loadMs": 81.79999999701977
+        },
+        "longTaskCount": 0,
+        "longTaskMs": 0,
+        "approxBlockingMs": 0,
+        "maxEventMs": 24,
+        "domElements": 1374,
+        "paths": 0,
+        "overflow": false,
+        "tinyButtons": [],
+        "namelessButtons": [],
+        "statusText": [
+          "거래 자료 3개 시군구\n자료 기준일 2026-10-18"
+        ],
+        "htmlDescription": "관심 지역의 아파트 실거래가. 국토교통부 원천 데이터와 지역별 거래 대시보드.",
+        "canonical": null,
+        "pageErrors": [],
+        "nonStandardLayoutShiftSum": 0.33098289177035106,
+        "largestRequests": [
+          {
+            "url": "https://fonts.gstatic.com/s/notosanskr/v40/PbykFmXiEBPT4ITbgNA5Cgm20xz64px_1hVWr0wuPNGmlQNMEfD4.106.woff2",
+            "status": 200,
+            "encodedBytes": 24773,
+            "decodedDataBytes": 24736,
+            "encoding": "",
+            "cacheControl": "public, max-age=31536000"
+          },
+          {
+            "url": "https://psionic7.github.io/query-data/month-41465-202607-4fefa83d4931.json",
+            "status": 200,
+            "encodedBytes": 17405,
+            "decodedDataBytes": 191697,
+            "encoding": "gzip",
+            "cacheControl": "max-age=600"
+          },
+          {
+            "url": "https://psionic7.github.io/query-data/month-41465-202608-e3d0bd0e6f3b.json",
+            "status": 200,
+            "encodedBytes": 11337,
+            "decodedDataBytes": 114667,
+            "encoding": "gzip",
+            "cacheControl": "max-age=600"
+          },
+          {
+            "url": "https://psionic7.github.io/query-data/month-41465-202609-4fe86b42525d.json",
+            "status": 200,
+            "encodedBytes": 9121,
+            "decodedDataBytes": 87815,
+            "encoding": "gzip",
+            "cacheControl": "max-age=600"
+          }
+        ]
+      },
+      {
+        "name": "desktop_change_1year",
+        "mobile": false,
+        "readyMs": 593,
+        "settledMs": 593,
+        "requestCount": 10,
+        "transferBytes": 151347,
+        "decodedDataBytes": 1637647,
+        "cacheHits": 1,
+        "unfinished": 0,
+        "failed": [],
+        "byCategory": {
+          "monthly_query_data": {
+            "requests": 9,
+            "transferBytes": 151347,
+            "decodedDataBytes": 1637246
+          },
+          "other": {
+            "requests": 1,
+            "transferBytes": 0,
+            "decodedDataBytes": 401
+          }
+        },
+        "heapUsedBytes": 14869420,
+        "url": "https://psionic7.github.io/?tab=apartments&region=area_41465&apt=%7B%22region_code%22%3A%2241465%22%2C%22region_name%22%3A%22%EA%B2%BD%EA%B8%B0%EB%8F%84+%EC%9A%A9%EC%9D%B8%EC%8B%9C+%EC%88%98%EC%A7%80%EA%B5%AC%22%2C%22apartment%22%3A%22%EA%B4%91%EA%B5%90+%ED%98%84%EB%8C%80%ED%94%84%EB%A0%88%EB%AF%B8%EC%98%A4%EC%95%84%ED%8C%8C%ED%8A%B8%22%2C%22dong%22%3A%22%EC%83%81%ED%98%84%EB%8F%99%22%2C%22jibun%22%3A%22168-1%22%2C%22road_address%22%3A%22%EA%B2%BD%EA%B8%B0%EB%8F%84+%EC%9A%A9%EC%9D%B8%EC%8B%9C+%EC%88%98%EC%A7%80%EA%B5%AC+%EC%88%98%EC%A7%80%EB%A1%9C+41+%28%EC%83%81%ED%98%84%EB%8F%99%29%22%2C%22id%22%3A%22hub%3A11160101060030%22%2C%22key%22%3A%22%5B%5C%22%EC%83%81%ED%98%84%EB%8F%99%5C%22%2C%5C%22168-1%5C%22%2C%5C%22%EA%B4%91%EA%B5%90+%ED%98%84%EB%8C%80%ED%94%84%EB%A0%88%EB%AF%B8%EC%98%A4%EC%95%84%ED%8C%8C%ED%8A%B8%5C%22%5D%22%2C%22master_id%22%3A%22hub%3A11160101060030%22%2C%22trade_keys%22%3A%5B%22%5B%5C%22%EC%83%81%ED%98%84%EB%8F%99%5C%22%2C%5C%22168-1%5C%22%2C%5C%22%EA%B4%91%EA%B5%90%ED%98%84%EB%8C%80%ED%94%84%EB%A0%88%EB%AF%B8%EC%98%A4%5C%22%5D%22%5D%7D&period=custom&from=2025-10-19&to=2026-10-18&filters=1&min=&max=&bands=&cancelled=1&unit=m2",
+        "title": "아파트별 실거래가 · 집의 기록",
+        "fcpMs": 136,
+        "lcpMs": 224,
+        "nav": {
+          "ttfbMs": 16.100000001490116,
+          "domInteractiveMs": 73.79999999701977,
+          "domContentLoadedMs": 75.39999999850988,
+          "loadMs": 81.79999999701977
+        },
+        "longTaskCount": 0,
+        "longTaskMs": 0,
+        "approxBlockingMs": 0,
+        "maxEventMs": 24,
+        "domElements": 1559,
+        "paths": 0,
+        "overflow": false,
+        "tinyButtons": [],
+        "namelessButtons": [],
+        "statusText": [
+          "거래 자료 3개 시군구\n자료 기준일 2026-10-18"
+        ],
+        "htmlDescription": "관심 지역의 아파트 실거래가. 국토교통부 원천 데이터와 지역별 거래 대시보드.",
+        "canonical": null,
+        "pageErrors": [],
+        "nonStandardLayoutShiftSum": 0.35680238410101994,
+        "largestRequests": [
+          {
+            "url": "https://psionic7.github.io/query-data/month-41465-202510-9a73d0747942.json",
+            "status": 200,
+            "encodedBytes": 22315,
+            "decodedDataBytes": 255479,
+            "encoding": "gzip",
+            "cacheControl": "max-age=600"
+          },
+          {
+            "url": "https://psionic7.github.io/query-data/month-41465-202604-a702877e1c7f.json",
+            "status": 200,
+            "encodedBytes": 19211,
+            "decodedDataBytes": 209511,
+            "encoding": "gzip",
+            "cacheControl": "max-age=600"
+          },
+          {
+            "url": "https://psionic7.github.io/query-data/month-41465-202605-806ef453cf23.json",
+            "status": 200,
+            "encodedBytes": 18911,
+            "decodedDataBytes": 209159,
+            "encoding": "gzip",
+            "cacheControl": "max-age=600"
+          },
+          {
+            "url": "https://psionic7.github.io/query-data/month-41465-202601-ac2c61eec2fd.json",
+            "status": 200,
+            "encodedBytes": 18014,
+            "decodedDataBytes": 193016,
+            "encoding": "gzip",
+            "cacheControl": "max-age=600"
+          },
+          {
+            "url": "https://psionic7.github.io/query-data/month-41465-202602-a0fcf956b6ff.json",
+            "status": 200,
+            "encodedBytes": 17312,
+            "decodedDataBytes": 189421,
+            "encoding": "gzip",
+            "cacheControl": "max-age=600"
+          }
+        ]
+      },
+      {
+        "name": "desktop_initial_cold_2",
+        "mobile": false,
+        "readyMs": 997,
+        "settledMs": 2042,
+        "requestCount": 28,
+        "transferBytes": 405615,
+        "decodedDataBytes": 1202033,
+        "cacheHits": 2,
+        "unfinished": 0,
+        "failed": [],
+        "byCategory": {
+          "document": {
+            "requests": 1,
+            "transferBytes": 965,
+            "decodedDataBytes": 1011
+          },
+          "javascript": {
+            "requests": 8,
+            "transferBytes": 102975,
+            "decodedDataBytes": 309000
+          },
+          "styles": {
+            "requests": 5,
+            "transferBytes": 21150,
+            "decodedDataBytes": 96302
+          },
+          "fonts": {
+            "requests": 10,
+            "transferBytes": 245903,
+            "decodedDataBytes": 530084
+          },
+          "manifest_or_legacy_data": {
+            "requests": 1,
+            "transferBytes": 34182,
+            "decodedDataBytes": 264433
+          },
+          "other": {
+            "requests": 3,
+            "transferBytes": 440,
+            "decodedDataBytes": 1203
+          }
+        },
+        "heapUsedBytes": 4091592,
+        "url": "https://psionic7.github.io/?tab=apartments&apt=&period=week&week=2026-10-12&filters=1&min=&max=&bands=&cancelled=1&unit=m2",
+        "title": "아파트별 실거래가 · 집의 기록",
+        "fcpMs": 808,
+        "lcpMs": 896,
+        "nav": {
+          "ttfbMs": 203.89999999850988,
+          "domInteractiveMs": 214.39999999850988,
+          "domContentLoadedMs": 747.2999999970198,
+          "loadMs": 747.5
+        },
+        "longTaskCount": 0,
+        "longTaskMs": 0,
+        "approxBlockingMs": 0,
+        "maxEventMs": 0,
+        "domElements": 494,
+        "paths": 0,
+        "overflow": false,
+        "tinyButtons": [],
+        "namelessButtons": [],
+        "statusText": [
+          "거래 자료 3개 시군구\n자료 기준일 2026-10-18"
+        ],
+        "htmlDescription": "관심 지역의 아파트 실거래가. 국토교통부 원천 데이터와 지역별 거래 대시보드.",
+        "canonical": null,
+        "pageErrors": [],
+        "nonStandardLayoutShiftSum": 0.07046902314362702,
+        "largestRequests": [
+          {
+            "url": "https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700&display=swap",
+            "status": 200,
+            "encodedBytes": 93192,
+            "decodedDataBytes": 377620,
+            "encoding": "gzip",
+            "cacheControl": "private, max-age=86400, stale-while-revalidate=604800"
+          },
+          {
+            "url": "https://psionic7.github.io/assets/styles-Dzt_ISxH.js",
+            "status": 200,
+            "encodedBytes": 67669,
+            "decodedDataBytes": 214662,
+            "encoding": "gzip",
+            "cacheControl": "max-age=600"
+          },
+          {
+            "url": "https://psionic7.github.io/data/manifest.json?v=89757d928801281f",
+            "status": 200,
+            "encodedBytes": 34182,
+            "decodedDataBytes": 264433,
+            "encoding": "gzip",
+            "cacheControl": "max-age=600"
+          },
+          {
+            "url": "https://fonts.gstatic.com/s/notosanskr/v40/PbykFmXiEBPT4ITbgNA5CgmG0X7t.woff2",
+            "status": 200,
+            "encodedBytes": 25909,
+            "decodedDataBytes": 25880,
+            "encoding": "",
+            "cacheControl": "public, max-age=31536000"
+          },
+          {
+            "url": "https://fonts.gstatic.com/s/notosanskr/v40/PbykFmXiEBPT4ITbgNA5Cgm20xz64px_1hVWr0wuPNGmlQNMEfD4.119.woff2",
+            "status": 200,
+            "encodedBytes": 16597,
+            "decodedDataBytes": 16568,
+            "encoding": "",
+            "cacheControl": "public, max-age=31536000"
+          }
+        ]
+      },
+      {
+        "name": "desktop_initial_cold_3",
+        "mobile": false,
+        "readyMs": 956,
+        "settledMs": 1859,
+        "requestCount": 28,
+        "transferBytes": 405422,
+        "decodedDataBytes": 1202033,
+        "cacheHits": 2,
+        "unfinished": 0,
+        "failed": [],
+        "byCategory": {
+          "document": {
+            "requests": 1,
+            "transferBytes": 966,
+            "decodedDataBytes": 1011
+          },
+          "javascript": {
+            "requests": 8,
+            "transferBytes": 103169,
+            "decodedDataBytes": 309000
+          },
+          "styles": {
+            "requests": 5,
+            "transferBytes": 20760,
+            "decodedDataBytes": 96302
+          },
+          "fonts": {
+            "requests": 10,
+            "transferBytes": 245903,
+            "decodedDataBytes": 530084
+          },
+          "manifest_or_legacy_data": {
+            "requests": 1,
+            "transferBytes": 34007,
+            "decodedDataBytes": 264433
+          },
+          "other": {
+            "requests": 3,
+            "transferBytes": 617,
+            "decodedDataBytes": 1203
+          }
+        },
+        "heapUsedBytes": 4224480,
+        "url": "https://psionic7.github.io/?tab=apartments&apt=&period=week&week=2026-10-12&filters=1&min=&max=&bands=&cancelled=1&unit=m2",
+        "title": "아파트별 실거래가 · 집의 기록",
+        "fcpMs": 796,
+        "lcpMs": 940,
+        "nav": {
+          "ttfbMs": 126.10000000149012,
+          "domInteractiveMs": 136.5,
+          "domContentLoadedMs": 740.1999999955297,
+          "loadMs": 740.5
+        },
+        "longTaskCount": 0,
+        "longTaskMs": 0,
+        "approxBlockingMs": 0,
+        "maxEventMs": 0,
+        "domElements": 494,
+        "paths": 0,
+        "overflow": false,
+        "tinyButtons": [],
+        "namelessButtons": [],
+        "statusText": [
+          "거래 자료 3개 시군구\n자료 기준일 2026-10-18"
+        ],
+        "htmlDescription": "관심 지역의 아파트 실거래가. 국토교통부 원천 데이터와 지역별 거래 대시보드.",
+        "canonical": null,
+        "pageErrors": [],
+        "nonStandardLayoutShiftSum": 0.07035191435637297,
+        "largestRequests": [
+          {
+            "url": "https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700&display=swap",
+            "status": 200,
+            "encodedBytes": 93192,
+            "decodedDataBytes": 377620,
+            "encoding": "gzip",
+            "cacheControl": "private, max-age=86400, stale-while-revalidate=604800"
+          },
+          {
+            "url": "https://psionic7.github.io/assets/styles-Dzt_ISxH.js",
+            "status": 200,
+            "encodedBytes": 67631,
+            "decodedDataBytes": 214662,
+            "encoding": "gzip",
+            "cacheControl": "max-age=600"
+          },
+          {
+            "url": "https://psionic7.github.io/data/manifest.json?v=89757d928801281f",
+            "status": 200,
+            "encodedBytes": 34007,
+            "decodedDataBytes": 264433,
+            "encoding": "gzip",
+            "cacheControl": "max-age=600"
+          },
+          {
+            "url": "https://fonts.gstatic.com/s/notosanskr/v40/PbykFmXiEBPT4ITbgNA5CgmG0X7t.woff2",
+            "status": 200,
+            "encodedBytes": 25909,
+            "decodedDataBytes": 25880,
+            "encoding": "",
+            "cacheControl": "public, max-age=31536000"
+          },
+          {
+            "url": "https://fonts.gstatic.com/s/notosanskr/v40/PbykFmXiEBPT4ITbgNA5Cgm20xz64px_1hVWr0wuPNGmlQNMEfD4.119.woff2",
+            "status": 200,
+            "encodedBytes": 16597,
+            "decodedDataBytes": 16568,
+            "encoding": "",
+            "cacheControl": "public, max-age=31536000"
+          }
+        ]
+      },
+      {
+        "name": "desktop_dong_month_cold",
+        "mobile": false,
+        "readyMs": 1491,
+        "settledMs": 2208,
+        "requestCount": 29,
+        "transferBytes": 481866,
+        "decodedDataBytes": 1505876,
+        "cacheHits": 2,
+        "unfinished": 0,
+        "failed": [],
+        "byCategory": {
+          "document": {
+            "requests": 1,
+            "transferBytes": 967,
+            "decodedDataBytes": 1011
+          },
+          "javascript": {
+            "requests": 7,
+            "transferBytes": 101162,
+            "decodedDataBytes": 304176
+          },
+          "styles": {
+            "requests": 3,
+            "transferBytes": 19711,
+            "decodedDataBytes": 94578
+          },
+          "fonts": {
+            "requests": 12,
+            "transferBytes": 290397,
+            "decodedDataBytes": 574520
+          },
+          "manifest_or_legacy_data": {
+            "requests": 1,
+            "transferBytes": 34006,
+            "decodedDataBytes": 264433
+          },
+          "other": {
+            "requests": 3,
+            "transferBytes": 618,
+            "decodedDataBytes": 1203
+          },
+          "monthly_query_data": {
+            "requests": 2,
+            "transferBytes": 35005,
+            "decodedDataBytes": 265955
+          }
+        },
+        "heapUsedBytes": 4942080,
+        "url": "https://psionic7.github.io/?tab=weekly&dong=dong_41465101&period=month&month=2026-09&filters=1&min=&max=&bands=&cancelled=1&unit=m2",
+        "title": "동 별 실거래가 · 집의 기록",
+        "fcpMs": 768,
+        "lcpMs": 912,
+        "nav": {
+          "ttfbMs": 118.20000000298023,
+          "domInteractiveMs": 129.39999999850988,
+          "domContentLoadedMs": 718.7000000029802,
+          "loadMs": 718.8000000044703
+        },
+        "longTaskCount": 0,
+        "longTaskMs": 0,
+        "approxBlockingMs": 0,
+        "maxEventMs": 0,
+        "domElements": 1109,
+        "paths": 0,
+        "overflow": false,
+        "tinyButtons": [],
+        "namelessButtons": [],
+        "statusText": [
+          "거래 자료 3개 시군구\n자료 기준일 2026-10-18"
+        ],
+        "htmlDescription": "관심 지역의 아파트 실거래가. 국토교통부 원천 데이터와 지역별 거래 대시보드.",
+        "canonical": null,
+        "pageErrors": [],
+        "nonStandardLayoutShiftSum": 0.1085800471402392,
+        "largestRequests": [
+          {
+            "url": "https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700&display=swap",
+            "status": 200,
+            "encodedBytes": 93192,
+            "decodedDataBytes": 377620,
+            "encoding": "gzip",
+            "cacheControl": "private, max-age=86400, stale-while-revalidate=604800"
+          },
+          {
+            "url": "https://psionic7.github.io/assets/styles-Dzt_ISxH.js",
+            "status": 200,
+            "encodedBytes": 67632,
+            "decodedDataBytes": 214662,
+            "encoding": "gzip",
+            "cacheControl": "max-age=600"
+          },
+          {
+            "url": "https://psionic7.github.io/data/manifest.json?v=89757d928801281f",
+            "status": 200,
+            "encodedBytes": 34006,
+            "decodedDataBytes": 264433,
+            "encoding": "gzip",
+            "cacheControl": "max-age=600"
+          },
+          {
+            "url": "https://psionic7.github.io/query-data/catalog-41465-c60a750c2f84.json",
+            "status": 200,
+            "encodedBytes": 25993,
+            "decodedDataBytes": 178140,
+            "encoding": "gzip",
+            "cacheControl": "max-age=600"
+          },
+          {
+            "url": "https://fonts.gstatic.com/s/notosanskr/v40/PbykFmXiEBPT4ITbgNA5CgmG0X7t.woff2",
+            "status": 200,
+            "encodedBytes": 25909,
+            "decodedDataBytes": 25880,
+            "encoding": "",
+            "cacheControl": "public, max-age=31536000"
+          }
+        ]
+      },
+      {
+        "name": "desktop_three_districts_cold",
+        "mobile": false,
+        "readyMs": 2685,
+        "settledMs": 3315,
+        "requestCount": 41,
+        "transferBytes": 659649,
+        "decodedDataBytes": 2885140,
+        "cacheHits": 2,
+        "unfinished": 0,
+        "failed": [],
+        "byCategory": {
+          "document": {
+            "requests": 1,
+            "transferBytes": 967,
+            "decodedDataBytes": 1011
+          },
+          "javascript": {
+            "requests": 7,
+            "transferBytes": 101215,
+            "decodedDataBytes": 304176
+          },
+          "styles": {
+            "requests": 3,
+            "transferBytes": 19687,
+            "decodedDataBytes": 94578
+          },
+          "fonts": {
+            "requests": 14,
+            "transferBytes": 333980,
+            "decodedDataBytes": 618044
+          },
+          "manifest_or_legacy_data": {
+            "requests": 1,
+            "transferBytes": 34006,
+            "decodedDataBytes": 264433
+          },
+          "other": {
+            "requests": 3,
+            "transferBytes": 618,
+            "decodedDataBytes": 1203
+          },
+          "monthly_query_data": {
+            "requests": 12,
+            "transferBytes": 169176,
+            "decodedDataBytes": 1601695
+          }
+        },
+        "heapUsedBytes": 7127264,
+        "url": "https://psionic7.github.io/?tab=weekly&dong=dong_41465101&dong=dong_41135101&dong=dong_41117102&period=custom&from=2026-07-01&to=2026-09-30&filters=1&min=&max=&bands=&cancelled=1&unit=m2",
+        "title": "동 별 실거래가 · 집의 기록",
+        "fcpMs": 1816,
+        "lcpMs": 1924,
+        "nav": {
+          "ttfbMs": 139.89999999850988,
+          "domInteractiveMs": 150.39999999850988,
+          "domContentLoadedMs": 1749.8999999985099,
+          "loadMs": 1756.6000000014901
+        },
+        "longTaskCount": 1,
+        "longTaskMs": 54,
+        "approxBlockingMs": 4,
+        "maxEventMs": 0,
+        "domElements": 1912,
+        "paths": 0,
+        "overflow": false,
+        "tinyButtons": [],
+        "namelessButtons": [],
+        "statusText": [
+          "거래 자료 3개 시군구\n자료 기준일 2026-10-18"
+        ],
+        "htmlDescription": "관심 지역의 아파트 실거래가. 국토교통부 원천 데이터와 지역별 거래 대시보드.",
+        "canonical": null,
+        "pageErrors": [],
+        "nonStandardLayoutShiftSum": 0.30023167802975503,
+        "largestRequests": [
+          {
+            "url": "https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700&display=swap",
+            "status": 200,
+            "encodedBytes": 93183,
+            "decodedDataBytes": 377620,
+            "encoding": "gzip",
+            "cacheControl": "private, max-age=86400, stale-while-revalidate=604800"
+          },
+          {
+            "url": "https://psionic7.github.io/assets/styles-Dzt_ISxH.js",
+            "status": 200,
+            "encodedBytes": 67857,
+            "decodedDataBytes": 214662,
+            "encoding": "gzip",
+            "cacheControl": "max-age=600"
+          },
+          {
+            "url": "https://psionic7.github.io/data/manifest.json?v=89757d928801281f",
+            "status": 200,
+            "encodedBytes": 34006,
+            "decodedDataBytes": 264433,
+            "encoding": "gzip",
+            "cacheControl": "max-age=600"
+          },
+          {
+            "url": "https://fonts.gstatic.com/s/notosanskr/v40/PbykFmXiEBPT4ITbgNA5Cgm20xz64px_1hVWr0wuPNGmlQNMEfD4.101.woff2",
+            "status": 200,
+            "encodedBytes": 26093,
+            "decodedDataBytes": 26060,
+            "encoding": "",
+            "cacheControl": "public, max-age=31536000"
+          },
+          {
+            "url": "https://psionic7.github.io/query-data/catalog-41465-c60a750c2f84.json",
+            "status": 200,
+            "encodedBytes": 25981,
+            "decodedDataBytes": 178140,
+            "encoding": "gzip",
+            "cacheControl": "max-age=600"
+          }
+        ]
+      },
+      {
+        "name": "desktop_apartment_map_cold",
+        "mobile": false,
+        "readyMs": 3072,
+        "settledMs": 4051,
+        "requestCount": 48,
+        "transferBytes": 3512550,
+        "decodedDataBytes": 12835740,
+        "cacheHits": 1,
+        "unfinished": 0,
+        "failed": [],
+        "byCategory": {
+          "document": {
+            "requests": 1,
+            "transferBytes": 966,
+            "decodedDataBytes": 1011
+          },
+          "javascript": {
+            "requests": 9,
+            "transferBytes": 143692,
+            "decodedDataBytes": 447823
+          },
+          "styles": {
+            "requests": 5,
+            "transferBytes": 26450,
+            "decodedDataBytes": 106992
+          },
+          "fonts": {
+            "requests": 15,
+            "transferBytes": 336926,
+            "decodedDataBytes": 620944
+          },
+          "manifest_or_legacy_data": {
+            "requests": 1,
+            "transferBytes": 33983,
+            "decodedDataBytes": 264433
+          },
+          "other": {
+            "requests": 2,
+            "transferBytes": 617,
+            "decodedDataBytes": 802
+          },
+          "apartment_map_data": {
+            "requests": 3,
+            "transferBytes": 2574817,
+            "decodedDataBytes": 11002409
+          },
+          "map_tiles": {
+            "requests": 12,
+            "transferBytes": 395099,
+            "decodedDataBytes": 391326
+          }
+        },
+        "heapUsedBytes": 76794636,
+        "url": "https://psionic7.github.io/?tab=map",
+        "title": "아파트 지도 · 집의 기록",
+        "fcpMs": 768,
+        "lcpMs": 3516,
+        "nav": {
+          "ttfbMs": 124.89999999850988,
+          "domInteractiveMs": 135.09999999403954,
+          "domContentLoadedMs": 713.8999999985099,
+          "loadMs": 714.0999999940395
+        },
+        "longTaskCount": 4,
+        "longTaskMs": 798,
+        "approxBlockingMs": 598,
+        "maxEventMs": 0,
+        "domElements": 640,
+        "paths": 3,
+        "overflow": false,
+        "tinyButtons": [],
+        "namelessButtons": [],
+        "statusText": [
+          "거래 자료 3개 시군구\n자료 기준일 2026-10-18"
+        ],
+        "htmlDescription": "관심 지역의 아파트 실거래가. 국토교통부 원천 데이터와 지역별 거래 대시보드.",
+        "canonical": null,
+        "pageErrors": [],
+        "nonStandardLayoutShiftSum": 0.0844601444724754,
+        "largestRequests": [
+          {
+            "url": "https://psionic7.github.io/apartment-map/boundaries-c2c39362484c.geojson",
+            "status": 200,
+            "encodedBytes": 2525282,
+            "decodedDataBytes": 10442539,
+            "encoding": "gzip",
+            "cacheControl": "max-age=600"
+          },
+          {
+            "url": "https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700&display=swap",
+            "status": 200,
+            "encodedBytes": 93192,
+            "decodedDataBytes": 377620,
+            "encoding": "gzip",
+            "cacheControl": "private, max-age=86400, stale-while-revalidate=604800"
+          },
+          {
+            "url": "https://psionic7.github.io/assets/styles-Dzt_ISxH.js",
+            "status": 200,
+            "encodedBytes": 67632,
+            "decodedDataBytes": 214662,
+            "encoding": "gzip",
+            "cacheControl": "max-age=600"
+          },
+          {
+            "url": "https://psionic7.github.io/apartment-map/apartments-fc2e4677a857.json",
+            "status": 200,
+            "encodedBytes": 47052,
+            "decodedDataBytes": 548637,
+            "encoding": "gzip",
+            "cacheControl": "max-age=600"
+          },
+          {
+            "url": "https://psionic7.github.io/assets/leaflet-BgoTUwP0.js",
+            "status": 200,
+            "encodedBytes": 43765,
+            "decodedDataBytes": 148728,
+            "encoding": "gzip",
+            "cacheControl": "max-age=600"
+          }
+        ]
+      },
+      {
+        "name": "desktop_region_map_cold",
+        "mobile": false,
+        "readyMs": 2430,
+        "settledMs": 3421,
+        "requestCount": 52,
+        "transferBytes": 1360384,
+        "decodedDataBytes": 3676625,
+        "cacheHits": 2,
+        "unfinished": 0,
+        "failed": [],
+        "byCategory": {
+          "document": {
+            "requests": 1,
+            "transferBytes": 966,
+            "decodedDataBytes": 1011
+          },
+          "javascript": {
+            "requests": 8,
+            "transferBytes": 141713,
+            "decodedDataBytes": 440929
+          },
+          "styles": {
+            "requests": 5,
+            "transferBytes": 25970,
+            "decodedDataBytes": 105068
+          },
+          "fonts": {
+            "requests": 12,
+            "transferBytes": 281337,
+            "decodedDataBytes": 565460
+          },
+          "manifest_or_legacy_data": {
+            "requests": 1,
+            "transferBytes": 34182,
+            "decodedDataBytes": 264433
+          },
+          "other": {
+            "requests": 5,
+            "transferBytes": 460280,
+            "decodedDataBytes": 1889712
+          },
+          "map_tiles": {
+            "requests": 20,
+            "transferBytes": 415936,
+            "decodedDataBytes": 410012
+          }
+        },
+        "heapUsedBytes": 23208352,
+        "url": "https://psionic7.github.io/?tab=regions",
+        "title": "지역 지도 · 집의 기록",
+        "fcpMs": 1360,
+        "lcpMs": 2860,
+        "nav": {
+          "ttfbMs": 688.7999999970198,
+          "domInteractiveMs": 699.2999999970198,
+          "domContentLoadedMs": 1317.1000000014901,
+          "loadMs": 1317.2999999970198
+        },
+        "longTaskCount": 1,
+        "longTaskMs": 200,
+        "approxBlockingMs": 150,
+        "maxEventMs": 0,
+        "domElements": 1811,
+        "paths": 1289,
+        "overflow": false,
+        "tinyButtons": [],
+        "namelessButtons": [],
+        "statusText": [
+          "거래 자료 3개 시군구\n자료 기준일 2026-10-18"
+        ],
+        "htmlDescription": "관심 지역의 아파트 실거래가. 국토교통부 원천 데이터와 지역별 거래 대시보드.",
+        "canonical": null,
+        "pageErrors": [],
+        "nonStandardLayoutShiftSum": 0.08009055486985195,
+        "largestRequests": [
+          {
+            "url": "https://psionic7.github.io/assets/dong_boundaries-uC1Cd6Cr.geojson",
+            "status": 200,
+            "encodedBytes": 316960,
+            "decodedDataBytes": 1417393,
+            "encoding": "gzip",
+            "cacheControl": "max-age=600"
+          },
+          {
+            "url": "https://psionic7.github.io/assets/admin_boundaries-GpDaMMlg.json",
+            "status": 200,
+            "encodedBytes": 142878,
+            "decodedDataBytes": 471491,
+            "encoding": "gzip",
+            "cacheControl": "max-age=600"
+          },
+          {
+            "url": "https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700&display=swap",
+            "status": 200,
+            "encodedBytes": 93192,
+            "decodedDataBytes": 377620,
+            "encoding": "gzip",
+            "cacheControl": "private, max-age=86400, stale-while-revalidate=604800"
+          },
+          {
+            "url": "https://psionic7.github.io/assets/styles-Dzt_ISxH.js",
+            "status": 200,
+            "encodedBytes": 67631,
+            "decodedDataBytes": 214662,
+            "encoding": "gzip",
+            "cacheControl": "max-age=600"
+          },
+          {
+            "url": "https://tile.openstreetmap.org/8/218/99.png",
+            "status": 200,
+            "encodedBytes": 52485,
+            "decodedDataBytes": 52245,
+            "encoding": "",
+            "cacheControl": "max-age=525045, stale-while-revalidate=604800, stale-if-error=604800"
+          }
+        ]
+      },
+      {
+        "name": "desktop_about_cold",
+        "mobile": false,
+        "readyMs": 2521,
+        "settledMs": 3287,
+        "requestCount": 23,
+        "transferBytes": 444446,
+        "decodedDataBytes": 1212256,
+        "cacheHits": 1,
+        "unfinished": 0,
+        "failed": [],
+        "byCategory": {
+          "document": {
+            "requests": 1,
+            "transferBytes": 967,
+            "decodedDataBytes": 1011
+          },
+          "javascript": {
+            "requests": 4,
+            "transferBytes": 90243,
+            "decodedDataBytes": 274838
+          },
+          "styles": {
+            "requests": 2,
+            "transferBytes": 17552,
+            "decodedDataBytes": 86012
+          },
+          "fonts": {
+            "requests": 13,
+            "transferBytes": 301059,
+            "decodedDataBytes": 585160
+          },
+          "manifest_or_legacy_data": {
+            "requests": 1,
+            "transferBytes": 34184,
+            "decodedDataBytes": 264433
+          },
+          "other": {
+            "requests": 2,
+            "transferBytes": 441,
+            "decodedDataBytes": 802
+          }
+        },
+        "heapUsedBytes": 3447372,
+        "url": "https://psionic7.github.io/?tab=about",
+        "title": "데이터 안내 · 집의 기록",
+        "fcpMs": 2096,
+        "lcpMs": 2512,
+        "nav": {
+          "ttfbMs": 1316.5,
+          "domInteractiveMs": 1326.8999999985099,
+          "domContentLoadedMs": 2052.5,
+          "loadMs": 2052.60000000149
+        },
+        "longTaskCount": 0,
+        "longTaskMs": 0,
+        "approxBlockingMs": 0,
+        "maxEventMs": 0,
+        "domElements": 215,
+        "paths": 0,
+        "overflow": false,
+        "tinyButtons": [],
+        "namelessButtons": [],
+        "statusText": [
+          "거래 자료 3개 시군구\n자료 기준일 2026-10-18"
+        ],
+        "htmlDescription": "관심 지역의 아파트 실거래가. 국토교통부 원천 데이터와 지역별 거래 대시보드.",
+        "canonical": null,
+        "pageErrors": [],
+        "nonStandardLayoutShiftSum": 0.06342358317810812,
+        "largestRequests": [
+          {
+            "url": "https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700&display=swap",
+            "status": 200,
+            "encodedBytes": 93183,
+            "decodedDataBytes": 377620,
+            "encoding": "gzip",
+            "cacheControl": "private, max-age=86400, stale-while-revalidate=604800"
+          },
+          {
+            "url": "https://psionic7.github.io/assets/styles-Dzt_ISxH.js",
+            "status": 200,
+            "encodedBytes": 67649,
+            "decodedDataBytes": 214662,
+            "encoding": "gzip",
+            "cacheControl": "max-age=600"
+          },
+          {
+            "url": "https://psionic7.github.io/data/manifest.json?v=89757d928801281f",
+            "status": 200,
+            "encodedBytes": 34184,
+            "decodedDataBytes": 264433,
+            "encoding": "gzip",
+            "cacheControl": "max-age=600"
+          },
+          {
+            "url": "https://fonts.gstatic.com/s/notosanskr/v40/PbykFmXiEBPT4ITbgNA5CgmG0X7t.woff2",
+            "status": 200,
+            "encodedBytes": 25909,
+            "decodedDataBytes": 25880,
+            "encoding": "",
+            "cacheControl": "public, max-age=31536000"
+          },
+          {
+            "url": "https://fonts.gstatic.com/s/notosanskr/v40/PbykFmXiEBPT4ITbgNA5Cgm20xz64px_1hVWr0wuPNGmlQNMEfD4.108.woff2",
+            "status": 200,
+            "encodedBytes": 19729,
+            "decodedDataBytes": 19700,
+            "encoding": "",
+            "cacheControl": "public, max-age=31536000"
+          }
+        ]
+      },
+      {
+        "name": "desktop_favorite_dashboard_cold",
+        "mobile": false,
+        "readyMs": 2480,
+        "settledMs": 2982,
+        "requestCount": 39,
+        "transferBytes": 582986,
+        "decodedDataBytes": 2354994,
+        "cacheHits": 0,
+        "unfinished": 0,
+        "failed": [],
+        "byCategory": {
+          "document": {
+            "requests": 1,
+            "transferBytes": 966,
+            "decodedDataBytes": 1011
+          },
+          "javascript": {
+            "requests": 7,
+            "transferBytes": 96087,
+            "decodedDataBytes": 289205
+          },
+          "styles": {
+            "requests": 3,
+            "transferBytes": 19740,
+            "decodedDataBytes": 94188
+          },
+          "fonts": {
+            "requests": 13,
+            "transferBytes": 300550,
+            "decodedDataBytes": 584640
+          },
+          "manifest_or_legacy_data": {
+            "requests": 1,
+            "transferBytes": 34005,
+            "decodedDataBytes": 264433
+          },
+          "other": {
+            "requests": 2,
+            "transferBytes": 461,
+            "decodedDataBytes": 802
+          },
+          "monthly_query_data": {
+            "requests": 12,
+            "transferBytes": 131177,
+            "decodedDataBytes": 1120715
+          }
+        },
+        "heapUsedBytes": 5702388,
+        "url": "https://psionic7.github.io/?tab=dashboard&days=30",
+        "title": "대시보드 · 집의 기록",
+        "fcpMs": 1764,
+        "lcpMs": 1888,
+        "nav": {
+          "ttfbMs": 765.1000000014901,
+          "domInteractiveMs": 778.2999999970198,
+          "domContentLoadedMs": 1705.7999999970198,
+          "loadMs": 1713
+        },
+        "longTaskCount": 1,
+        "longTaskMs": 63,
+        "approxBlockingMs": 13,
+        "maxEventMs": 0,
+        "domElements": 509,
+        "paths": 0,
+        "overflow": false,
+        "tinyButtons": [],
+        "namelessButtons": [],
+        "statusText": [
+          "거래 자료 3개 시군구\n자료 기준일 2026-10-18"
+        ],
+        "htmlDescription": "관심 지역의 아파트 실거래가. 국토교통부 원천 데이터와 지역별 거래 대시보드.",
+        "canonical": null,
+        "pageErrors": [],
+        "nonStandardLayoutShiftSum": 0.21386216296537425,
+        "largestRequests": [
+          {
+            "url": "https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700&display=swap",
+            "status": 200,
+            "encodedBytes": 93192,
+            "decodedDataBytes": 377620,
+            "encoding": "gzip",
+            "cacheControl": "private, max-age=86400, stale-while-revalidate=604800"
+          },
+          {
+            "url": "https://psionic7.github.io/assets/styles-Dzt_ISxH.js",
+            "status": 200,
+            "encodedBytes": 67842,
+            "decodedDataBytes": 214662,
+            "encoding": "gzip",
+            "cacheControl": "max-age=600"
+          },
+          {
+            "url": "https://psionic7.github.io/data/manifest.json?v=89757d928801281f",
+            "status": 200,
+            "encodedBytes": 34005,
+            "decodedDataBytes": 264433,
+            "encoding": "gzip",
+            "cacheControl": "max-age=600"
+          },
+          {
+            "url": "https://psionic7.github.io/query-data/catalog-41465-c60a750c2f84.json",
+            "status": 200,
+            "encodedBytes": 26109,
+            "decodedDataBytes": 178140,
+            "encoding": "gzip",
+            "cacheControl": "max-age=600"
+          },
+          {
+            "url": "https://fonts.gstatic.com/s/notosanskr/v40/PbykFmXiEBPT4ITbgNA5CgmG0X7t.woff2",
+            "status": 200,
+            "encodedBytes": 25909,
+            "decodedDataBytes": 25880,
+            "encoding": "",
+            "cacheControl": "public, max-age=31536000"
+          }
+        ]
+      },
+      {
+        "name": "mobile_initial_cold",
+        "mobile": true,
+        "readyMs": 2896,
+        "settledMs": 3589,
+        "requestCount": 27,
+        "transferBytes": 389238,
+        "decodedDataBytes": 1185653,
+        "cacheHits": 2,
+        "unfinished": 0,
+        "failed": [],
+        "byCategory": {
+          "document": {
+            "requests": 1,
+            "transferBytes": 966,
+            "decodedDataBytes": 1011
+          },
+          "javascript": {
+            "requests": 8,
+            "transferBytes": 103206,
+            "decodedDataBytes": 309000
+          },
+          "styles": {
+            "requests": 5,
+            "transferBytes": 20965,
+            "decodedDataBytes": 96302
+          },
+          "fonts": {
+            "requests": 9,
+            "transferBytes": 229489,
+            "decodedDataBytes": 513704
+          },
+          "manifest_or_legacy_data": {
+            "requests": 1,
+            "transferBytes": 34150,
+            "decodedDataBytes": 264433
+          },
+          "other": {
+            "requests": 3,
+            "transferBytes": 462,
+            "decodedDataBytes": 1203
+          }
+        },
+        "heapUsedBytes": 4252196,
+        "url": "https://psionic7.github.io/?tab=apartments&apt=&period=week&week=2026-10-12&filters=1&min=&max=&bands=&cancelled=1&unit=m2",
+        "title": "아파트별 실거래가 · 집의 기록",
+        "fcpMs": 1828,
+        "lcpMs": 2980,
+        "nav": {
+          "ttfbMs": 118.79999999701977,
+          "domInteractiveMs": 318.20000000298023,
+          "domContentLoadedMs": 1605.8999999985099,
+          "loadMs": 1607
+        },
+        "longTaskCount": 2,
+        "longTaskMs": 143,
+        "approxBlockingMs": 43,
+        "maxEventMs": 0,
+        "domElements": 494,
+        "paths": 0,
+        "overflow": false,
+        "tinyButtons": [],
+        "namelessButtons": [],
+        "statusText": [
+          "거래 자료 3개 시군구\n자료 기준일 2026-10-18"
+        ],
+        "htmlDescription": "관심 지역의 아파트 실거래가. 국토교통부 원천 데이터와 지역별 거래 대시보드.",
+        "canonical": null,
+        "pageErrors": [],
+        "nonStandardLayoutShiftSum": 0.12151115528697132,
+        "largestRequests": [
+          {
+            "url": "https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700&display=swap",
+            "status": 200,
+            "encodedBytes": 93185,
+            "decodedDataBytes": 377620,
+            "encoding": "gzip",
+            "cacheControl": "private, max-age=86400, stale-while-revalidate=604800"
+          },
+          {
+            "url": "https://psionic7.github.io/assets/styles-Dzt_ISxH.js",
+            "status": 200,
+            "encodedBytes": 67631,
+            "decodedDataBytes": 214662,
+            "encoding": "gzip",
+            "cacheControl": "max-age=600"
+          },
+          {
+            "url": "https://psionic7.github.io/data/manifest.json?v=89757d928801281f",
+            "status": 200,
+            "encodedBytes": 34150,
+            "decodedDataBytes": 264433,
+            "encoding": "gzip",
+            "cacheControl": "max-age=600"
+          },
+          {
+            "url": "https://fonts.gstatic.com/s/notosanskr/v40/PbykFmXiEBPT4ITbgNA5CgmG0X7t.woff2",
+            "status": 200,
+            "encodedBytes": 25909,
+            "decodedDataBytes": 25880,
+            "encoding": "",
+            "cacheControl": "public, max-age=31536000"
+          },
+          {
+            "url": "https://fonts.gstatic.com/s/notosanskr/v40/PbykFmXiEBPT4ITbgNA5Cgm20xz64px_1hVWr0wuPNGmlQNMEfD4.119.woff2",
+            "status": 200,
+            "encodedBytes": 16597,
+            "decodedDataBytes": 16568,
+            "encoding": "",
+            "cacheControl": "public, max-age=31536000"
+          }
+        ]
+      },
+      {
+        "name": "mobile_first_search",
+        "mobile": true,
+        "readyMs": 971,
+        "settledMs": 971,
+        "requestCount": 6,
+        "transferBytes": 49485,
+        "decodedDataBytes": 559870,
+        "cacheHits": 0,
+        "unfinished": 4,
+        "failed": [],
+        "byCategory": {
+          "apartment_map_data": {
+            "requests": 2,
+            "transferBytes": 49485,
+            "decodedDataBytes": 559870
+          },
+          "fonts": {
+            "requests": 4,
+            "transferBytes": 0,
+            "decodedDataBytes": 0
+          }
+        },
+        "heapUsedBytes": 5159288,
+        "url": "https://psionic7.github.io/?tab=apartments&apt=&period=week&week=2026-10-12&filters=1&min=&max=&bands=&cancelled=1&unit=m2",
+        "title": "아파트별 실거래가 · 집의 기록",
+        "fcpMs": 1828,
+        "lcpMs": 2980,
+        "nav": {
+          "ttfbMs": 118.79999999701977,
+          "domInteractiveMs": 318.20000000298023,
+          "domContentLoadedMs": 1605.8999999985099,
+          "loadMs": 1607
+        },
+        "longTaskCount": 0,
+        "longTaskMs": 0,
+        "approxBlockingMs": 0,
+        "maxEventMs": 48,
+        "domElements": 648,
+        "paths": 0,
+        "overflow": false,
+        "tinyButtons": [],
+        "namelessButtons": [],
+        "statusText": [
+          "거래 자료 3개 시군구\n자료 기준일 2026-10-18"
+        ],
+        "htmlDescription": "관심 지역의 아파트 실거래가. 국토교통부 원천 데이터와 지역별 거래 대시보드.",
+        "canonical": null,
+        "pageErrors": [],
+        "nonStandardLayoutShiftSum": 0.4615585486519002,
+        "largestRequests": [
+          {
+            "url": "https://psionic7.github.io/apartment-map/apartments-fc2e4677a857.json",
+            "status": 200,
+            "encodedBytes": 47016,
+            "decodedDataBytes": 548637,
+            "encoding": "gzip",
+            "cacheControl": "max-age=600"
+          },
+          {
+            "url": "https://fonts.gstatic.com/s/notosanskr/v40/PbykFmXiEBPT4ITbgNA5Cgm20xz64px_1hVWr0wuPNGmlQNMEfD4.102.woff2",
+            "status": 200,
+            "encodedBytes": 26365,
+            "decodedDataBytes": 26336,
+            "encoding": "",
+            "cacheControl": "public, max-age=31536000"
+          },
+          {
+            "url": "https://fonts.gstatic.com/s/notosanskr/v40/PbykFmXiEBPT4ITbgNA5Cgm20xz64px_1hVWr0wuPNGmlQNMEfD4.108.woff2",
+            "status": 200,
+            "encodedBytes": 19729,
+            "decodedDataBytes": 19700,
+            "encoding": "",
+            "cacheControl": "public, max-age=31536000"
+          },
+          {
+            "url": "https://fonts.gstatic.com/s/notosanskr/v40/PbykFmXiEBPT4ITbgNA5Cgm20xz64px_1hVWr0wuPNGmlQNMEfD4.110.woff2",
+            "status": 200,
+            "encodedBytes": 17493,
+            "decodedDataBytes": 17464,
+            "encoding": "",
+            "cacheControl": "public, max-age=31536000"
+          },
+          {
+            "url": "https://fonts.gstatic.com/s/notosanskr/v40/PbykFmXiEBPT4ITbgNA5Cgm20xz64px_1hVWr0wuPNGmlQNMEfD4.113.woff2",
+            "status": 200,
+            "encodedBytes": 16411,
+            "decodedDataBytes": 16380,
+            "encoding": "",
+            "cacheControl": "public, max-age=31536000"
+          }
+        ]
+      },
+      {
+        "name": "mobile_select_apartment",
+        "mobile": true,
+        "readyMs": 886,
+        "settledMs": 887,
+        "requestCount": 3,
+        "transferBytes": 30097,
+        "decodedDataBytes": 208678,
+        "cacheHits": 1,
+        "unfinished": 0,
+        "failed": [],
+        "byCategory": {
+          "monthly_query_data": {
+            "requests": 2,
+            "transferBytes": 30097,
+            "decodedDataBytes": 208277
+          },
+          "other": {
+            "requests": 1,
+            "transferBytes": 0,
+            "decodedDataBytes": 401
+          }
+        },
+        "heapUsedBytes": 7824104,
+        "url": "https://psionic7.github.io/?tab=apartments&region=area_41465&apt=%7B%22region_code%22%3A%2241465%22%2C%22region_name%22%3A%22%EA%B2%BD%EA%B8%B0%EB%8F%84+%EC%9A%A9%EC%9D%B8%EC%8B%9C+%EC%88%98%EC%A7%80%EA%B5%AC%22%2C%22apartment%22%3A%22%EB%8B%A8%EC%A7%80%EB%AA%85+%EB%AF%B8%ED%99%95%EC%9D%B8+%28%ED%92%8D%EB%8D%95%EC%B2%9C%EB%8F%99+949%29%22%2C%22dong%22%3A%22%ED%92%8D%EB%8D%95%EC%B2%9C%EB%8F%99%22%2C%22jibun%22%3A%22949%22%2C%22road_address%22%3A%22%EA%B2%BD%EA%B8%B0%EB%8F%84+%EC%9A%A9%EC%9D%B8%EC%8B%9C+%EC%88%98%EC%A7%80%EA%B5%AC+%EC%8B%A0%EC%88%98%EB%A1%9C+615+%28%ED%92%8D%EB%8D%95%EC%B2%9C%EB%8F%99%29%22%2C%22id%22%3A%22hub%3A11161100268000%22%2C%22key%22%3A%22%5B%5C%22%ED%92%8D%EB%8D%95%EC%B2%9C%EB%8F%99%5C%22%2C%5C%22949%5C%22%2C%5C%22%EB%8B%A8%EC%A7%80%EB%AA%85+%EB%AF%B8%ED%99%95%EC%9D%B8+%28%ED%92%8D%EB%8D%95%EC%B2%9C%EB%8F%99+949%29%5C%22%5D%22%2C%22master_id%22%3A%22hub%3A11161100268000%22%2C%22trade_keys%22%3A%5B%5D%7D&period=week&week=2026-10-12&filters=1&min=&max=&bands=&cancelled=1&unit=m2",
+        "title": "아파트별 실거래가 · 집의 기록",
+        "fcpMs": 1828,
+        "lcpMs": 2980,
+        "nav": {
+          "ttfbMs": 118.79999999701977,
+          "domInteractiveMs": 318.20000000298023,
+          "domContentLoadedMs": 1605.8999999985099,
+          "loadMs": 1607
+        },
+        "longTaskCount": 2,
+        "longTaskMs": 144,
+        "approxBlockingMs": 44,
+        "maxEventMs": 96,
+        "domElements": 1305,
+        "paths": 0,
+        "overflow": false,
+        "tinyButtons": [],
+        "namelessButtons": [],
+        "statusText": [
+          "거래 자료 3개 시군구\n자료 기준일 2026-10-18"
+        ],
+        "htmlDescription": "관심 지역의 아파트 실거래가. 국토교통부 원천 데이터와 지역별 거래 대시보드.",
+        "canonical": null,
+        "pageErrors": [],
+        "nonStandardLayoutShiftSum": 0.47506063220840683,
+        "largestRequests": [
+          {
+            "url": "https://psionic7.github.io/query-data/catalog-41465-c60a750c2f84.json",
+            "status": 200,
+            "encodedBytes": 25981,
+            "decodedDataBytes": 178140,
+            "encoding": "gzip",
+            "cacheControl": "max-age=600"
+          },
+          {
+            "url": "https://psionic7.github.io/query-data/month-41465-202610-96c75d3f838c.json",
+            "status": 200,
+            "encodedBytes": 4116,
+            "decodedDataBytes": 30137,
+            "encoding": "gzip",
+            "cacheControl": "max-age=600"
+          }
+        ]
+      },
+      {
+        "name": "mobile_apartment_map_cold",
+        "mobile": true,
+        "readyMs": 22091,
+        "settledMs": 23475,
+        "requestCount": 39,
+        "transferBytes": 3286745,
+        "decodedDataBytes": 12611988,
+        "cacheHits": 2,
+        "unfinished": 0,
+        "failed": [],
+        "byCategory": {
+          "document": {
+            "requests": 1,
+            "transferBytes": 967,
+            "decodedDataBytes": 1011
+          },
+          "javascript": {
+            "requests": 9,
+            "transferBytes": 143575,
+            "decodedDataBytes": 447823
+          },
+          "styles": {
+            "requests": 5,
+            "transferBytes": 26562,
+            "decodedDataBytes": 106992
+          },
+          "fonts": {
+            "requests": 11,
+            "transferBytes": 263844,
+            "decodedDataBytes": 547996
+          },
+          "manifest_or_legacy_data": {
+            "requests": 1,
+            "transferBytes": 34007,
+            "decodedDataBytes": 264433
+          },
+          "other": {
+            "requests": 3,
+            "transferBytes": 618,
+            "decodedDataBytes": 828
+          },
+          "apartment_map_data": {
+            "requests": 3,
+            "transferBytes": 2574816,
+            "decodedDataBytes": 11002409
+          },
+          "map_tiles": {
+            "requests": 6,
+            "transferBytes": 242356,
+            "decodedDataBytes": 240496
+          }
+        },
+        "heapUsedBytes": 99913980,
+        "url": "https://psionic7.github.io/?tab=map",
+        "title": "아파트 지도 · 집의 기록",
+        "fcpMs": 1884,
+        "lcpMs": 22260,
+        "nav": {
+          "ttfbMs": 116.60000000149012,
+          "domInteractiveMs": 296.79999999701977,
+          "domContentLoadedMs": 1745.2000000029802,
+          "loadMs": 1745.8999999985099
+        },
+        "longTaskCount": 6,
+        "longTaskMs": 4185,
+        "approxBlockingMs": 3885,
+        "maxEventMs": 0,
+        "domElements": 634,
+        "paths": 3,
+        "overflow": false,
+        "tinyButtons": [],
+        "namelessButtons": [],
+        "statusText": [
+          "거래 자료 3개 시군구\n자료 기준일 2026-10-18"
+        ],
+        "htmlDescription": "관심 지역의 아파트 실거래가. 국토교통부 원천 데이터와 지역별 거래 대시보드.",
+        "canonical": null,
+        "pageErrors": [],
+        "nonStandardLayoutShiftSum": 0.16865014420123678,
+        "largestRequests": [
+          {
+            "url": "https://psionic7.github.io/apartment-map/boundaries-c2c39362484c.geojson",
+            "status": 200,
+            "encodedBytes": 2525238,
+            "decodedDataBytes": 10442539,
+            "encoding": "gzip",
+            "cacheControl": "max-age=600"
+          },
+          {
+            "url": "https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700&display=swap",
+            "status": 200,
+            "encodedBytes": 93192,
+            "decodedDataBytes": 377620,
+            "encoding": "gzip",
+            "cacheControl": "private, max-age=86400, stale-while-revalidate=604800"
+          },
+          {
+            "url": "https://psionic7.github.io/assets/styles-Dzt_ISxH.js",
+            "status": 200,
+            "encodedBytes": 67632,
+            "decodedDataBytes": 214662,
+            "encoding": "gzip",
+            "cacheControl": "max-age=600"
+          },
+          {
+            "url": "https://psionic7.github.io/apartment-map/apartments-fc2e4677a857.json",
+            "status": 200,
+            "encodedBytes": 47109,
+            "decodedDataBytes": 548637,
+            "encoding": "gzip",
+            "cacheControl": "max-age=600"
+          },
+          {
+            "url": "https://tile.openstreetmap.org/11/1746/795.png",
+            "status": 200,
+            "encodedBytes": 44564,
+            "decodedDataBytes": 44055,
+            "encoding": "",
+            "cacheControl": "max-age=91805, stale-while-revalidate=604800, stale-if-error=604800"
+          }
+        ]
+      }
+    ]
+  },
+  "supplemental": {
+    "startedAt": "2026-10-17T23:33:50.495Z",
+    "finishedAt": "2026-10-17T23:34:12.755Z",
+    "cases": [
+      {
+        "name": "edge_map_cold",
+        "mobile": false,
+        "readyMs": 4561,
+        "settledMs": 5005,
+        "requestCount": 48,
+        "transferBytes": 3512371,
+        "decodedDataBytes": 12835740,
+        "cacheHits": 1,
+        "unfinished": 0,
+        "failed": [],
+        "byCategory": {
+          "document": {
+            "requests": 1,
+            "transferBytes": 967,
+            "decodedDataBytes": 1011
+          },
+          "javascript": {
+            "requests": 9,
+            "transferBytes": 143654,
+            "decodedDataBytes": 447823
+          },
+          "styles": {
+            "requests": 5,
+            "transferBytes": 26497,
+            "decodedDataBytes": 106992
+          },
+          "fonts": {
+            "requests": 15,
+            "transferBytes": 336919,
+            "decodedDataBytes": 620944
+          },
+          "manifest_or_legacy_data": {
+            "requests": 1,
+            "transferBytes": 34007,
+            "decodedDataBytes": 264433
+          },
+          "other": {
+            "requests": 2,
+            "transferBytes": 617,
+            "decodedDataBytes": 802
+          },
+          "apartment_map_data": {
+            "requests": 3,
+            "transferBytes": 2574803,
+            "decodedDataBytes": 11002409
+          },
+          "map_tiles": {
+            "requests": 12,
+            "transferBytes": 394907,
+            "decodedDataBytes": 391326
+          }
+        },
+        "heapUsedBytes": 77717048,
+        "url": "https://psionic7.github.io/?tab=map",
+        "title": "아파트 지도 · 집의 기록",
+        "fcpMs": 2000,
+        "lcpMs": 4424,
+        "nav": {
+          "ttfbMs": 513.6999999955297,
+          "domInteractiveMs": 524,
+          "domContentLoadedMs": 1279.0999999940395,
+          "loadMs": 1285.8999999985099
+        },
+        "longTaskCount": 4,
+        "longTaskMs": 778,
+        "approxBlockingMs": 578,
+        "maxEventMs": 0,
+        "domElements": 640,
+        "paths": 3,
+        "overflow": false,
+        "tinyButtons": [],
+        "namelessButtons": [],
+        "statusText": [
+          "거래 자료 3개 시군구\n자료 기준일 2026-10-18"
+        ],
+        "htmlDescription": "관심 지역의 아파트 실거래가. 국토교통부 원천 데이터와 지역별 거래 대시보드.",
+        "canonical": null,
+        "pageErrors": [],
+        "nonStandardLayoutShiftSum": 0.08443166915328415,
+        "layoutShiftEntries": [
+          {
+            "time": 2104.0999999940395,
+            "value": 0.0625
+          },
+          {
+            "time": 2408.89999999851,
+            "value": 0.00024304725929542823
+          },
+          {
+            "time": 2564,
+            "value": 0.0004878106011284723
+          },
+          {
+            "time": 3416.2999999970198,
+            "value": 0.021200811292860243
+          }
+        ],
+        "largestRequests": [
+          {
+            "url": "https://psionic7.github.io/apartment-map/boundaries-c2c39362484c.geojson",
+            "status": 200,
+            "encodedBytes": 2525312,
+            "decodedDataBytes": 10442539,
+            "encoding": "gzip",
+            "cacheControl": "max-age=600"
+          },
+          {
+            "url": "https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700&display=swap",
+            "status": 200,
+            "encodedBytes": 93185,
+            "decodedDataBytes": 377620,
+            "encoding": "gzip",
+            "cacheControl": "private, max-age=86400, stale-while-revalidate=604800"
+          },
+          {
+            "url": "https://psionic7.github.io/assets/styles-Dzt_ISxH.js",
+            "status": 200,
+            "encodedBytes": 67641,
+            "decodedDataBytes": 214662,
+            "encoding": "gzip",
+            "cacheControl": "max-age=600"
+          },
+          {
+            "url": "https://psionic7.github.io/apartment-map/apartments-fc2e4677a857.json",
+            "status": 200,
+            "encodedBytes": 47040,
+            "decodedDataBytes": 548637,
+            "encoding": "gzip",
+            "cacheControl": "max-age=600"
+          },
+          {
+            "url": "https://psionic7.github.io/assets/leaflet-BgoTUwP0.js",
+            "status": 200,
+            "encodedBytes": 43708,
+            "decodedDataBytes": 148728,
+            "encoding": "gzip",
+            "cacheControl": "max-age=600"
+          }
+        ]
+      },
+      {
+        "name": "edge_map_zoom14",
+        "mobile": false,
+        "readyMs": 2796,
+        "settledMs": 2796,
+        "requestCount": 13,
+        "transferBytes": 445774,
+        "decodedDataBytes": 440694,
+        "cacheHits": 1,
+        "unfinished": 0,
+        "failed": [],
+        "byCategory": {
+          "other": {
+            "requests": 1,
+            "transferBytes": 0,
+            "decodedDataBytes": 26
+          },
+          "map_tiles": {
+            "requests": 12,
+            "transferBytes": 445774,
+            "decodedDataBytes": 440668
+          }
+        },
+        "heapUsedBytes": 61017512,
+        "url": "https://psionic7.github.io/?tab=map",
+        "title": "아파트 지도 · 집의 기록",
+        "fcpMs": 2000,
+        "lcpMs": 4424,
+        "nav": {
+          "ttfbMs": 513.6999999955297,
+          "domInteractiveMs": 524,
+          "domContentLoadedMs": 1279.0999999940395,
+          "loadMs": 1285.8999999985099
+        },
+        "longTaskCount": 2,
+        "longTaskMs": 566,
+        "approxBlockingMs": 466,
+        "maxEventMs": 512,
+        "domElements": 11394,
+        "paths": 9397,
+        "overflow": false,
+        "tinyButtons": [],
+        "namelessButtons": [],
+        "statusText": [
+          "거래 자료 3개 시군구\n자료 기준일 2026-10-18"
+        ],
+        "htmlDescription": "관심 지역의 아파트 실거래가. 국토교통부 원천 데이터와 지역별 거래 대시보드.",
+        "canonical": null,
+        "pageErrors": [],
+        "nonStandardLayoutShiftSum": 0.08443166915328415,
+        "layoutShiftEntries": [
+          {
+            "time": 2104.0999999940395,
+            "value": 0.0625
+          },
+          {
+            "time": 2408.89999999851,
+            "value": 0.00024304725929542823
+          },
+          {
+            "time": 2564,
+            "value": 0.0004878106011284723
+          },
+          {
+            "time": 3416.2999999970198,
+            "value": 0.021200811292860243
+          }
+        ],
+        "largestRequests": [
+          {
+            "url": "https://tile.openstreetmap.org/14/13972/6360.png",
+            "status": 200,
+            "encodedBytes": 43411,
+            "decodedDataBytes": 42981,
+            "encoding": "",
+            "cacheControl": "max-age=10945, stale-while-revalidate=604800, stale-if-error=604800"
+          },
+          {
+            "url": "https://tile.openstreetmap.org/14/13973/6362.png",
+            "status": 200,
+            "encodedBytes": 43065,
+            "decodedDataBytes": 42631,
+            "encoding": "",
+            "cacheControl": "max-age=14816, stale-while-revalidate=604800, stale-if-error=604800"
+          },
+          {
+            "url": "https://tile.openstreetmap.org/14/13972/6362.png",
+            "status": 200,
+            "encodedBytes": 40729,
+            "decodedDataBytes": 40298,
+            "encoding": "",
+            "cacheControl": "max-age=15179, stale-while-revalidate=604800, stale-if-error=604800"
+          },
+          {
+            "url": "https://tile.openstreetmap.org/14/13972/6361.png",
+            "status": 200,
+            "encodedBytes": 40363,
+            "decodedDataBytes": 39932,
+            "encoding": "",
+            "cacheControl": "max-age=19209, stale-while-revalidate=604800, stale-if-error=604800"
+          },
+          {
+            "url": "https://tile.openstreetmap.org/14/13973/6361.png",
+            "status": 200,
+            "encodedBytes": 39292,
+            "decodedDataBytes": 38921,
+            "encoding": "",
+            "cacheControl": "max-age=14235, stale-while-revalidate=604800, stale-if-error=604800"
+          }
+        ]
+      },
+      {
+        "name": "edge_map_revisit",
+        "mobile": false,
+        "readyMs": 612,
+        "settledMs": 613,
+        "requestCount": 13,
+        "transferBytes": 0,
+        "decodedDataBytes": 391727,
+        "cacheHits": 13,
+        "unfinished": 0,
+        "failed": [],
+        "byCategory": {
+          "map_tiles": {
+            "requests": 12,
+            "transferBytes": 0,
+            "decodedDataBytes": 391326
+          },
+          "other": {
+            "requests": 1,
+            "transferBytes": 0,
+            "decodedDataBytes": 401
+          }
+        },
+        "heapUsedBytes": 95859576,
+        "url": "https://psionic7.github.io/?tab=map",
+        "title": "아파트 지도 · 집의 기록",
+        "fcpMs": 2000,
+        "lcpMs": 4424,
+        "nav": {
+          "ttfbMs": 513.6999999955297,
+          "domInteractiveMs": 524,
+          "domContentLoadedMs": 1279.0999999940395,
+          "loadMs": 1285.8999999985099
+        },
+        "longTaskCount": 3,
+        "longTaskMs": 520,
+        "approxBlockingMs": 370,
+        "maxEventMs": 464,
+        "domElements": 645,
+        "paths": 3,
+        "overflow": false,
+        "tinyButtons": [],
+        "namelessButtons": [],
+        "statusText": [
+          "거래 자료 3개 시군구\n자료 기준일 2026-10-18"
+        ],
+        "htmlDescription": "관심 지역의 아파트 실거래가. 국토교통부 원천 데이터와 지역별 거래 대시보드.",
+        "canonical": null,
+        "pageErrors": [],
+        "nonStandardLayoutShiftSum": 0.08443166915328415,
+        "layoutShiftEntries": [
+          {
+            "time": 2104.0999999940395,
+            "value": 0.0625
+          },
+          {
+            "time": 2408.89999999851,
+            "value": 0.00024304725929542823
+          },
+          {
+            "time": 2564,
+            "value": 0.0004878106011284723
+          },
+          {
+            "time": 3416.2999999970198,
+            "value": 0.021200811292860243
+          }
+        ],
+        "largestRequests": []
+      },
+      {
+        "name": "edge_manifest_error",
+        "mobile": false,
+        "readyMs": 812,
+        "settledMs": 1913,
+        "requestCount": 16,
+        "transferBytes": 306259,
+        "decodedDataBytes": 843522,
+        "cacheHits": 0,
+        "unfinished": 0,
+        "failed": [
+          {
+            "url": "https://psionic7.github.io/data/manifest.json?v=89757d928801281f",
+            "status": 503
+          }
+        ],
+        "byCategory": {
+          "document": {
+            "requests": 1,
+            "transferBytes": 967,
+            "decodedDataBytes": 1011
+          },
+          "javascript": {
+            "requests": 4,
+            "transferBytes": 90225,
+            "decodedDataBytes": 274838
+          },
+          "styles": {
+            "requests": 2,
+            "transferBytes": 17552,
+            "decodedDataBytes": 86012
+          },
+          "fonts": {
+            "requests": 7,
+            "transferBytes": 196986,
+            "decodedDataBytes": 481248
+          },
+          "manifest_or_legacy_data": {
+            "requests": 1,
+            "transferBytes": 64,
+            "decodedDataBytes": 12
+          },
+          "other": {
+            "requests": 1,
+            "transferBytes": 465,
+            "decodedDataBytes": 401
+          }
+        },
+        "heapUsedBytes": 2226416,
+        "url": "https://psionic7.github.io/",
+        "title": "집의 기록 · 아파트 실거래가",
+        "fcpMs": 796,
+        "lcpMs": 796,
+        "nav": {
+          "ttfbMs": 136.39999999850988,
+          "domInteractiveMs": 146.5,
+          "domContentLoadedMs": 728.6000000014901,
+          "loadMs": 728.7000000029802
+        },
+        "longTaskCount": 0,
+        "longTaskMs": 0,
+        "approxBlockingMs": 0,
+        "maxEventMs": 0,
+        "domElements": 20,
+        "paths": 0,
+        "overflow": false,
+        "tinyButtons": [],
+        "namelessButtons": [],
+        "statusText": [
+          "데이터를 불러오지 못했습니다 (503)."
+        ],
+        "htmlDescription": "관심 지역의 아파트 실거래가. 국토교통부 원천 데이터와 지역별 거래 대시보드.",
+        "canonical": null,
+        "pageErrors": [],
+        "nonStandardLayoutShiftSum": 0,
+        "layoutShiftEntries": [],
+        "largestRequests": [
+          {
+            "url": "https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700&display=swap",
+            "status": 200,
+            "encodedBytes": 93192,
+            "decodedDataBytes": 377620,
+            "encoding": "gzip",
+            "cacheControl": "private, max-age=86400, stale-while-revalidate=604800"
+          },
+          {
+            "url": "https://psionic7.github.io/assets/styles-Dzt_ISxH.js",
+            "status": 200,
+            "encodedBytes": 67631,
+            "decodedDataBytes": 214662,
+            "encoding": "gzip",
+            "cacheControl": "max-age=600"
+          },
+          {
+            "url": "https://fonts.gstatic.com/s/notosanskr/v40/PbykFmXiEBPT4ITbgNA5CgmG0X7t.woff2",
+            "status": 200,
+            "encodedBytes": 25909,
+            "decodedDataBytes": 25880,
+            "encoding": "",
+            "cacheControl": "public, max-age=31536000"
+          },
+          {
+            "url": "https://fonts.gstatic.com/s/notosanskr/v40/PbykFmXiEBPT4ITbgNA5Cgm20xz64px_1hVWr0wuPNGmlQNMEfD4.119.woff2",
+            "status": 200,
+            "encodedBytes": 16597,
+            "decodedDataBytes": 16568,
+            "encoding": "",
+            "cacheControl": "public, max-age=31536000"
+          },
+          {
+            "url": "https://psionic7.github.io/assets/index-BGlENFgU.js",
+            "status": 200,
+            "encodedBytes": 16536,
+            "decodedDataBytes": 46674,
+            "encoding": "gzip",
+            "cacheControl": "max-age=600"
+          }
+        ]
+      },
+      {
+        "name": "edge_manifest_recovery",
+        "mobile": false,
+        "readyMs": 983,
+        "settledMs": 983,
+        "requestCount": 13,
+        "transferBytes": 34184,
+        "decodedDataBytes": 265235,
+        "cacheHits": 2,
+        "unfinished": 10,
+        "failed": [],
+        "byCategory": {
+          "manifest_or_legacy_data": {
+            "requests": 1,
+            "transferBytes": 34184,
+            "decodedDataBytes": 264433
+          },
+          "javascript": {
+            "requests": 4,
+            "transferBytes": 0,
+            "decodedDataBytes": 0
+          },
+          "styles": {
+            "requests": 3,
+            "transferBytes": 0,
+            "decodedDataBytes": 0
+          },
+          "other": {
+            "requests": 2,
+            "transferBytes": 0,
+            "decodedDataBytes": 802
+          },
+          "fonts": {
+            "requests": 3,
+            "transferBytes": 0,
+            "decodedDataBytes": 0
+          }
+        },
+        "heapUsedBytes": 3456512,
+        "url": "https://psionic7.github.io/?tab=apartments&apt=&period=week&week=2026-10-12&filters=1&min=&max=&bands=&cancelled=1&unit=m2",
+        "title": "아파트별 실거래가 · 집의 기록",
+        "fcpMs": 796,
+        "lcpMs": 796,
+        "nav": {
+          "ttfbMs": 136.39999999850988,
+          "domInteractiveMs": 146.5,
+          "domContentLoadedMs": 728.6000000014901,
+          "loadMs": 728.7000000029802
+        },
+        "longTaskCount": 0,
+        "longTaskMs": 0,
+        "approxBlockingMs": 0,
+        "maxEventMs": 32,
+        "domElements": 176,
+        "paths": 0,
+        "overflow": false,
+        "tinyButtons": [],
+        "namelessButtons": [],
+        "statusText": [
+          "거래 자료 3개 시군구\n자료 기준일 2026-10-18"
+        ],
+        "htmlDescription": "관심 지역의 아파트 실거래가. 국토교통부 원천 데이터와 지역별 거래 대시보드.",
+        "canonical": null,
+        "pageErrors": [],
+        "nonStandardLayoutShiftSum": 0,
+        "layoutShiftEntries": [],
+        "largestRequests": [
+          {
+            "url": "https://psionic7.github.io/data/manifest.json?v=89757d928801281f",
+            "status": 200,
+            "encodedBytes": 34184,
+            "decodedDataBytes": 264433,
+            "encoding": "gzip",
+            "cacheControl": "max-age=600"
+          },
+          {
+            "url": "https://fonts.gstatic.com/s/notosanskr/v40/PbykFmXiEBPT4ITbgNA5Cgm20xz64px_1hVWr0wuPNGmlQNMEfD4.113.woff2",
+            "status": 200,
+            "encodedBytes": 16407,
+            "decodedDataBytes": 16380,
+            "encoding": "",
+            "cacheControl": "public, max-age=31536000"
+          },
+          {
+            "url": "https://fonts.gstatic.com/s/notosanskr/v40/PbykFmXiEBPT4ITbgNA5Cgm20xz64px_1hVWr0wuPNGmlQNMEfD4.112.woff2",
+            "status": 200,
+            "encodedBytes": 16387,
+            "decodedDataBytes": 16360,
+            "encoding": "",
+            "cacheControl": "public, max-age=31536000"
+          },
+          {
+            "url": "https://fonts.gstatic.com/s/notosanskr/v40/PbykFmXiEBPT4ITbgNA5Cgm20xz64px_1hVWr0wuPNGmlQNMEfD4.114.woff2",
+            "status": 200,
+            "encodedBytes": 16123,
+            "decodedDataBytes": 16096,
+            "encoding": "",
+            "cacheControl": "public, max-age=31536000"
+          },
+          {
+            "url": "https://psionic7.github.io/assets/TransactionPage-DeVyI0Ng.js",
+            "status": 200,
+            "encodedBytes": 8050,
+            "decodedDataBytes": 23118,
+            "encoding": "gzip",
+            "cacheControl": "max-age=600"
+          }
+        ]
+      },
+      {
+        "name": "edge_search_error",
+        "mobile": false,
+        "readyMs": 854,
+        "settledMs": 855,
+        "requestCount": 2,
+        "transferBytes": 2534,
+        "decodedDataBytes": 11245,
+        "cacheHits": 0,
+        "unfinished": 0,
+        "failed": [
+          {
+            "url": "https://psionic7.github.io/apartment-map/apartments-fc2e4677a857.json",
+            "status": 503
+          }
+        ],
+        "byCategory": {
+          "apartment_map_data": {
+            "requests": 2,
+            "transferBytes": 2534,
+            "decodedDataBytes": 11245
+          }
+        },
+        "heapUsedBytes": 4529680,
+        "url": "https://psionic7.github.io/?tab=apartments&apt=&period=week&week=2026-10-12&filters=1&min=&max=&bands=&cancelled=1&unit=m2",
+        "title": "아파트별 실거래가 · 집의 기록",
+        "fcpMs": 796,
+        "lcpMs": 796,
+        "nav": {
+          "ttfbMs": 136.39999999850988,
+          "domInteractiveMs": 146.5,
+          "domContentLoadedMs": 728.6000000014901,
+          "loadMs": 728.7000000029802
+        },
+        "longTaskCount": 0,
+        "longTaskMs": 0,
+        "approxBlockingMs": 0,
+        "maxEventMs": 48,
+        "domElements": 492,
+        "paths": 0,
+        "overflow": false,
+        "tinyButtons": [],
+        "namelessButtons": [],
+        "statusText": [
+          "거래 자료 3개 시군구\n자료 기준일 2026-10-18"
+        ],
+        "htmlDescription": "관심 지역의 아파트 실거래가. 국토교통부 원천 데이터와 지역별 거래 대시보드.",
+        "canonical": null,
+        "pageErrors": [],
+        "nonStandardLayoutShiftSum": 0.022188254251362362,
+        "layoutShiftEntries": [
+          {
+            "time": 2970.7999999970198,
+            "value": 0.014094488887080437
+          },
+          {
+            "time": 3086.7999999970198,
+            "value": 0.003313923543294271
+          },
+          {
+            "time": 3423.2999999970198,
+            "value": 0.004779841820987654
+          }
+        ],
+        "largestRequests": [
+          {
+            "url": "https://psionic7.github.io/apartment-map/manifest.json",
+            "status": 200,
+            "encodedBytes": 2470,
+            "decodedDataBytes": 11233,
+            "encoding": "gzip",
+            "cacheControl": "max-age=600"
+          },
+          {
+            "url": "https://psionic7.github.io/apartment-map/apartments-fc2e4677a857.json",
+            "status": 503,
+            "encodedBytes": 64,
+            "decodedDataBytes": 12,
+            "encoding": "",
+            "cacheControl": ""
+          }
+        ]
+      },
+      {
+        "name": "edge_search_recovery",
+        "mobile": false,
+        "readyMs": 921,
+        "settledMs": 922,
+        "requestCount": 5,
+        "transferBytes": 112977,
+        "decodedDataBytes": 623370,
+        "cacheHits": 0,
+        "unfinished": 0,
+        "failed": [],
+        "byCategory": {
+          "apartment_map_data": {
+            "requests": 2,
+            "transferBytes": 49386,
+            "decodedDataBytes": 559870
+          },
+          "fonts": {
+            "requests": 3,
+            "transferBytes": 63591,
+            "decodedDataBytes": 63500
+          }
+        },
+        "heapUsedBytes": 5324844,
+        "url": "https://psionic7.github.io/?tab=apartments&apt=&period=week&week=2026-10-12&filters=1&min=&max=&bands=&cancelled=1&unit=m2",
+        "title": "아파트별 실거래가 · 집의 기록",
+        "fcpMs": 796,
+        "lcpMs": 796,
+        "nav": {
+          "ttfbMs": 136.39999999850988,
+          "domInteractiveMs": 146.5,
+          "domContentLoadedMs": 728.6000000014901,
+          "loadMs": 728.7000000029802
+        },
+        "longTaskCount": 0,
+        "longTaskMs": 0,
+        "approxBlockingMs": 0,
+        "maxEventMs": 16,
+        "domElements": 648,
+        "paths": 0,
+        "overflow": false,
+        "tinyButtons": [],
+        "namelessButtons": [],
+        "statusText": [
+          "거래 자료 3개 시군구\n자료 기준일 2026-10-18"
+        ],
+        "htmlDescription": "관심 지역의 아파트 실거래가. 국토교통부 원천 데이터와 지역별 거래 대시보드.",
+        "canonical": null,
+        "pageErrors": [],
+        "nonStandardLayoutShiftSum": 0.022188254251362362,
+        "layoutShiftEntries": [
+          {
+            "time": 2970.7999999970198,
+            "value": 0.014094488887080437
+          },
+          {
+            "time": 3086.7999999970198,
+            "value": 0.003313923543294271
+          },
+          {
+            "time": 3423.2999999970198,
+            "value": 0.004779841820987654
+          }
+        ],
+        "largestRequests": [
+          {
+            "url": "https://psionic7.github.io/apartment-map/apartments-fc2e4677a857.json",
+            "status": 200,
+            "encodedBytes": 47002,
+            "decodedDataBytes": 548637,
+            "encoding": "gzip",
+            "cacheControl": "max-age=600"
+          },
+          {
+            "url": "https://fonts.gstatic.com/s/notosanskr/v40/PbykFmXiEBPT4ITbgNA5Cgm20xz64px_1hVWr0wuPNGmlQNMEfD4.102.woff2",
+            "status": 200,
+            "encodedBytes": 26365,
+            "decodedDataBytes": 26336,
+            "encoding": "",
+            "cacheControl": "public, max-age=31536000"
+          },
+          {
+            "url": "https://fonts.gstatic.com/s/notosanskr/v40/PbykFmXiEBPT4ITbgNA5Cgm20xz64px_1hVWr0wuPNGmlQNMEfD4.108.woff2",
+            "status": 200,
+            "encodedBytes": 19729,
+            "decodedDataBytes": 19700,
+            "encoding": "",
+            "cacheControl": "public, max-age=31536000"
+          },
+          {
+            "url": "https://fonts.gstatic.com/s/notosanskr/v40/PbykFmXiEBPT4ITbgNA5Cgm20xz64px_1hVWr0wuPNGmlQNMEfD4.110.woff2",
+            "status": 200,
+            "encodedBytes": 17497,
+            "decodedDataBytes": 17464,
+            "encoding": "",
+            "cacheControl": "public, max-age=31536000"
+          },
+          {
+            "url": "https://psionic7.github.io/apartment-map/manifest.json",
+            "status": 200,
+            "encodedBytes": 2384,
+            "decodedDataBytes": 11233,
+            "encoding": "gzip",
+            "cacheControl": "max-age=600"
+          }
+        ]
+      },
+      {
+        "name": "edge_mobile320_dong_cold",
+        "mobile": true,
+        "readyMs": 3471,
+        "settledMs": 4869,
+        "requestCount": 29,
+        "transferBytes": 481914,
+        "decodedDataBytes": 1505876,
+        "cacheHits": 2,
+        "unfinished": 0,
+        "failed": [],
+        "byCategory": {
+          "document": {
+            "requests": 1,
+            "transferBytes": 967,
+            "decodedDataBytes": 1011
+          },
+          "javascript": {
+            "requests": 7,
+            "transferBytes": 101199,
+            "decodedDataBytes": 304176
+          },
+          "styles": {
+            "requests": 3,
+            "transferBytes": 19707,
+            "decodedDataBytes": 94578
+          },
+          "fonts": {
+            "requests": 12,
+            "transferBytes": 290388,
+            "decodedDataBytes": 574520
+          },
+          "manifest_or_legacy_data": {
+            "requests": 1,
+            "transferBytes": 34007,
+            "decodedDataBytes": 264433
+          },
+          "other": {
+            "requests": 3,
+            "transferBytes": 619,
+            "decodedDataBytes": 1203
+          },
+          "monthly_query_data": {
+            "requests": 2,
+            "transferBytes": 35027,
+            "decodedDataBytes": 265955
+          }
+        },
+        "heapUsedBytes": 4977812,
+        "url": "https://psionic7.github.io/?tab=weekly&dong=dong_41465101&period=month&month=2026-09&filters=1&min=&max=&bands=&cancelled=1&unit=m2",
+        "title": "동 별 실거래가 · 집의 기록",
+        "fcpMs": 1728,
+        "lcpMs": 2588,
+        "nav": {
+          "ttfbMs": 126.29999999701977,
+          "domInteractiveMs": 309.8999999985099,
+          "domContentLoadedMs": 1595.2999999970198,
+          "loadMs": 1611.7999999970198
+        },
+        "longTaskCount": 6,
+        "longTaskMs": 674,
+        "approxBlockingMs": 374,
+        "maxEventMs": 0,
+        "domElements": 1109,
+        "paths": 0,
+        "overflow": false,
+        "tinyButtons": [],
+        "namelessButtons": [],
+        "statusText": [
+          "거래 자료 3개 시군구\n자료 기준일 2026-10-18"
+        ],
+        "htmlDescription": "관심 지역의 아파트 실거래가. 국토교통부 원천 데이터와 지역별 거래 대시보드.",
+        "canonical": null,
+        "pageErrors": [],
+        "nonStandardLayoutShiftSum": 0.17186159939236112,
+        "layoutShiftEntries": [
+          {
+            "time": 2529.5,
+            "value": 0.125
+          },
+          {
+            "time": 2670.7999999970198,
+            "value": 0.018335313585069447
+          },
+          {
+            "time": 2879,
+            "value": 0.028526285807291663
+          }
+        ],
+        "largestRequests": [
+          {
+            "url": "https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700&display=swap",
+            "status": 200,
+            "encodedBytes": 93183,
+            "decodedDataBytes": 377620,
+            "encoding": "gzip",
+            "cacheControl": "private, max-age=86400, stale-while-revalidate=604800"
+          },
+          {
+            "url": "https://psionic7.github.io/assets/styles-Dzt_ISxH.js",
+            "status": 200,
+            "encodedBytes": 67631,
+            "decodedDataBytes": 214662,
+            "encoding": "gzip",
+            "cacheControl": "max-age=600"
+          },
+          {
+            "url": "https://psionic7.github.io/data/manifest.json?v=89757d928801281f",
+            "status": 200,
+            "encodedBytes": 34007,
+            "decodedDataBytes": 264433,
+            "encoding": "gzip",
+            "cacheControl": "max-age=600"
+          },
+          {
+            "url": "https://psionic7.github.io/query-data/catalog-41465-c60a750c2f84.json",
+            "status": 200,
+            "encodedBytes": 26006,
+            "decodedDataBytes": 178140,
+            "encoding": "gzip",
+            "cacheControl": "max-age=600"
+          },
+          {
+            "url": "https://fonts.gstatic.com/s/notosanskr/v40/PbykFmXiEBPT4ITbgNA5CgmG0X7t.woff2",
+            "status": 200,
+            "encodedBytes": 25909,
+            "decodedDataBytes": 25880,
+            "encoding": "",
+            "cacheControl": "public, max-age=31536000"
+          }
+        ]
+      }
+    ],
+    "mobile320": {
+      "text": "풍덕천동\n\n경기도 용인시 수지구\n\n계약일\n아파트 이름\n전용면적\n층\n거래금액\n거래 상태 / 해제일\n26.09.30\n동부\n59.61㎡\n9층\n8.50억 원\n유효\n26.09.30\n삼익아파트\n59.76㎡\n14층\n8.20억 원\n유효\n26.09.29\n현대\n84.51㎡\n15층\n12.70억 원\n유효\n26.09.29\n동부\n59.61㎡\n6층\n8.49억 원\n유효\n26.09.29\n현대성우8차\n59.99㎡\n11층\n11.80억 원\n유효\n26.09.28\n현대\n84.51㎡\n11층\n13.50억 원\n유효\n26.09.23\n보원\n59.72㎡\n1층\n7.60억 원\n유효\n26.09.23\n정자뜰마을태영데시앙1차\n84.66㎡\n11층\n14.75억 원\n유효\n26.09.23\n수지삼성4차\n59.76㎡\n9층\n9.50억 원\n유효\n26.09.22\n동부\n59.61㎡\n6층\n8.20억 원\n유효\n26.09.22\n한국\n84.36㎡\n12층\n12.10억 원\n유효\n26.09.22\n현대성우8차\n59.99㎡\n18층\n11.95억 원\n유효\n26.09.22\n현대\n84.51㎡\n8층\n12.70억 원\n유효\n26.09.22\n보원\n59.72㎡\n11층\n8.95억 원\n유효\n26.09.21\n신정6단지(상록)공무원\n84.98㎡\n16층\n12.00억 원\n유효\n26.09.21\n동보\n105.12㎡\n8층\n13.10억 원\n유효\n26.09.20\n동아아파트\n59.76㎡\n10층\n7.96억 원\n유효\n26.09.19\n수지삼성2차\n74.13㎡\n17층\n12.00억 원\n유효\n26.09.19\n신정6단지(상록)공무원\n84.98㎡\n20층\n11.70억 원\n유효\n26.09.19\n용인수지신정마을9단지\n49.26㎡\n16층\n11.00억 원\n유효\n26.09.19\n현대성우8차\n59.99㎡\n3층\n11.10억 원\n유효\n26.09.18\n보원\n59.72㎡\n15층\n9.00억 원\n유효\n26.09.18\n현대성우8차\n59.99㎡\n19층\n12.00억 원\n유효\n26.09.18\n한성\n59.54㎡\n12층\n13.30억 원\n유효\n26.09.18\n수지에듀파크(SUJI-EDUPARK)\n150.03㎡\n13층\n10.30억 원\n유효\n26.09.18\n신정마을주공1\n59.39㎡\n4층\n12.00억 원\n유효\n26.09.17\n동부\n59.61㎡\n9층\n8.70억 원\n유효\n26.09.17\n수지파크푸르지오\n84.90㎡\n14층\n15.80억 원\n유효\n26.09.17\n동부\n59.61㎡\n11층\n8.38억 원\n유효\n26.09.17\n한국\n84.36㎡\n14층\n12.80억 원\n유효\n26.09.17\n수지삼성4차\n59.76㎡\n3층\n9.28억 원\n유효\n26.09.17\n동아아파트\n59.76㎡\n14층\n8.20억 원\n유효\n26.09.16\n신정마을진흥\n84.99㎡\n5층\n11.00억 원\n유효\n26.09.16\n동부\n59.61㎡\n9층\n8.40억 원\n유효\n26.09.16\n현대\n60.03㎡\n5층\n10.70억 원\n유효\n26.09.16\n동문\n101.79㎡\n19층\n9.10억 원\n유효\n26.09.16\n현대\n60.03㎡\n15층\n10.10억 원\n유효\n26.09.15\n풍림아파트\n59.76㎡\n7층\n8.50억 원\n유효\n26.09.15\n삼익아파트\n59.76㎡\n1층\n6.10억 원\n유효\n26.09.15\n수지파크푸르지오\n59.79㎡\n16층\n13.30억 원\n유효\n26.09.14\n동부\n59.61㎡\n9층\n8.45억 원\n유효\n26.09.13\n용인수지신정마을9단지\n49.26㎡\n13층\n10.75억 원\n유효\n26.09.12\n한성\n59.54㎡\n11층\n13.00억 원\n유효\n26.09.12\n풍림아파트\n59.76㎡\n2층\n7.50억 원\n유효\n26.09.12\n삼익아파트\n59.76㎡\n11층\n8.50억 원\n유효\n26.09.12\n현대성우8차\n59.99㎡\n5층\n11.85억 원\n유효\n26.09.12\n동부\n59.61㎡\n9층\n8.30억 원\n유효\n26.09.12\n한성\n59.54㎡\n3층\n12.00억 원\n유효\n26.09.10\n정자뜰마을태영데시앙2차\n84.66㎡\n6층\n14.50억 원\n유효\n26.09.10\n현대성우8차\n59.99㎡\n5층\n11.40억 원\n유효\n계약일 최신순 · 페이지당 50건 · 1 / 2 페이지",
+      "h1": 1,
+      "skipLinks": 1,
+      "bodyWidth": 320,
+      "viewport": 320
+    },
+    "notes": [
+      "HTTP 503 failures in manifest/search cases were intentional and recovered after unblocking.",
+      "Map revisit has attribution boundaries between SPA interactions; do not use its zero encoded transfer as proof of zero requests or no reparse.",
+      "Mobile trade viewport 320x720: document height 12282 CSS px, 50 rows; bottom nav height about73px."
+    ]
+  },
+  "searchCoverage": {
+    "districts": [
+      {
+        "code": "41117",
+        "tradeCatalogUnique": 149,
+        "mapMasterCount": 60,
+        "notLinkedToMap": 112
+      },
+      {
+        "code": "41135",
+        "tradeCatalogUnique": 194,
+        "mapMasterCount": 208,
+        "notLinkedToMap": 32
+      },
+      {
+        "code": "41465",
+        "tradeCatalogUnique": 269,
+        "mapMasterCount": 199,
+        "notLinkedToMap": 109
+      }
+    ],
+    "examples": [
+      {
+        "code": "41117",
+        "name": "벽적골우성",
+        "dong": "영통동",
+        "jibun": "973-3"
+      },
+      {
+        "code": "41117",
+        "name": "주공그린빌3",
+        "dong": "매탄동",
+        "jibun": "1277"
+      },
+      {
+        "code": "41135",
+        "name": "장안타운(건영)",
+        "dong": "분당동",
+        "jibun": "66"
+      },
+      {
+        "code": "41135",
+        "name": "산운마을9단지(대방노블랜드)",
+        "dong": "운중동",
+        "jibun": "958"
+      },
+      {
+        "code": "41465",
+        "name": "꽃메마을힐스테이트(4차3단지)",
+        "dong": "죽전동",
+        "jibun": "1304"
+      },
+      {
+        "code": "41465",
+        "name": "성현마을우미이노스빌2차",
+        "dong": "죽전동",
+        "jibun": "1329"
+      }
+    ],
+    "totalTradeCatalog": 612,
+    "notLinkedToMap": 253,
+    "mapIndexCount": 467,
+    "warning": "Trade catalog keys can include historical names, aliases, separate lots or earlier complexes; counts are not counts of physically distinct omitted apartments."
+  },
+  "searchMissingReproductions": [
+    {
+      "query": "벽적골우성",
+      "count": 0,
+      "text": "단지 0곳 · 거래 자료 제공 지역에서 검색\n\n일치하는 단지나 동네가 없습니다. 다른 이름이나 주소로 검색해 보세요."
+    },
+    {
+      "query": "주공그린빌3",
+      "count": 0,
+      "text": "단지 0곳 · 거래 자료 제공 지역에서 검색\n\n일치하는 단지나 동네가 없습니다. 다른 이름이나 주소로 검색해 보세요."
+    },
+    {
+      "query": "꽃메마을힐스테이트",
+      "count": 0,
+      "text": "단지 0곳 · 거래 자료 제공 지역에서 검색\n\n일치하는 단지나 동네가 없습니다. 다른 이름이나 주소로 검색해 보세요."
+    }
+  ],
+  "storageReproduction": {
+    "totalItems": 467,
+    "valid": true,
+    "samples": [
+      {
+        "n": 1,
+        "characters": 734,
+        "readFavoriteCount": 1
+      },
+      {
+        "n": 50,
+        "characters": 29314,
+        "readFavoriteCount": 50
+      },
+      {
+        "n": 100,
+        "characters": 56798,
+        "readFavoriteCount": 100
+      },
+      {
+        "n": 200,
+        "characters": 111486,
+        "readFavoriteCount": 200
+      },
+      {
+        "n": 300,
+        "characters": 168134,
+        "readFavoriteCount": 300
+      },
+      {
+        "n": 400,
+        "characters": 226658,
+        "readFavoriteCount": 400
+      },
+      {
+        "n": 467,
+        "characters": 264160,
+        "readFavoriteCount": 0
+      }
+    ],
+    "firstFail": {
+      "n": 464,
+      "characters": 262425,
+      "favoritesAfterRead": 0,
+      "afterNextNormalSave": {
+        "version": 1,
+        "scopes": {
+          "display": {
+            "unit": "m2"
+          }
+        }
+      }
+    },
+    "favoritesOnly": {
+      "characters": 132079,
+      "count": 467
+    }
+  },
+  "inventory": [
+    {
+      "dir": "docs/assets",
+      "count": 30,
+      "bytes": 2550720,
+      "gzipBytes": 653078
+    },
+    {
+      "dir": "public/data",
+      "count": 5,
+      "bytes": 264631966,
+      "gzipBytes": 45519778
+    },
+    {
+      "dir": "public/query-data",
+      "count": 761,
+      "bytes": 108351840,
+      "gzipBytes": 8617193
+    },
+    {
+      "dir": "public/apartment-map",
+      "count": 3,
+      "bytes": 11002409,
+      "gzipBytes": 2482369
+    }
+  ],
+  "errors": [],
+  "sourceReference": "https://web.dev/articles/vitals",
+  "limitations": [
+    "Single laboratory visit for most flows; three desktop initial visits only.",
+    "Mobile simulation is not a real phone or field p75 dataset.",
+    "Primary regular-button checks are not a complete accessibility audit.",
+    "No full upstream-API-to-transaction reconciliation or historical legal boundary audit.",
+    "Unfinished font requests can cross incremental interaction boundaries.",
+    "Public browser storage isolated; no private favorite or administrator credentials inspected."
+  ]
+}

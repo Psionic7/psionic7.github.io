@@ -3,15 +3,22 @@ import {hierarchy} from './domain.mjs';
 import {dateBounds,monthBounds,publishedDay,weekBounds} from './weekly.mjs';
 
 export const PREFERENCES_KEY='home-records.preferences.v1';
+const MAX_PREFERENCE_CHARACTERS=2*1024*1024;
+const STORAGE_EVENT='home-records:storage-status';
+let storageProblem='';
+const reportStorageFailure=()=>{storageProblem='일부 설정을 이 브라우저에 저장하지 못했습니다. 저장 공간과 사이트 데이터 허용 설정을 확인해 주세요. 창을 닫으면 이번 변경이 남지 않을 수 있습니다.';window.dispatchEvent(new Event(STORAGE_EVENT));};
+export const preferenceStorageProblem=()=>storageProblem;
+export const subscribePreferenceStorage=listener=>{window.addEventListener(STORAGE_EVENT,listener);return()=>window.removeEventListener(STORAGE_EVENT,listener);};
 const object=value=>value && typeof value==='object' && !Array.isArray(value);
 
-function readDocument() {
+function readDocument(strict=false) {
   try {
     const raw=window.localStorage.getItem(PREFERENCES_KEY);
-    if(!raw || raw.length>262144)return {version:1,scopes:{}};
+    if(!raw)return {version:1,scopes:{}};
+    if(raw.length>MAX_PREFERENCE_CHARACTERS)throw new Error('설정 크기 초과');
     const value=JSON.parse(raw);
     if(value.version===1 && object(value.scopes))return value;
-  }catch{}
+  }catch(error){if(strict&&!(error instanceof SyntaxError))throw error;}
   return {version:1,scopes:{}};
 }
 
@@ -22,21 +29,26 @@ export function readPreferences(scope) {
 
 export function savePreferences(scope,value) {
   try {
-    const document=readDocument();
+    const document=readDocument(true);
     const entries=Object.entries(document.scopes).filter(([key,item])=>key!==scope && object(item));
     const persistent=new Set(['viewer','explorer','display','weekly','favoriteDashboard','apartmentMap','regionMap','apartmentTransactions','apartmentSearch','overview']);
     const retained=entries.filter(([key])=>persistent.has(key));
     const scopes=[...retained,...entries.filter(([key])=>!persistent.has(key)).slice(-(79-retained.length))];
     scopes.push([scope,value]);
-    window.localStorage.setItem(PREFERENCES_KEY,JSON.stringify({version:1,scopes:Object.fromEntries(scopes)}));
-  }catch{}
+    return writeDocument({version:1,scopes:Object.fromEntries(scopes)});
+  }catch{reportStorageFailure();return false;}
 }
 
+function writeDocument(document){
+  const raw=JSON.stringify(document);
+  if(raw.length>MAX_PREFERENCE_CHARACTERS)throw new Error('설정 크기 초과');
+  window.localStorage.setItem(PREFERENCES_KEY,raw);return true;
+}
 export function clearPreferences() {
-  try{window.localStorage.removeItem(PREFERENCES_KEY);}catch{}
+  try{window.localStorage.removeItem(PREFERENCES_KEY);storageProblem='';window.dispatchEvent(new Event(STORAGE_EVENT));}catch{reportStorageFailure();}
 }
 export const snapshotPreferences=()=>readDocument();
-export function restorePreferences(document){try{window.localStorage.setItem(PREFERENCES_KEY,JSON.stringify(document));}catch{}}
+export function restorePreferences(document){try{return writeDocument(document);}catch{reportStorageFailure();return false;}}
 export function resetQueries(){const document=readDocument();restorePreferences({version:1,scopes:{viewer:document.scopes.viewer||{}}});}
 export function clearFavorites(){savePreferences('viewer',{...readPreferences('viewer'),apartments:[],regions:[]});}
 

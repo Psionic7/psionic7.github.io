@@ -28,14 +28,20 @@ export function writeBrowserPayloads(folder,payloads){
   fs.mkdirSync(folder,{recursive:true});
   for(const [file,bytes] of payloads)atomicWrite(path.join(folder,file),bytes);
 }
-export function writeBrowserRegistry(folder,manifest,districts,secrets=[]){
+export function writeBrowserRegistry(folder,manifest,districts,secrets=[],extra={}){
   const sources=Object.fromEntries(Object.entries(districts).map(([code,meta])=>[code,{...meta,source_sha256:manifest.districts[code].sha256}]));
-  atomicWrite(path.join(folder,'manifest.json'),checkedBytes(JSON.stringify({version:1,districts:sources}),secrets));
+  atomicWrite(path.join(folder,'manifest.json'),checkedBytes(JSON.stringify({version:1,districts:sources,...extra}),secrets));
 }
 export function checkBrowserData(folder,manifest,secrets=[]) {
   const registryFile=path.join(folder,'manifest.json');
   const registry=fs.existsSync(registryFile)?JSON.parse(checkedBytes(fs.readFileSync(registryFile),secrets)):null;
   const allowed=new Set(registry?['manifest.json']:[]);
+  if(registry?.search){
+    const meta=registry.search;if(!/^search-[a-f0-9]{12}\.json$/.test(meta.file))throw new Error('통합 검색 경로 오류');
+    const bytes=checkedBytes(fs.readFileSync(path.join(folder,meta.file)),secrets);
+    if(digest(bytes)!==meta.sha256||bytes.length!==meta.bytes||!Array.isArray(JSON.parse(bytes))||Object.entries(manifest.districts).some(([code,d])=>meta.sources[code]!==d.sha256))throw new Error('통합 검색 자료 오류');
+    allowed.add(meta.file);
+  }
   for(const [code,district] of Object.entries(manifest.districts)){
     const meta=district.browser||registry?.districts?.[code];
     if(!meta)continue;
@@ -56,5 +62,5 @@ export function checkBrowserData(folder,manifest,secrets=[]) {
   if(fs.existsSync(folder)&&fs.readdirSync(folder).some(file=>!allowed.has(file)))throw new Error('조회 데이터 폴더에 허용되지 않은 파일이 있습니다.');
 }
 export function cleanBrowserPayloads(folder,payloads){
-  for(const file of fs.readdirSync(folder))if(/^(catalog-\d{5}|month-\d{5}-\d{6})-[a-f0-9]{12}\.json$/.test(file)&&!payloads.has(file))fs.unlinkSync(path.join(folder,file));
+  for(const file of fs.readdirSync(folder))if(/^(search|catalog-\d{5}|month-\d{5}-\d{6})-[a-f0-9]{12}\.json$/.test(file)&&!payloads.has(file))fs.unlinkSync(path.join(folder,file));
 }

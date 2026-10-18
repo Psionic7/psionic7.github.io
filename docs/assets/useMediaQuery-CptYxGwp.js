@@ -1,0 +1,1 @@
+import{i as e,n as t}from"./jsx-runtime-Dk72oS4N.js";var n=e(t(),1);function r(e){let[t,r]=(0,n.useState)(()=>window.matchMedia?.(e).matches||!1);return(0,n.useEffect)(()=>{let t=window.matchMedia?.(e);if(!t)return;let n=()=>r(t.matches);return n(),t.addEventListener?.(`change`,n),()=>t.removeEventListener?.(`change`,n)},[e]),t}export{r as t};

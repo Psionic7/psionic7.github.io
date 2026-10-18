@@ -16,3 +16,6 @@ my_real_estate.sqlite3
 /admin-dist/
 /public/query-data/
 /docs/query-data/
+
+/public/map-data/
+/docs/map-data/

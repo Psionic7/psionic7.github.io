@@ -1,4 +1,6 @@
-import {fetchJson} from './data.js';
+import {intersects,validBounds} from './map-bounds.mjs';
+import {createJsonCache} from './json-cache.mjs';
+import {fetchJson,cachedJson,jsonCharacterSize} from './data.js';
 import {validApartmentFavorites,sameApartmentFavorite} from './apartment-favorites.js';
 export const hasMapPosition=p=>Number.isFinite(p.latitude)&&Number.isFinite(p.longitude)&&p.latitude>=28&&p.latitude<=40&&p.longitude>=122&&p.longitude<=135;
 const searchName=value=>String(value||'').toLocaleLowerCase().replace(/[\s·()_-]/g,'').replace(/아파트/g,'').replace(/(\d+)차/g,'$1');
@@ -12,11 +14,29 @@ export function validateApartmentMap(data) {
   for(const f of data.boundaries.features){if(f.type!=='Feature'||!['Polygon','MultiPolygon'].includes(f.geometry?.type)||!validGeometry(f.geometry)||!Array.isArray(f.properties?.apartment_ids)||!f.properties.apartment_ids.length||f.properties.apartment_ids.some(id=>!ids.has(id)))throw new Error('아파트 경계 연결 정보가 올바르지 않습니다.');}
   return data;
 }
+const loadMapVersion=createJsonCache(async key=>{
+  const manifest=JSON.parse(key),apartments=await cachedJson('/apartment-map/'+manifest.apartments.file);
+  const data=validateApartmentMap({manifest,apartments,boundaries:{type:'FeatureCollection',features:[]}});
+  let indexPromise;
+  const tiles=createJsonCache(async file=>{
+    const boundaries=await fetchJson('/map-data/'+file);
+    return validateApartmentMap({apartments,boundaries}).boundaries;
+  },{maxEntries:12,maxCharacters:2*1024*1024,sizeOf:jsonCharacterSize});
+  data.loadBoundaries=async bounds=>{
+    if(!indexPromise)indexPromise=fetchJson('/map-data/manifest.json?v='+manifest.boundaries.sha256,true).then(index=>{
+      if(index.version!==1||index.source_sha256!==manifest.boundaries.sha256||!Array.isArray(index.tiles)||index.tiles.some(t=>!/^tile-\d+_\d+-[a-f0-9]{12}\.json$/.test(t.file)||!validBounds(t.bbox)))throw new Error('상세 경계 자료가 갱신 중입니다. 잠시 후 다시 불러와 주세요.');
+      return index;
+    }).catch(error=>{indexPromise=null;throw error;});
+    const index=await indexPromise,selected=index.tiles.filter(tile=>intersects(tile.bbox,bounds)),parts=[];
+    for(let i=0;i<selected.length;i+=4)parts.push(...await Promise.all(selected.slice(i,i+4).map(tile=>tiles(tile.file))));
+    return {type:'FeatureCollection',features:parts.flatMap(part=>part.features).filter(f=>intersects(f.bbox,bounds))};
+  };
+  return data;
+},{maxEntries:2});
 export async function loadApartmentMap() {
   const manifest=await fetchJson('/apartment-map/manifest.json',true);
   if(!/^apartments-[a-f0-9]{12}\.json$/.test(manifest?.apartments?.file||'')||!/^boundaries-[a-f0-9]{12}\.geojson$/.test(manifest?.boundaries?.file||''))throw new Error('아파트 지도 파일 경로가 올바르지 않습니다.');
-  const [apartments,boundaries]=await Promise.all([fetchJson('/apartment-map/'+manifest.apartments.file),fetchJson('/apartment-map/'+manifest.boundaries.file)]);
-  return validateApartmentMap({manifest,apartments,boundaries});
+  return loadMapVersion(JSON.stringify(manifest));
 }
 export const mapVisibleApartments=(apartments,{regionCode='',dong='',query='',favoriteOnly=false},favorites=[])=>{
   const saved=new Set(favorites.map(p=>p.id)),text=searchName(query);

@@ -1,21 +1,25 @@
 import React,{useEffect,useMemo,useState} from 'react';
 import {Search,ArrowUpRight,MapPin,Building2} from 'lucide-react';
-import {fetchJson} from './data.js';
+import {cachedJson,loadDistrict} from './data.js';
+import {buildSearchIndex} from './search-index.mjs';
 import {hasTradeCoverage} from './coverage.js';
 
 export const normalizeSearch=value=>String(value||'').toLocaleLowerCase().replace(/[\s·()_-]/g,'');
-export async function loadSearchIndex(){
-  const index=await fetchJson('/apartment-map/manifest.json',true);
-  if(!/^apartments-[a-f0-9]{12}\.json$/.test(index?.apartments?.file||''))throw new Error('검색 목록을 확인할 수 없습니다.');
-  const items=await fetchJson('/apartment-map/'+index.apartments.file);
-  if(!Array.isArray(items))throw new Error('검색 목록을 확인할 수 없습니다.');
-  return items;
+export async function loadSearchIndex(manifest){
+  const meta=typeof __SEARCH_DATA__==='undefined'?null:__SEARCH_DATA__;
+  if(meta&&Object.entries(manifest.districts).every(([code,d])=>meta.sources[code]===d.sha256)){
+    if(!/^search-[a-f0-9]{12}\.json$/.test(meta.file))throw new Error('검색 목록을 확인할 수 없습니다.');
+    const items=await cachedJson('/query-data/'+meta.file);if(!Array.isArray(items))throw new Error('검색 목록을 확인할 수 없습니다.');return items;
+  }
+  // Compatibility for a newly published manifest while an older page is still open.
+  const groups=await Promise.all(Object.keys(manifest.districts).map(async code=>[code,(await loadDistrict(manifest,code,{catalogOnly:true})).catalog||[]]));
+  return buildSearchIndex(new Map(groups),manifest.regions);
 }
 export default function HomeSearch({manifest,catalog,onApartment,onRegion,loader=loadSearchIndex}){
   const [query,setQuery]=useState(''),[items,setItems]=useState(null),[failed,setFailed]=useState(false),[retry,setRetry]=useState(0),[limit,setLimit]=useState(12);
   const needle=normalizeSearch(query);
   const searching=!!needle;
-  useEffect(()=>{if(!searching)return;let active=true;setFailed(false);loader().then(value=>{if(active)setItems(value);}).catch(()=>{if(active)setFailed(true);});return()=>{active=false;};},[searching,loader,retry]);
+  useEffect(()=>{if(!searching)return;let active=true;setFailed(false);loader(manifest).then(value=>{if(active)setItems(value);}).catch(()=>{if(active)setFailed(true);});return()=>{active=false;};},[searching,loader,retry,manifest]);
   useEffect(()=>setLimit(12),[query]);
   const covered=catalog.filter(region=>hasTradeCoverage(manifest,region));
   const districts=covered.filter(region=>!region.dongs.length);
