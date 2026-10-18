@@ -1,5 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import os from 'node:os';
+import {readTradeSnapshot,verifyTradeExport} from './verify-trade-export.mjs';
 import {createHash,randomUUID} from 'node:crypto';
 import {gzipSync} from 'node:zlib';
 import {exportApartmentMap} from './export-apartment-map.mjs';
@@ -12,18 +14,8 @@ export function databasePayload(raw,secrets,compressAbove=95*1024*1024) {
   const bytes=checkedBytes(compressed?gzipSync(raw,{level:6}):raw,secrets);
   return {bytes,metadata:{file:compressed?'public.sqlite3.gz':'public.sqlite3',format:compressed?'sqlite3+gzip':'sqlite3',bytes:bytes.length,sha256:sha256(bytes),uncompressed_bytes:raw.length,uncompressed_sha256:sha256(raw)}};
 }
-export function exportData({source=paths.db,target=path.join(ROOT,'public/data'),favorites=paths.favorites,secretsFile=paths.env,compressAbove=95*1024*1024}={}) {
-  source=path.resolve(source);target=path.resolve(target);
-  if(!fs.existsSync(source)||source===path.join(target,'public.sqlite3')) throw new Error('원본 작업 DB와 내보내기 경로를 확인하세요.');
-  const secrets=secretValues(secretsFile),db=connect(source,true);let trades,regionRows,roadRows,published;
-  try {
-    db.exec('BEGIN');
-    if(Object.values(db.prepare('PRAGMA quick_check').get())[0]!=='ok')throw new Error('원본 DB 무결성 확인 실패');
-    trades=db.prepare(`SELECT ${TRADE_COLUMNS.join(',')} FROM trades ORDER BY deal_date DESC,id DESC`).all();
-    regionRows=db.prepare(`SELECT ${REGION_COLUMNS.join(',')} FROM regions ORDER BY rowid`).all();
-    roadRows=db.prepare('SELECT region_code,dong,jibun,road_address FROM road_addresses ORDER BY region_code,dong,jibun').all();
-    published=db.prepare("SELECT value FROM metadata WHERE key='published_at'").get()?.value || new Date().toISOString();
-  } finally {db.close();}
+function writeExportData({snapshot,target,favorites,secretsFile,compressAbove}) {
+  const secrets=secretValues(secretsFile),trades=snapshot.rows,regionRows=snapshot.regions,roadRows=snapshot.roads,published=snapshot.publishedAt||new Date().toISOString();
   const catalog=regionRows.map(({dongs_json,...r})=>({...r,dongs:JSON.parse(dongs_json)}));
   const addresses=new Map(roadRows.map(row=>[JSON.stringify([row.region_code,row.dong,row.jibun]),row.road_address]));
   const groups=new Map();
@@ -71,6 +63,35 @@ export function exportData({source=paths.db,target=path.join(ROOT,'public/data')
     const obsolete=path.join(target,payload.metadata.file==='public.sqlite3'?'public.sqlite3.gz':'public.sqlite3');
     if(fs.existsSync(obsolete))fs.unlinkSync(obsolete);
   } finally {if(fs.existsSync(temp))fs.unlinkSync(temp);}
-  exportApartmentMap({source,target:path.join(path.dirname(target),'apartment-map'),favorites,secretsFile});
   return manifest;
+}
+
+// Validate a complete staged export before exposing its manifest. Every caller
+// (CLI, local administrator and Actions) uses this same mandatory gate.
+export function exportData({source=paths.db,target=path.join(ROOT,'public/data'),favorites=paths.favorites,secretsFile=paths.env,compressAbove=95*1024*1024,reportFile}={}) {
+  source=path.resolve(source);target=path.resolve(target);
+  if(!fs.existsSync(source)||source===path.join(target,'public.sqlite3'))throw new Error('원본 작업 DB와 내보내기 경로를 확인하세요.');
+  reportFile??=target===path.join(ROOT,'public/data')?path.join(ROOT,'local/data-validation/export.json'):null;
+  const stage=fs.mkdtempSync(path.join(os.tmpdir(),'home-records-export-')),stageData=path.join(stage,'data');
+  try {
+    const snapshot=readTradeSnapshot(source),manifest=writeExportData({snapshot,target:stageData,favorites,secretsFile,compressAbove});
+    const validation=verifyTradeExport({target:stageData,snapshot});
+    const stageQueries=path.join(stage,'query-data'),queries=path.join(path.dirname(target),'query-data');
+    for(const [from,to]of [[stageData,target],[stageQueries,queries]])for(const name of fs.readdirSync(from).filter(name=>name!=='manifest.json'))atomicWrite(path.join(to,name),fs.readFileSync(path.join(from,name)));
+    atomicWrite(path.join(queries,'manifest.json'),fs.readFileSync(path.join(stageQueries,'manifest.json')));
+    atomicWrite(path.join(target,'manifest.json'),fs.readFileSync(path.join(stageData,'manifest.json')));
+    for(const [from,to,pattern]of [[stageData,target,/^(trades-\d{5}-[a-f0-9]{12}\.json|public\.sqlite3(?:\.gz)?)$/],[stageQueries,queries,/^(search|catalog-\d{5}|month-\d{5}-\d{6})-[a-f0-9]{12}\.json$/]]){
+      const keep=new Set(fs.readdirSync(from));for(const name of fs.readdirSync(to))if(pattern.test(name)&&!keep.has(name))fs.unlinkSync(path.join(to,name));
+    }
+    exportApartmentMap({source,target:path.join(path.dirname(target),'apartment-map'),favorites,secretsFile});
+    if(reportFile)atomicWrite(reportFile,JSON.stringify(validation,null,2)+'\n');
+    return manifest;
+  } catch(error) {
+    if(reportFile)atomicWrite(reportFile,JSON.stringify({status:'failed',finished_at:new Date().toISOString(),message:error.message.startsWith('데이터 검증 실패:')?error.message:'추출·검증 실패'},null,2)+'\n');
+    throw error;
+  } finally {
+    const resolved=path.resolve(stage);
+    if(path.dirname(resolved)!==path.resolve(os.tmpdir())||!path.basename(resolved).startsWith('home-records-export-'))throw new Error('추출 임시 폴더 경로 오류');
+    fs.rmSync(resolved,{recursive:true,force:true});
+  }
 }

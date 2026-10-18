@@ -30,7 +30,7 @@ test('public build prepares assets before Vite and stops immediately if preparat
    if(args[0]==='node_modules/vite/bin/vite.js'){assert(prepared);assert.equal(args[1],'build');built=true;}
    if(args[0]==='scripts/finish-build.mjs')assert(built);
    steps.push(args[0]);
- }});assert.equal(steps.length,3);
+ }});assert.deepEqual(steps,['scripts/prepare-browser-data.mjs','scripts/check-trade-data.mjs','node_modules/vite/bin/vite.js','scripts/finish-build.mjs','scripts/check-trade-data.mjs']);
  let calls=0;assert.throws(()=>buildPublic({run:()=>{calls++;throw new Error('preparation failed');}}),/preparation failed/);assert.equal(calls,1);
 });
 

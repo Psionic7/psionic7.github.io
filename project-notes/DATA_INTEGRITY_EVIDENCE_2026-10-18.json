@@ -1,0 +1,79 @@
+{
+  "date": "2026-10-18",
+  "baselineCommit": "5dc67e5",
+  "reference": "stored_api_responses_and_working_database",
+  "upstreamRequeried": false,
+  "tests": {
+    "newIntegrityRegressions": 16,
+    "dataSuite": 22,
+    "node": 120,
+    "ui": 119,
+    "total": 239
+  },
+  "reports": {
+    "full-export": {
+      "status": "passed",
+      "started_at": "2026-10-18T11:45:19.916Z",
+      "finished_at": "2026-10-18T11:45:47.691Z",
+      "published_at": "2026-10-18T11:01:25.162Z",
+      "source": "export_snapshot",
+      "rows": 343552,
+      "districts": 3,
+      "months": 757,
+      "search_identities": 0,
+      "source_history": {
+        "months": 939,
+        "rows": 343552,
+        "pages": 982
+      }
+    },
+    "after-full-export": {
+      "status": "passed",
+      "started_at": "2026-10-18T11:49:38.193Z",
+      "finished_at": "2026-10-18T11:51:20.520Z",
+      "published_at": "2026-10-18T11:01:25.162Z",
+      "source": "working_database",
+      "rows": 343552,
+      "districts": 3,
+      "months": 757,
+      "search_identities": 0,
+      "source_history": {
+        "months": 939,
+        "rows": 343552,
+        "pages": 982
+      }
+    },
+    "public": {
+      "status": "passed",
+      "started_at": "2026-10-18T11:50:24.436Z",
+      "finished_at": "2026-10-18T11:51:49.415Z",
+      "published_at": "2026-10-18T11:01:25.162Z",
+      "source": "working_database",
+      "rows": 343552,
+      "districts": 3,
+      "months": 757,
+      "search_identities": 612,
+      "source_history": {
+        "months": 939,
+        "rows": 343552,
+        "pages": 982
+      }
+    },
+    "build": {
+      "status": "passed",
+      "started_at": "2026-10-18T11:51:53.342Z",
+      "finished_at": "2026-10-18T11:53:18.965Z",
+      "published_at": "2026-10-18T11:01:25.162Z",
+      "source": "working_database",
+      "rows": 343552,
+      "districts": 3,
+      "months": 757,
+      "search_identities": 612,
+      "source_history": {
+        "months": 939,
+        "rows": 343552,
+        "pages": 982
+      }
+    }
+  }
+}

@@ -1,5 +1,7 @@
 import {XMLParser,XMLValidator} from 'fast-xml-parser';
 import {setTimeout as delay} from 'node:timers/promises';
+import {createHash} from 'node:crypto';
+import {assertTradeRows,normalizedTradeFields} from './trade-integrity.mjs';
 export const ENDPOINT='https://apis.data.go.kr/1613000/RTMSDataSvcAptTrade/getRTMSDataSvcAptTrade';
 export function currentMonth(now=new Date()) {return new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Seoul',year:'numeric',month:'2-digit'}).format(now).replace(/[^0-9]/g,'');}
 export function monthsBetween(start,end,now=new Date()) {
@@ -49,10 +51,13 @@ export async function fetchPage(key,code,month,page,signal,fetcher=fetch) {
 export async function collectMonth(db,key,code,month,name,{signal,fetcher=fetchPage,pause=150}={}) {
   monthsBetween(month,month);
   if(!/^\d{5}$/.test(code)||!name.trim()||!key)throw new Error('API 키와 지역 정보를 확인하세요.');
-  let expected=null;const items=[],pages=[];
+  let expected=null;const items=[],pages=[],pageHashes=new Set();
   for(let page=1;page<=1000;page++) {
     signal?.throwIfAborted();
     const result=await fetcher(key,code,month,page,signal);
+    const pageHash=createHash('sha256').update(JSON.stringify(result.items)).digest('hex');
+    if(result.items.length&&pageHashes.has(pageHash))throw new Error('수집 중 API 페이지가 반복되었습니다. 기존 월별 데이터는 유지됩니다.');
+    pageHashes.add(pageHash);
     if(expected!==null&&expected!==result.total) throw new Error('수집 중 총 건수가 달라졌습니다. 다시 수집하세요.');
     expected=result.total;items.push(...result.items);pages.push([page,Buffer.from(result.xml)]);
     if(items.length===expected)break;
@@ -60,6 +65,8 @@ export async function collectMonth(db,key,code,month,name,{signal,fetcher=fetchP
     if(pause)await delay(pause,undefined,{signal});
   }
   const rows=items.map(item=>normalize(item,code,month));signal?.throwIfAborted();
+  const previous=db.prepare('SELECT count(*) AS n FROM trades WHERE region_code=? AND deal_month=?').get(code,month).n;
+  if((previous>0&&rows.length===0)||(previous>=100&&rows.length<previous/2))throw new Error(`데이터 검증 실패: 원천 건수 급감 ${code}/${month} (${previous} → ${rows.length}). 기존 월별 데이터는 유지됩니다.`);
   db.exec('BEGIN IMMEDIATE');
   try {
     db.prepare('DELETE FROM trades WHERE region_code=? AND deal_month=?').run(code,month);
@@ -68,9 +75,39 @@ export async function collectMonth(db,key,code,month,name,{signal,fetcher=fetchP
     const run=db.prepare('INSERT INTO collection_runs(region_code,region_name,deal_month,fetched_at,api_count,stored_count) VALUES (?,?,?,?,?,?)').run(code,name,month,new Date().toISOString(),expected,rows.length);
     const insertPage=db.prepare('INSERT INTO api_pages VALUES (?,?,?)');
     pages.forEach(([page,xml])=>insertPage.run(run.lastInsertRowid,page,xml));
+    verifyCollectedMonth(db,Number(run.lastInsertRowid));
     db.prepare('INSERT OR REPLACE INTO metadata VALUES (?,?)').run('published_at',new Date().toISOString());
     db.exec('COMMIT');
   } catch(e) {db.exec('ROLLBACK');throw e;}
   return rows.length;
+}
+export function verifyCollectedMonth(db,runId) {
+  const run=db.prepare('SELECT * FROM collection_runs WHERE id=?').get(runId);
+  if(!run)throw new Error('데이터 검증 실패: 수집 이력이 없습니다.');
+  const scope=`원천 → DB ${run.region_code}/${run.deal_month}`;
+  const pages=db.prepare('SELECT page_no,response_xml FROM api_pages WHERE run_id=? ORDER BY page_no').all(runId),rows=[],hashes=new Set();
+  if(!pages.length)throw new Error(`데이터 검증 실패: ${scope} 원천 페이지 없음`);
+  if(run.api_count===0&&pages.length!==1)throw new Error(`데이터 검증 실패: ${scope} 빈 원천 페이지 중복`);
+  for(const [index,page] of pages.entries()){
+    if(page.page_no!==index+1)throw new Error(`데이터 검증 실패: ${scope} 페이지 순서 누락`);
+    const parsed=parsePage(Buffer.from(page.response_xml).toString());
+    if(parsed.total!==run.api_count||(!parsed.items.length&&run.api_count!==0))throw new Error(`데이터 검증 실패: ${scope} 원천 총건수 불일치`);
+    const digest=createHash('sha256').update(JSON.stringify(parsed.items)).digest('hex');
+    if(parsed.items.length&&hashes.has(digest))throw new Error(`데이터 검증 실패: ${scope} 원천 페이지 반복`);
+    hashes.add(digest);
+    for(const item of parsed.items){const values=normalize(item,run.region_code,run.deal_month);rows.push({...Object.fromEntries(normalizedTradeFields.map((key,i)=>[key,values[i]])),raw:item});}
+  }
+  const count=assertTradeRows(rows,db.prepare('SELECT * FROM trades WHERE region_code=? AND deal_month=?').iterate(run.region_code,run.deal_month),{scope,includeId:false});
+  if(count!==run.api_count||count!==run.stored_count)throw new Error(`데이터 검증 실패: ${scope} 수집 이력 건수 불일치`);
+  return {rows:count,pages:pages.length};
+}
+
+export function verifyCollectionHistory(db) {
+  if(!db.prepare("SELECT name FROM sqlite_master WHERE name='collection_runs'").get())return {months:0,rows:0,pages:0};
+  const result={months:0,rows:0,pages:0};
+  for(const {id} of db.prepare('SELECT max(id) AS id FROM collection_runs GROUP BY region_code,deal_month').all()){
+    const checked=verifyCollectedMonth(db,id);result.months++;result.rows+=checked.rows;result.pages+=checked.pages;
+  }
+  return result;
 }
 export function collectionTasks(selected,months) {return [...new Map(selected.flatMap(r=>months.map(month=>[`${r.region_code}/${month}`,{code:r.region_code,name:r.region_name,month}]))).values()];}

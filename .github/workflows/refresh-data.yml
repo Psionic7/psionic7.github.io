@@ -63,6 +63,8 @@ jobs:
         env:
           MOLIT_SERVICE_KEY: ${{ secrets.MOLIT_SERVICE_KEY }}
           JUSO_ADDRESS_SEARCH_KEY: ${{ secrets.JUSO_ADDRESS_SEARCH_KEY }}
+      - name: Test integrity protections after extraction
+        run: pnpm test:data
       - name: Build and check public files
         run: |
           pnpm build
@@ -79,6 +81,14 @@ jobs:
       - uses: actions/upload-pages-artifact@v4
         with:
           path: docs
+      - name: Preserve data validation summaries
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: data-validation
+          path: local/data-validation/*.json
+          if-no-files-found: ignore
+          retention-days: 14
   deploy:
     needs: prepare
     runs-on: ubuntu-latest

@@ -89,7 +89,7 @@ export function createAdminServer({files=paths,staticRoot=path.join(ROOT,'admin-
               for(const task of tasks){signal.throwIfAborted();job.message=`${task.name} · ${task.month}`;const n=await collectMonth(db,key,task.code,task.month,task.name,{signal,fetcher});job.completed++;job.rows+=n;}
               job.status='completed';job.message='수집 완료. 공개 데이터 내보내기를 실행하세요.';
             },
-            failureMessage:e=>/^(API |공공 API |수집 중 |거래 필드)/.test(e.message)?e.message:'수집 실패. API 승인, 연결 및 응답을 확인하세요.',
+            failureMessage:e=>/^(데이터 검증 실패:|API |공공 API |수집 중 |거래 필드)/.test(e.message)?e.message:'수집 실패. API 승인, 연결 및 응답을 확인하세요.',
             cancelledMessage:'수집을 중단했습니다. 완료한 월은 보존됩니다.',
           });
           return json(res,202,{job});
@@ -170,7 +170,7 @@ export function createAdminServer({files=paths,staticRoot=path.join(ROOT,'admin-
       const ext=path.extname(filename),mime={'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.json':'application/json; charset=utf-8','.geojson':'application/geo+json','.png':'image/png','.svg':'image/svg+xml'}[ext]||'application/octet-stream';
       res.writeHead(200,{'Content-Type':mime,'Cache-Control':ext==='.html'?'no-store':'no-cache','X-Content-Type-Options':'nosniff'});
       if(req.method==='HEAD')res.end();else fs.createReadStream(filename).pipe(res);
-    }catch(e){json(res,400,{error:/^(원천 조회|저장한 수집|수집 지역|서울·경기|계약월|월 범위|한 번에|API 키|\.env에|지역 코드|원천 필드|공개 파일|원본 작업)/.test(e.message)?e.message:'요청 처리 실패. 로컬 파일 상태와 입력값을 확인하세요.'});}
+    }catch(e){json(res,400,{error:/^(데이터 검증 실패:|원천 조회|저장한 수집|수집 지역|서울·경기|계약월|월 범위|한 번에|API 키|\.env에|지역 코드|원천 필드|공개 파일|원본 작업)/.test(e.message)?e.message:'요청 처리 실패. 로컬 파일 상태와 입력값을 확인하세요.'});}
   });
   server.on('close',()=>controller?.abort());
   return server;

@@ -80,7 +80,7 @@ export async function runAutomation(action) {
     const manifest = exportData();
     const status = {prepared_at: new Date().toISOString(), published_at: manifest.published_at, count: manifest.count, run_url: process.env.GITHUB_SERVER_URL && `${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}`};
     atomicWrite(path.join(ROOT, 'public/automation-status.json'), JSON.stringify(status) + '\n');
-    console.log(`공개 데이터 ${manifest.count}건 내보내기 완료`);
+    console.log(`공개 데이터 ${manifest.count}건 추출·누락 검증 완료`);
   } else if (action === 'save') {
     const github = cloudGithub(process.env.GITHUB_TOKEN, process.env.GITHUB_REPOSITORY);
     await github.save(encryptState(fs.readFileSync(paths.db), process.env.COLLECTION_STATE_KEY));
@@ -89,5 +89,5 @@ export async function runAutomation(action) {
 }
 if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {
   try {await runAutomation(process.argv[2]);}
-  catch (error) {console.error(/^(GitHub|자동 수집|DB |암호화|저장된 DB|기존 로컬|실거래 API|공공 API|API |거래 필드|수집 중|공식 주소|예약 시간|수집 지역)/.test(error.message) ? error.message : '자동 수집 작업 실패. Actions의 실패 단계를 확인하세요.'); process.exitCode = 1;}
+  catch (error) {console.error(/^(데이터 검증 실패:|GitHub|자동 수집|DB |암호화|저장된 DB|기존 로컬|실거래 API|공공 API|API |거래 필드|수집 중|공식 주소|예약 시간|수집 지역)/.test(error.message) ? error.message : '자동 수집 작업 실패. Actions의 실패 단계를 확인하세요.'); process.exitCode = 1;}
 }
