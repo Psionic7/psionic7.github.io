@@ -163,7 +163,7 @@ function Explorer({manifest,districtLoader,onResetPreferences,restoredScroll=0,u
   },[tab,weeklyIds,weeklyDay,weeklyPeriod,selectedApartments,searchRegionId,apartmentDay,apartmentPeriod,dashboardDays,queryFilters,sharedOverview]);
   const share=async()=>{const url=new URL(window.location.href);if(tab==='dashboard'&&!sharedOverview)appendSharedOverview(url.searchParams,{regions:overviewRegions,apartments:overviewApartments});try{await navigator.clipboard.writeText(url.href);setCopied(true);setTimeout(()=>setCopied(false),2500);}catch{window.prompt('이 주소를 복사해 주세요.',url.href);}};
   const activeLabel=tabs.find(([id])=>id===tab)[1];
-  return <div className="app-shell public-shell" data-tab={tab} data-has-selection={(tab==='apartments'&&selectedApartments.length>0||tab==='weekly'&&weeklyIds.length>0)?'true':undefined}>
+  return <div className="app-shell public-shell" data-tab={tab} data-explore={exploreTabs.includes(tab)?'true':undefined} data-has-selection={(tab==='apartments'&&selectedApartments.length>0||tab==='weekly'&&weeklyIds.length>0)?'true':undefined}>
     <a className="skip-content" href="#main-content">본문으로 건너뛰기</a>
     <aside className="workspace-sidebar" aria-label="사이트 탐색">
       <a className="brand" href="/"><span className="brand-icon"><BrandMark/></span><span>집의 기록<small>HOME RECORDS</small></span></a>

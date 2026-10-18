@@ -36,5 +36,5 @@
 .weekly-trades{scroll-margin-top:18px}.storage-notice,.update-notice{font-size:13px;line-height:1.7}
 @media(max-width:650px){
 .public-shell .mobile-trades tbody{gap:8px}.public-shell .mobile-trades tr{padding:12px;gap:7px 10px}.public-shell .mobile-trades td{line-height:1.4}.public-shell .mobile-trades td:before{margin-bottom:2px}.public-shell .mobile-trades td:nth-child(5) strong{font-size:19px}.public-shell .weekly-dong{padding:14px 12px}.public-shell .weekly-dong .collapsible-panel-heading{margin-bottom:8px}
-.public-shell[data-has-selection=true] .query-toolbar{padding:7px 0;margin-bottom:8px}.public-shell[data-has-selection=true] .explore-views{margin-block:6px 8px}.public-shell[data-has-selection=true] .weekly-dong .section-title p{margin-top:2px}
+.public-shell[data-has-selection=true] .query-toolbar{padding:7px 0;margin-bottom:8px}.public-shell[data-explore=true] .explore-views{margin-block:6px 8px}.public-shell[data-has-selection=true] .weekly-dong .section-title p{margin-top:2px}
 }

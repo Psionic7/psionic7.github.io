@@ -43,9 +43,6 @@
 .public-shell .small-note{color:#58677b;font-size:13px;line-height:1.7}
 .public-shell .apartment-option{box-shadow:none}
 .public-shell .weekly-stack{gap:24px}
-.public-shell[data-tab=map] .page-header p,.public-shell[data-tab=regions] .page-header p{display:none}
-.public-shell[data-tab=map] .main-content,.public-shell[data-tab=regions] .main-content{max-width:none;padding-top:20px}
-.public-shell[data-tab=map] .explore-views,.public-shell[data-tab=regions] .explore-views{margin:12px 0}
 .public-shell .apartment-map-page,.public-shell .region-map-page{padding:0;border:0;background:transparent;box-shadow:none}
 .public-shell .apartment-map-page>.panel-heading,.public-shell .region-map-page>.panel-heading{display:none}
 .public-shell .apartment-map-page>.small-note:first-of-type{display:none}
@@ -96,11 +93,10 @@
 @media(max-width:899px){.public-shell .workspace-topbar{height:0}}
 .public-shell .trade-trend{margin:0 0 20px;border-bottom:1px solid #e5eaf3;padding:0 0 12px;font-size:13px;color:#475569}.trade-trend summary{cursor:pointer;min-height:36px;line-height:36px;color:#2858df}.trade-trend>label{display:flex;align-items:center;gap:12px;margin:12px 0}.public-shell .trade-trend select{width:auto;font-size:13px}.trade-trend svg{width:100%;max-height:210px;display:block}.trade-trend svg text{font-size:11px;fill:#64748b}.trade-trend figcaption,.trade-trend>p{font-size:12px;color:#64748b;line-height:1.7}.public-shell .selection-done{margin:14px 0 0;min-height:44px;width:100%}
 .public-shell .region-map-page .region-map-filters{display:flex;grid-template-columns:none;max-width:none}.public-shell .region-map-page .region-map-filters>label{flex:1;width:auto}.public-shell .region-map-page .region-map-filters .region-map-search{width:100%}
-.public-shell[data-has-selection=true] .page-header{display:none}
 @media(max-width:650px){
-.public-shell[data-has-selection=true] .main-content{padding-top:12px}
-.public-shell[data-has-selection=true] .data-status-main>span:first-of-type{display:none}
-.public-shell[data-has-selection=true] .data-status-main{gap:5px}.public-shell[data-has-selection=true] .data-status-banner{padding:8px;margin-bottom:8px}.public-shell[data-has-selection=true] .data-status-main time{font-size:11px}
+.public-shell[data-explore=true] .main-content{padding-top:12px}
+.public-shell[data-explore=true] .data-status-main>span:first-of-type{display:none}
+.public-shell[data-explore=true] .data-status-main{gap:5px}.public-shell[data-explore=true] .data-status-banner{padding:8px;margin-bottom:8px}.public-shell[data-explore=true] .data-status-main time{font-size:11px}
 .public-shell .explore-views{margin:8px 0 12px;padding-bottom:7px;flex-wrap:nowrap}.public-shell .explore-views button{white-space:nowrap;min-height:38px;font-size:12px;padding:6px}
 .public-shell .new-search-button{min-height:34px;margin:0 0 8px;padding:5px 10px;font-size:12px}
 .public-shell .query-toolbar{margin-bottom:12px;padding:10px 0}.public-shell .query-toolbar button{min-height:38px}
@@ -111,4 +107,5 @@
 .public-shell .favorite-result-action{border:0;background:transparent;color:#aa7416;padding:7px;min-height:36px;min-width:36px}
 @media(max-width:650px){.public-shell .weekly-results-context>span{width:auto}.public-shell .weekly-results-context{margin-top:0;margin-bottom:8px}}
 @media(max-width:360px){.public-shell .weekly-dong .result-count{display:none}.public-shell .weekly-dong h2{font-size:19px;letter-spacing:-.7px}.public-shell .weekly-dong .section-title p{font-size:11px}.public-shell .weekly-dong .collapsible-panel-actions{gap:2px}.public-shell .weekly-dong .favorite-result-action{min-width:30px;padding:5px}.public-shell .query-toolbar>button:last-child{font-size:11px}.public-shell .trade-highlight strong{font-size:32px}}
-.public-shell[data-has-selection=true] .page-header{display:block;position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+/* Keep the same compact navigation across all four exploration views. */
+.public-shell[data-explore=true] .page-header{display:block;position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
