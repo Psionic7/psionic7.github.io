@@ -1,5 +1,6 @@
 import {areaPreference,readPreferences,savePreferences,unitPreference} from './preferences.js';
 import {validApartmentSelection} from './apartment-query.js';
+import {validRecentCount} from './weekly/query.mjs';
 
 // Explicit empty values in a shared link must override the recipient's filters.
 export function applySharedFilters(params) {
@@ -10,6 +11,7 @@ export function applySharedFilters(params) {
   const filters={
     minArea:area('min'),maxArea:area('max'),areaBands:[...new Set(bands.filter(value=>[10,20,30].includes(value)))],includeCancelled:params.get('cancelled')==='1',
     areaUnit:unitPreference(params.get('unit'))?params.get('unit'):readPreferences('display').areaUnit||'m2',
+    recentCount:params.get('count')&&validRecentCount(Number(params.get('count')))?Number(params.get('count')):'',
   };
   savePreferences(scope,{...readPreferences(scope),...filters});
   if(unitPreference(params.get('unit')))savePreferences('display',{...readPreferences('display'),areaUnit:params.get('unit')});
@@ -21,6 +23,8 @@ export function appendSharedFilters(params,filters) {
   params.set('bands',(filters.areaBands||[]).join(','));
   params.set('cancelled',filters.includeCancelled===false?'0':'1');
   params.set('unit',filters.areaUnit||'m2');
+  if(filters.recentCount!==''&&validRecentCount(filters.recentCount))params.set('count',String(filters.recentCount));
+  else params.delete('count');
 }
 export function readSharedOverview(params,catalog) {
   if(params.get('view')!=='shared')return null;

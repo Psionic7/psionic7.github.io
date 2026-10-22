@@ -1,4 +1,5 @@
 import {createJsonCache} from './json-cache.mjs';
+import {validRecentCount,weeklyResultRows} from './weekly/query.mjs';
 const sizes=new WeakMap();
 export const jsonCharacterSize=value=>sizes.get(value)||0;
 export async function fetchJson(path, fresh = false) {
@@ -20,6 +21,18 @@ export async function loadDistrict(manifest, code,request={}) {
     const index=await cachedJson('/query-data/'+browser.file);
     const catalog=index.catalog;
     if(request.catalogOnly)return {rows:[],catalog};
+    if(request.recentCount!==''&&validRecentCount(request.recentCount)&&request.recentRegions?.length){
+      // Read complete months newest first. Every selected card must have enough
+      // matching rows before stopping, including its area and cancellation rules.
+      const months=Object.entries(index.months).sort(([a],[b])=>b.localeCompare(a));
+      const regions=request.recentRegions.filter(region=>region.region_code===code);
+      const rows=[],range={start:'0000-01-01',end:request.end||'9999-12-31'};
+      for(const [,file] of months){
+        rows.push(...await cachedJson('/query-data/'+file));
+        if(regions.every(region=>weeklyResultRows(rows,region,range,request).length>=request.recentCount))break;
+      }
+      return {rows,catalog};
+    }
     const start=request.start?.slice(0,7).replace('-',''),end=request.end?.slice(0,7).replace('-','');
     const months=Object.entries(index.months).filter(([month])=>(!start||month>=start)&&(!end||month<=end));
     // Limit simultaneous requests when a user deliberately selects many years.

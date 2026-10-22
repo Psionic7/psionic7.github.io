@@ -7,9 +7,9 @@ import useMediaQuery from '../useMediaQuery.js';
 import CollapsiblePanel from '../CollapsiblePanel.jsx';
 import {weeklyResultRows} from '../weekly/query.mjs';
 
-export default function TransactionResults({region,week,dataset,collected,minArea,maxArea,selectedBands,includeCancelled,mode,onRetry,areaUnit='m2',resultActions}) {
-  const rows=useMemo(()=>weeklyResultRows(dataset?.rows||[],region,week,{minArea,maxArea,selectedBands,includeCancelled}),[dataset?.rows,region,week.start,week.end,minArea,maxArea,selectedBands,includeCancelled]);
-  const periodLabel=mode==='week'?'주간':'기간별',timeLabel=mode==='week'?'이 주':'선택 기간';
+export default function TransactionResults({region,week,dataset,collected,minArea,maxArea,selectedBands,includeCancelled,recentCount='',mode,onRetry,areaUnit='m2',resultActions}) {
+  const rows=useMemo(()=>weeklyResultRows(dataset?.rows||[],region,week,{minArea,maxArea,selectedBands,includeCancelled,recentCount}),[dataset?.rows,region,week.start,week.end,minArea,maxArea,selectedBands,includeCancelled,recentCount]);
+  const periodLabel=mode==='week'?'주간':mode==='count'?'최근':'기간별',timeLabel=mode==='week'?'이 주':mode==='count'?'전체 기간':'선택 기간';
   const areaFiltered=minArea!=='' || maxArea!=='' || selectedBands.length>0;
   const [page,setPage]=useState(1),resultsRef=useRef(null);
   const mobile=useMediaQuery('(max-width:650px)'),pageSize=mobile?20:50;
@@ -28,8 +28,8 @@ export default function TransactionResults({region,week,dataset,collected,minAre
         </table></div>
         <div className="pagination"><span>계약일 최신순 · 페이지당 {pageSize}건 · {safePage} / {pages} 페이지</span><button aria-label={`${region.label} 이전 거래 페이지`} disabled={safePage<=1} onClick={()=>changePage(safePage-1)}><ChevronLeft size={16}/></button><button aria-label={`${region.label} 다음 거래 페이지`} disabled={safePage>=pages} onClick={()=>changePage(safePage+1)}><ChevronRight size={16}/></button></div>
         {region.key&&<div className="transaction-extras">
-          {latest&&<details className="trade-summary"><summary>최근 유효 거래 요약</summary><div className="trade-highlight" aria-label="최근 유효 거래"><div><span>선택 기간의 최근 유효 거래</span><strong>{formatNumber(priceEok(latest),2)}<small>억 원</small></strong></div><div><b>전용 {formatNumber(latest.area_m2,2)}㎡</b><span>{latest.deal_date} · {latest.floor??'—'}층</span><small>면적과 층이 다른 거래는 가격 차이가 날 수 있습니다.</small></div></div></details>}
-          <TradeTrend rows={rows}/>
+          {latest&&<details className="trade-summary"><summary>최근 유효 거래 요약</summary><div className="trade-highlight" aria-label="최근 유효 거래"><div><span>{mode==='count'?'조회된 최근 유효 거래':'선택 기간의 최근 유효 거래'}</span><strong>{formatNumber(priceEok(latest),2)}<small>억 원</small></strong></div><div><b>전용 {formatNumber(latest.area_m2,2)}㎡</b><span>{latest.deal_date} · {latest.floor??'—'}층</span><small>면적과 층이 다른 거래는 가격 차이가 날 수 있습니다.</small></div></div></details>}
+          <TradeTrend rows={rows} countMode={mode==='count'}/>
         </div>}
       </>}
     </>}

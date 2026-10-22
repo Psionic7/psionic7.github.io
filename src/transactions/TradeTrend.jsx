@@ -1,7 +1,7 @@
 import React,{useState} from 'react';
 import {formatNumber,priceEok} from '../domain.mjs';
 
-export default function TradeTrend({rows}){
+export default function TradeTrend({rows,countMode=false}){
   const valid=rows.filter(row=>!row.cancelled);
   const areas=[...new Set(valid.map(row=>Number(row.area_m2)))].sort((a,b)=>a-b);
   const [chosen,setChosen]=useState(null);
@@ -13,7 +13,7 @@ export default function TradeTrend({rows}){
   const xy=points.map((row,index)=>({x:48+(dates[index]-dates[0])/(dates.at(-1)-dates[0]||1)*544,y:105-(prices[index]-low)/span*70,row}));
   return <details className="trade-trend"><summary>같은 전용면적의 거래 흐름 보기</summary>
     <label>비교할 전용면적<select value={area} onChange={event=>setChosen(Number(event.target.value))}>{areas.map(value=><option value={value} key={value}>{formatNumber(value,2)}㎡ · {valid.filter(row=>Number(row.area_m2)===value).length}건</option>)}</select></label>
-    {points.length<2?<p>이 면적은 선택 기간에 유효 거래가 1건입니다. 흐름을 비교하려면 기간을 늘려 보세요.</p>:<figure><svg viewBox="0 0 640 145" role="img" aria-label={`전용 ${area}제곱미터 유효 거래 ${points.length}건, 최저 ${low.toFixed(2)}억원, 최고 ${high.toFixed(2)}억원`}>
+    {points.length<2?<p>{countMode?'조회한 최근 거래 중 이 면적의 유효 거래는 1건입니다. 흐름을 비교하려면 조회 건수를 늘려 보세요.':'이 면적은 선택 기간에 유효 거래가 1건입니다. 흐름을 비교하려면 기간을 늘려 보세요.'}</p>:<figure><svg viewBox="0 0 640 145" role="img" aria-label={`전용 ${area}제곱미터 유효 거래 ${points.length}건, 최저 ${low.toFixed(2)}억원, 최고 ${high.toFixed(2)}억원`}>
       {[35,70,105].map(y=><line key={y} x1="48" x2="592" y1={y} y2={y} stroke="#e5eaf3"/>)}
       <text x="0" y="39">{high.toFixed(2)}억</text><text x="0" y="109">{low.toFixed(2)}억</text>
       <polyline points={xy.map(p=>`${p.x},${p.y}`).join(' ')} fill="none" stroke="#2858df" strokeWidth="2"/>

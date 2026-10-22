@@ -28,6 +28,14 @@
 .quick-periods{display:flex;background:#edf1f7;padding:3px;border-radius:9px;gap:2px}
 .public-shell .quick-periods button{border:0;background:transparent;min-height:34px;padding:6px 12px}
 .public-shell .quick-periods button[aria-pressed=true]{background:white;color:#2858df;box-shadow:0 1px 4px #17203312}
+.recent-count-filter{display:flex;align-items:center;gap:5px;padding:3px 4px 3px 9px;border:1px solid #dce3eb;border-radius:9px;background:white;flex-shrink:0}
+.public-shell .recent-count-filter label{display:flex;flex-direction:row;align-items:center;gap:5px;margin:0;font-size:12px;color:#526079;white-space:nowrap}
+.public-shell .recent-count-filter input[type=number]{width:62px;min-width:0;height:30px;min-height:30px;padding:4px 5px;border:1px solid #dce3eb;border-radius:5px;font-size:13px}
+.public-shell .recent-count-filter button{min-height:30px;padding:5px 7px;border:0;font-size:12px}
+.recent-count-filter.active{border-color:#a8bdf4;background:#f2f6ff}
+.public-shell .recent-count-filter.active button[type=submit]{background:#2858df;color:white}
+.public-shell .recent-count-filter .count-reset{color:#526079;background:transparent;padding-inline:4px;font-size:11px}
+@media(max-width:560px){.recent-count-filter{margin-left:auto}.public-shell .recent-count-filter input[type=number]{width:52px}.public-shell .query-toolbar .recent-count-filter button{min-height:30px}.public-shell .query-toolbar>button:last-child{flex-basis:100%}}
 .query-selection,.query-conditions{background:#fff;border:1px solid #dfe5ee;border-radius:12px;padding:18px;margin-bottom:20px;scroll-margin-top:20px}
 .public-shell [hidden]{display:none!important}
 .public-shell .query-selection .dong-filter-card,.public-shell .query-conditions .dong-filter-card{border:0;box-shadow:none;border-radius:0;padding:8px;background:white}

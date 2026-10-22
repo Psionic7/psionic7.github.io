@@ -13,6 +13,7 @@ import {areaPreference,readPreferences,unitPreference,useStoredState} from './pr
 import TransactionResults from './transactions/TransactionResults.jsx';
 import FilterGroup from './weekly/FilterGroup.jsx';
 import {useDistrictDatasets} from './weekly/useDistrictDatasets.js';
+import {validRecentCount} from './weekly/query.mjs';
 
 const optionalArea=value=>value==='' || areaPreference(value);
 const areaBands=[10,20,30];
@@ -31,7 +32,13 @@ export default function TransactionPage({manifest,regions,day,onDayChange,period
   const [maxArea,setMaxArea]=useFilterPreference(filterScope,'maxArea','',optionalArea,initialFilters);
   const [selectedBands,setSelectedBands]=useFilterPreference(filterScope,'areaBands',[],validAreaBands,initialFilters);
   const [includeCancelled,setIncludeCancelled]=useFilterPreference(filterScope,'includeCancelled',true,value=>typeof value==='boolean',initialFilters);
-  useEffect(()=>{onQueryChange?.({scope:filterScope,minArea,maxArea,areaBands:selectedBands,includeCancelled,areaUnit});},[filterScope,minArea,maxArea,selectedBands,includeCancelled,areaUnit,onQueryChange]);
+  const [recentCount,setRecentCount]=useFilterPreference(filterScope,'recentCount','',validRecentCount,initialFilters);
+  const [countInput,setCountInput]=useState(String(recentCount||10));
+  const countMode=recentCount!=='';
+  useEffect(()=>{if(countMode)setCountInput(String(recentCount));},[recentCount,countMode]);
+  useEffect(()=>{onQueryChange?.({scope:filterScope,minArea,maxArea,areaBands:selectedBands,includeCancelled,areaUnit,recentCount});},[filterScope,minArea,maxArea,selectedBands,includeCancelled,areaUnit,recentCount,onQueryChange]);
+  const changePeriod=value=>{setRecentCount('');onPeriodChange(value);};
+  const changeDay=value=>{setRecentCount('');onDayChange(value);};
   const setArea=(setter,value)=>setter(value===''?'':areaM2(Math.max(0,Number(value)),areaUnit));
   const areaFiltered=minArea!=='' || maxArea!=='' || selectedBands.length>0;
   const selectBands=bands=>{
@@ -45,23 +52,31 @@ export default function TransactionPage({manifest,regions,day,onDayChange,period
   const [retry,setRetry]=useState(0);
   const selectedCodes=useMemo(()=>[...new Set(selected.map(region=>region.region_code))].sort(),[selected]);
   const codes=useMemo(()=>[...new Set([...selectedCodes,...(searchRegionCode?[searchRegionCode]:[])])].sort(),[selectedCodes,searchRegionCode]);
-  const latestDay=publishedDay(manifest.published_at),requestedRange=periodBounds(period,day);
+  const latestDay=publishedDay(manifest.published_at);
   const firstMonth=manifest.months[0], earliestDay=firstMonth?`${firstMonth.slice(0,4)}-${firstMonth.slice(4)}-01`:undefined;
+  const requestedRange=countMode?{start:earliestDay||'1900-01-01',end:latestDay}:periodBounds(period,day);
   let periodError=!requestedRange?'올바른 조회 날짜를 선택해 주세요.':'';
-  if(period.mode==='custom'&&period.start&&period.end&&period.start>period.end)periodError='조회 시작일은 종료일보다 늦을 수 없습니다.';
-  if(requestedRange&&period.mode==='custom'&&((earliestDay&&requestedRange.start<earliestDay)||(latestDay&&requestedRange.end>latestDay)))periodError='공개 자료 범위 안에서 시작일과 종료일을 선택해 주세요.';
-  if(requestedRange&&period.mode==='month'&&((earliestDay&&period.month<earliestDay.slice(0,7))||(latestDay&&period.month>latestDay.slice(0,7))))periodError='공개 자료 범위 안에서 조회 월을 선택해 주세요.';
+  if(!countMode){
+    if(period.mode==='custom'&&period.start&&period.end&&period.start>period.end)periodError='조회 시작일은 종료일보다 늦을 수 없습니다.';
+    if(requestedRange&&period.mode==='custom'&&((earliestDay&&requestedRange.start<earliestDay)||(latestDay&&requestedRange.end>latestDay)))periodError='공개 자료 범위 안에서 시작일과 종료일을 선택해 주세요.';
+    if(requestedRange&&period.mode==='month'&&((earliestDay&&period.month<earliestDay.slice(0,7))||(latestDay&&period.month>latestDay.slice(0,7))))periodError='공개 자료 범위 안에서 조회 월을 선택해 주세요.';
+  }
   const week=periodError?null:requestedRange;
   // Invalid dates must never become an unbounded transaction request. Keep only
   // the lightweight catalog available when the apartment selector needs it.
   const requestCodes=week?codes:districtLoader.supportsRanges&&searchRegionCode?[searchRegionCode]:[];
-  const datasets=useDistrictDatasets(manifest,requestCodes,districtLoader,retry,{...week,catalogOnlyCodes:codes.filter(code=>!week||!selectedCodes.includes(code))});
+  const datasets=useDistrictDatasets(manifest,requestCodes,districtLoader,retry,{...week,catalogOnlyCodes:codes.filter(code=>!week||!selectedCodes.includes(code)),...(countMode?{recentCount,recentRegions:selected.map(({region_code,dongs,key,master_id,trade_keys})=>({region_code,dongs,key,master_id,trade_keys})),minArea,maxArea,selectedBands,includeCancelled}:{})});
   const knownMaxArea=useMemo(()=>selectedCodes.reduce((max,code)=>(datasets[code]?.rows||[]).reduce((value,row)=>Math.max(value,Number(row.area_m2)||0),max),300),[selectedCodes,datasets]);
   const sliderCeiling=Math.max(Math.ceil(knownMaxArea/50)*50,minArea||0,maxArea||0);
   return <div className="weekly-page">
     <div className="query-toolbar">
       <button className="query-selection-button" aria-expanded={controlsOpen} aria-controls="query-controls" onClick={()=>setControlsOpen(value=>!value)}>{selected.length?`${selected.length}${apartmentView?'개 단지':'개 동네'} 선택 · 변경 / 비교 추가`:apartmentView?'지역별 단지 목록에서 선택':'조회할 동네 선택'}<ListFilter size={17}/></button>
-      <div className="quick-periods" role="group" aria-label="빠른 조회 기간">{[30,90,365].map(count=>{const recent=recentRange(latestDay,count,earliestDay);return <button key={count} disabled={!recent} aria-pressed={period.mode==='custom'&&period.start===recent?.start&&period.end===recent?.end} onClick={()=>onPeriodChange({...period,mode:'custom',...recent})}>{count===365?'1년':`${count}일`}</button>;})}</div>
+      <div className="quick-periods" role="group" aria-label="빠른 조회 기간">{[30,90,365].map(count=>{const recent=recentRange(latestDay,count,earliestDay);return <button key={count} disabled={!recent} aria-pressed={!countMode&&period.mode==='custom'&&period.start===recent?.start&&period.end===recent?.end} onClick={()=>changePeriod({...period,mode:'custom',...recent})}>{count===365?'1년':`${count}일`}</button>;})}</div>
+      <form className={`recent-count-filter${countMode?' active':''}`} aria-label="최근 거래 건수 조회" title="날짜 제한 없이 면적·해제 조건에 맞는 최근 거래를 단지·동네별로 조회합니다." onSubmit={event=>{event.preventDefault();const value=Number(countInput);if(validRecentCount(value))setRecentCount(value);}}>
+        <label>최근 <input aria-label="최근 거래 건수" type="number" min="1" max="1000" step="1" required value={countInput} onChange={event=>setCountInput(event.target.value)}/></label>
+        <button type="submit" aria-pressed={countMode}>건 조회</button>
+        {countMode&&<button type="button" className="count-reset" aria-label="건수 조회 해제" onClick={()=>setRecentCount('')}>해제</button>}
+      </form>
       <button aria-expanded={conditionOpen} aria-controls="query-conditions" onClick={()=>setConditionOpen(value=>!value)}><SlidersHorizontal size={16}/>{areaFiltered?'면적 조건 적용':'전체 면적'} · 기간 / 조건</button>
     </div>
     <section id="query-controls" className="query-selection" aria-label={apartmentView?'즐겨찾기 아파트 조회 조건':'동 별 실거래가 조회 조건'} hidden={!controlsOpen}>
@@ -70,7 +85,7 @@ export default function TransactionPage({manifest,regions,day,onDayChange,period
     </section>
     <section id="query-conditions" className="query-conditions" aria-label="상세 조회 조건" hidden={!conditionOpen}>
       <div className="dong-filter-grid">
-        <PeriodPicker period={period} onChange={onPeriodChange} day={day} onDayChange={onDayChange} range={week} earliestDay={earliestDay} latestDay={latestDay} error={periodError}/>
+        <PeriodPicker period={period} onChange={changePeriod} day={day} onDayChange={changeDay} range={countMode?periodBounds(period,day):week} earliestDay={earliestDay} latestDay={latestDay} error={periodError}/>
         <FilterGroup number="03" title="전용면적" label="조회 면적 설정" icon={SlidersHorizontal} className="area-card" initiallyExpanded={areaFiltered||selected.length>0} actions={<AreaUnit value={areaUnit} onChange={setAreaUnit}/>}>
           <div className="area-band-picker" role="group" aria-label="전용평대 빠른 선택">
             <div className="area-band-caption"><strong>평대 빠른 선택</strong><span>여러 구간 선택 가능</span></div>
@@ -90,8 +105,8 @@ export default function TransactionPage({manifest,regions,day,onDayChange,period
     </section>
     {periodError&&!conditionOpen&&<p role="alert" className="notice error">{periodError}<button onClick={()=>setConditionOpen(true)}>기간 수정</button></p>}
     {invalidArea&&!conditionOpen&&<p role="alert" className="notice error">최소 면적이 최대 면적보다 큽니다.<button onClick={()=>setConditionOpen(true)}>면적 수정</button></p>}
-    {!!selected.length&&week&&<div className="weekly-results-context" id="transaction-results" tabIndex={-1}><strong>조회 결과 · {selected.length}{apartmentView?'개 아파트':'개 동'}</strong><span>{week.start} — {week.end}</span><small>{period.mode==='week'?'주간':period.mode==='month'?'월간':'직접 지정'} · {includeCancelled?'해제 포함':'유효 거래만'}</small></div>}
+    {!!selected.length&&week&&<div className="weekly-results-context" id="transaction-results" tabIndex={-1}><strong>조회 결과 · {selected.length}{apartmentView?'개 아파트':'개 동'}</strong><span>{countMode?`${apartmentView?'단지':'동네'}별 최근 ${recentCount}건 · 날짜 제한 없음`:`${week.start} — ${week.end}`}</span><small>{countMode?'건수 기준':period.mode==='week'?'주간':period.mode==='month'?'월간':'직접 지정'} · {includeCancelled?'해제 포함':'유효 거래만'}</small></div>}
     {!selected.length ? <section className="panel"><Empty title={apartmentView?'실거래가를 볼 아파트를 선택해 주세요.':'실거래가를 볼 동을 선택해 주세요.'}>{apartmentView?'단지명으로 검색하거나 지역별 목록에서 선택하면 거래가격을 바로 볼 수 있습니다.':'서로 다른 시·구의 동도 함께 선택할 수 있습니다.'}</Empty></section>
-      : week&&<div className="weekly-stack">{selected.map(region=><TransactionResults key={region.region_id} region={region} resultActions={renderResultActions?.(region)} areaUnit={areaUnit} week={week} dataset={datasets[region.region_code]} collected={hasTradeCoverage(manifest,region)} minArea={minArea} maxArea={maxArea} selectedBands={selectedBands} includeCancelled={includeCancelled} mode={period.mode} onRetry={()=>setRetry(value=>value+1)}/>)}</div>}
+      : week&&<div className="weekly-stack">{selected.map(region=><TransactionResults key={region.region_id} region={region} resultActions={renderResultActions?.(region)} areaUnit={areaUnit} week={week} dataset={datasets[region.region_code]} collected={hasTradeCoverage(manifest,region)} minArea={minArea} maxArea={maxArea} selectedBands={selectedBands} includeCancelled={includeCancelled} recentCount={recentCount} mode={countMode?'count':period.mode} onRetry={()=>setRetry(value=>value+1)}/>)}</div>}
   </div>;
 }
