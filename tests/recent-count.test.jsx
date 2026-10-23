@@ -16,30 +16,36 @@ afterEach(()=>{cleanup();vi.unstubAllGlobals();vi.restoreAllMocks();});
 
 for(const tab of ['apartments','weekly'])it(`${tab}: recent count includes older matching trades, restores shared settings, and switches back to date queries`,async()=>{
   const scope=tab==='weekly'?'weekly':'apartmentTransactions';
-  const limit=tab==='weekly'?3:2;
   savePreferences(scope,{includeCancelled:false,maxArea:100});
   const params=new URLSearchParams({tab,period:'custom',from:'2026-09-01',to:'2026-10-03'});
   if(tab==='weekly')params.set('dong',region.region_id);else params.set('apt',JSON.stringify(favorite));
   history.replaceState(null,'','/?'+params);
-  const loader=vi.fn(async()=>data);
+  const older=Array.from({length:60},(_,i)=>row(100+i,`2020-01-${String(1+i%28).padStart(2,'0')}`));
+  const loader=vi.fn(async()=>[...data,...older]);
   let view=render(<App initialManifest={manifest} districtLoader={loader}/>);
   const title=tab==='weekly'?region.label:`삼성1 · ${region.region_name} 풍덕천동 · 지번 693`;
   await screen.findByRole('region',{name:`${title} 기간별 거래 내역`});
-  fireEvent.change(screen.getByRole('spinbutton',{name:'최근 거래 건수'}),{target:{value:String(limit)}});
-  fireEvent.submit(screen.getByRole('form',{name:'최근 거래 건수 조회'}));
+  expect(screen.queryByRole('spinbutton',{name:'최근 거래 건수'})).toBeNull();
+  const buttons=within(screen.getByRole('group',{name:'최근 거래 건수 조회'}));
+  expect(buttons.getAllByRole('button').map(button=>button.textContent)).toEqual(['10건','20건','50건']);
+  for(const limit of [10,20,50]){
+    fireEvent.click(buttons.getByRole('button',{name:`${limit}건`,exact:true}));
+    const result=await screen.findByRole('region',{name:`${title} 최근 거래 내역`});
+    expect(within(result).getAllByRole('row')).toHaveLength(limit+1);
+    expect(buttons.getByRole('button',{name:`${limit}건`,exact:true}).getAttribute('aria-pressed')).toBe('true');
+    expect(readPreferences(scope).recentCount).toBe(limit);
+    expect(new URLSearchParams(location.search).get('count')).toBe(String(limit));
+  }
   const table=await screen.findByRole('region',{name:`${title} 최근 거래 내역`});
-  expect(within(table).getAllByRole('row')).toHaveLength(limit+1);
   expect(within(table).getByText('26.06.20')).toBeTruthy();
   expect(within(table).queryByText('26.08.28')).toBeNull();
   expect(within(table).queryByText('해제')).toBeNull();
-  expect(readPreferences(scope).recentCount).toBe(limit);
-  expect(new URLSearchParams(location.search).get('count')).toBe(String(limit));
   if(tab==='weekly')expect(within(table).getByText('다른단지')).toBeTruthy();
   const shared=location.search;
   view.unmount();localStorage.clear();history.replaceState(null,'','/'+shared);
   view=render(<App initialManifest={manifest} districtLoader={loader}/>);
   await screen.findByRole('region',{name:`${title} 최근 거래 내역`});
-  expect(screen.getByRole('button',{name:'건 조회'}).getAttribute('aria-pressed')).toBe('true');
+  expect(screen.getByRole('button',{name:'50건',exact:true}).getAttribute('aria-pressed')).toBe('true');
   fireEvent.click(screen.getByRole('button',{name:'90일',exact:true}));
   const dated=await screen.findByRole('region',{name:`${title} 기간별 거래 내역`});
   expect(within(dated).queryByText('26.06.20')).toBeNull();

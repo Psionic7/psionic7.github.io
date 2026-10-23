@@ -33,9 +33,7 @@ export default function TransactionPage({manifest,regions,day,onDayChange,period
   const [selectedBands,setSelectedBands]=useFilterPreference(filterScope,'areaBands',[],validAreaBands,initialFilters);
   const [includeCancelled,setIncludeCancelled]=useFilterPreference(filterScope,'includeCancelled',true,value=>typeof value==='boolean',initialFilters);
   const [recentCount,setRecentCount]=useFilterPreference(filterScope,'recentCount','',validRecentCount,initialFilters);
-  const [countInput,setCountInput]=useState(String(recentCount||10));
   const countMode=recentCount!=='';
-  useEffect(()=>{if(countMode)setCountInput(String(recentCount));},[recentCount,countMode]);
   useEffect(()=>{onQueryChange?.({scope:filterScope,minArea,maxArea,areaBands:selectedBands,includeCancelled,areaUnit,recentCount});},[filterScope,minArea,maxArea,selectedBands,includeCancelled,areaUnit,recentCount,onQueryChange]);
   const changePeriod=value=>{setRecentCount('');onPeriodChange(value);};
   const changeDay=value=>{setRecentCount('');onDayChange(value);};
@@ -72,11 +70,7 @@ export default function TransactionPage({manifest,regions,day,onDayChange,period
     <div className="query-toolbar">
       <button className="query-selection-button" aria-expanded={controlsOpen} aria-controls="query-controls" onClick={()=>setControlsOpen(value=>!value)}>{selected.length?`${selected.length}${apartmentView?'개 단지':'개 동네'} 선택 · 변경 / 비교 추가`:apartmentView?'지역별 단지 목록에서 선택':'조회할 동네 선택'}<ListFilter size={17}/></button>
       <div className="quick-periods" role="group" aria-label="빠른 조회 기간">{[30,90,365].map(count=>{const recent=recentRange(latestDay,count,earliestDay);return <button key={count} disabled={!recent} aria-pressed={!countMode&&period.mode==='custom'&&period.start===recent?.start&&period.end===recent?.end} onClick={()=>changePeriod({...period,mode:'custom',...recent})}>{count===365?'1년':`${count}일`}</button>;})}</div>
-      <form className={`recent-count-filter${countMode?' active':''}`} aria-label="최근 거래 건수 조회" title="날짜 제한 없이 면적·해제 조건에 맞는 최근 거래를 단지·동네별로 조회합니다." onSubmit={event=>{event.preventDefault();const value=Number(countInput);if(validRecentCount(value))setRecentCount(value);}}>
-        <label>최근 <input aria-label="최근 거래 건수" type="number" min="1" max="1000" step="1" required value={countInput} onChange={event=>setCountInput(event.target.value)}/></label>
-        <button type="submit" aria-pressed={countMode}>건 조회</button>
-        {countMode&&<button type="button" className="count-reset" aria-label="건수 조회 해제" onClick={()=>setRecentCount('')}>해제</button>}
-      </form>
+      <div className="quick-periods quick-counts" role="group" aria-label="최근 거래 건수 조회" title="날짜 제한 없이 면적·해제 조건에 맞는 최근 거래를 단지·동네별로 조회합니다.">{[10,20,50].map(count=><button type="button" key={count} aria-pressed={recentCount===count} onClick={()=>setRecentCount(count)}>{count}건</button>)}</div>
       <button aria-expanded={conditionOpen} aria-controls="query-conditions" onClick={()=>setConditionOpen(value=>!value)}><SlidersHorizontal size={16}/>{areaFiltered?'면적 조건 적용':'전체 면적'} · 기간 / 조건</button>
     </div>
     <section id="query-controls" className="query-selection" aria-label={apartmentView?'즐겨찾기 아파트 조회 조건':'동 별 실거래가 조회 조건'} hidden={!controlsOpen}>
