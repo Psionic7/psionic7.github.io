@@ -10,7 +10,7 @@ import {fileURLToPath} from 'node:url';
 import {secretValues,checkedBytes} from '../server/storage.mjs';
 import {createListingCollector,normalizeArticle,priceMan,writeListingSnapshot,verifyComplex} from '../server/naver-listings.mjs';
 import {listingMiddleware} from '../server/naver-listings-api.mjs';
-import {parseComplexNo,validListingSnapshot,listingSnapshot,listingIsStale,selectArticles,validTargets} from '../src/naver-listings.mjs';
+import {saleListingGroup,parseComplexNo,validListingSnapshot,listingSnapshot,listingIsStale,selectArticles,validTargets} from '../src/naver-listings.mjs';
 import {makeApartmentFavorite} from '../src/apartment-favorites.js';
 
 const favorite=makeApartmentFavorite({apartment:'관심아파트',dong:'풍덕천동',jibun:'1112'}, {region_code:'41465',region_name:'경기도 용인시 수지구'});
@@ -47,7 +47,7 @@ test('collects every page, excludes ended ads, persists sanitized results and re
   const f=fixture(t,{authorization:'private-test-token'});
   f.pages([{articleList:[raw(),raw('26000000002',{articleStatus:'R1'})],isMoreData:true},{articleList:[raw('26000000003',{tradeTypeCode:'B1',dealOrWarrantPrc:'8억'})],isMoreData:false}]);
   const group=await f.collector.collect(favorite,'12345');
-  assert.equal(group.status,'ready');assert.equal(group.articles.length,2);assert.equal(f.calls.length,3);
+  assert.equal(group.status,'ready');assert.equal(group.articles.length,1);assert.equal(group.tradeType,'A1');assert.equal(f.calls.length,3);assert.equal(new URL(f.calls[1].url).searchParams.get('tradeType'),'A1');
   assert(f.calls.every(c=>new URL(c.url).hostname==='new.land.naver.com'&&c.init.headers.Authorization==='Bearer private-test-token'));
   assert.equal(new URL(f.calls[1].url).searchParams.get('sameAddressGroup'),'false');
   const stored=fs.readFileSync(f.settings.stateFile,'utf8');assert(!stored.includes('private-test-token'));assert(!stored.includes('articleList'));assert(validListingSnapshot(JSON.parse(stored)));
@@ -125,6 +125,25 @@ test('snapshot filtering and freshness distinguish a failed attempt and an old s
   const rent=normalizeArticle(raw('26000000002',{tradeTypeCode:'B2',dealOrWarrantPrc:'2억',rentPrc:'100',area2:59}));
   assert.deepEqual(selectArticles([...group.articles,rent],{tradeType:'B2',maxArea:'60'}),[rent]);assert.equal(selectArticles([...group.articles,rent])[0].id,rent.id);
   assert(!validListingSnapshot({...listingSnapshot([group]),groups:[group,group]}));
+});
+
+test('legacy cache and partial samples expose only sales without inventing an empty complete result or a new observation',async t=>{
+  const f=fixture(t),sale=await f.collector.collect(favorite,'12345');
+  const rent=normalizeArticle(raw('26000000002',{tradeTypeCode:'B1',dealOrWarrantPrc:'8억'}));
+  const mixed={...sale,tradeType:undefined,articles:[...sale.articles,rent]};
+  const restored=createListingCollector({initialSnapshot:listingSnapshot([mixed])}).read(favorite,'12345');
+  assert.deepEqual(restored.articles,sale.articles);assert.equal(restored.collectedAt,sale.collectedAt);assert.equal(restored.tradeType,'A1');
+  assert.equal(saleListingGroup({...mixed,collectionMethod:'browser',coverage:'partial',sourceUrl:'https://new.land.naver.com/complexes/12345',articles:[rent]}),null);
+  assert.equal(validListingSnapshot(listingSnapshot([{...mixed,tradeType:'A1'}])),false);
+});
+
+test('new snapshots remove superseded regional reports so a later daily export can still publish',async t=>{
+  const f=fixture(t),snapshot=JSON.parse(fs.readFileSync(new URL('../public/listings/snapshot.json',import.meta.url),'utf8'));
+  const reportFile=path.join(f.folder,'region-41465-report.json');
+  fs.copyFileSync(new URL('../public/listings/region-41465-report.json',import.meta.url),reportFile);
+  writeListingSnapshot(f.settings.stateFile,snapshot);assert.equal(fs.existsSync(reportFile),true);
+  const group=snapshot.groups.find(g=>g.favorite.region_code==='41465'&&g.articles.length);group.articles.pop();
+  writeListingSnapshot(f.settings.stateFile,snapshot);assert.equal(fs.existsSync(reportFile),false);
 });
 
 test('local API rejects foreign origins, forged hosts, methods and invalid favorites; returns real collector results',async t=>{

@@ -56,23 +56,6 @@
           "realtor": "원공인중개사사무소"
         },
         {
-          "id": "2659584744",
-          "name": "정든동아2단지 201동",
-          "tradeType": "B1",
-          "priceText": "4억",
-          "rentText": "0",
-          "priceMan": 40000,
-          "rentMan": 0,
-          "areaM2": 48.84,
-          "supplyAreaM2": 64.69,
-          "floor": "7/15층",
-          "building": "201동",
-          "direction": "동향",
-          "confirmedOn": "2026-11-04",
-          "description": "20p 빠른입주 도배 장판 수리해줌 올수리시 4억9천",
-          "realtor": "오늘공인중개사사무소"
-        },
-        {
           "id": "2659460652",
           "name": "정든동아2단지 202동",
           "tradeType": "A1",
@@ -88,40 +71,6 @@
           "confirmedOn": "2026-11-03",
           "description": "32. 최근 화이트톤 샷시포함확장완벽수리 입주",
           "realtor": "코아공인중개사사무소"
-        },
-        {
-          "id": "2659441814",
-          "name": "정든동아2단지 206동",
-          "tradeType": "B2",
-          "priceText": "3억 3,000",
-          "rentText": "70",
-          "priceMan": 33000,
-          "rentMan": 70,
-          "areaM2": 48.84,
-          "supplyAreaM2": 64.69,
-          "floor": "11/14층",
-          "building": "206동",
-          "direction": "동향",
-          "confirmedOn": "2026-11-03",
-          "description": "20타입,화장실포함특올수리,전망굿,조용한동,빠른입주가능,반려동물안됨",
-          "realtor": "마트공인중개사사무소"
-        },
-        {
-          "id": "2659442348",
-          "name": "정든동아2단지 201동",
-          "tradeType": "B1",
-          "priceText": "4억 6,000",
-          "rentText": "0",
-          "priceMan": 46000,
-          "rentMan": 0,
-          "areaM2": 48.84,
-          "supplyAreaM2": 64.69,
-          "floor": "15/15층",
-          "building": "201동",
-          "direction": "동향",
-          "confirmedOn": "2026-11-03",
-          "description": "20,화장실포함내부특올수리,전망굿,정자역이용편리,빠른입주가능",
-          "realtor": "마트공인중개사사무소"
         },
         {
           "id": "2658434653",
@@ -192,57 +141,6 @@
           "realtor": "동아공인중개사사무소"
         },
         {
-          "id": "2660179768",
-          "name": "정든동아2단지 205동",
-          "tradeType": "B1",
-          "priceText": "5억 2,000",
-          "rentText": "0",
-          "priceMan": 52000,
-          "rentMan": 0,
-          "areaM2": 48.84,
-          "supplyAreaM2": 64.69,
-          "floor": "11/15층",
-          "building": "205동",
-          "direction": "남향",
-          "confirmedOn": "2026-11-06",
-          "description": "최근샷시포함전체올수리,남향,융자없음,전망최고,정자역이용편리",
-          "realtor": "마트공인중개사사무소"
-        },
-        {
-          "id": "2659787625",
-          "name": "정든동아2단지 201동",
-          "tradeType": "B1",
-          "priceText": "4억 6,000",
-          "rentText": "0",
-          "priceMan": 46000,
-          "rentMan": 0,
-          "areaM2": 48.84,
-          "supplyAreaM2": 64.69,
-          "floor": "15/15층",
-          "building": "201동",
-          "direction": "동향",
-          "confirmedOn": "2026-11-05",
-          "description": "화장실포함 특올수리,산 전망,이마트 근접,정상입주",
-          "realtor": "동아공인중개사사무소"
-        },
-        {
-          "id": "2659797041",
-          "name": "정든동아2단지 201동",
-          "tradeType": "B1",
-          "priceText": "4억 6,000",
-          "rentText": "0",
-          "priceMan": 46000,
-          "rentMan": 0,
-          "areaM2": 48.84,
-          "supplyAreaM2": 64.69,
-          "floor": "15/15층",
-          "building": "201동",
-          "direction": "동향",
-          "confirmedOn": "2026-11-05",
-          "description": "20. 샷시제외내부전체특올수리 산전망",
-          "realtor": "코아공인중개사사무소"
-        },
-        {
           "id": "2659875407",
           "name": "정든동아2단지 201동",
           "tradeType": "A1",
@@ -275,23 +173,6 @@
           "confirmedOn": "2026-11-05",
           "description": "샷시포함 올수리,쾌적한 남향,정상입주",
           "realtor": "동아공인중개사사무소"
-        },
-        {
-          "id": "2659832713",
-          "name": "정든동아2단지 201동",
-          "tradeType": "B1",
-          "priceText": "4억 6,000",
-          "rentText": "0",
-          "priceMan": 46000,
-          "rentMan": 0,
-          "areaM2": 48.84,
-          "supplyAreaM2": 64.69,
-          "floor": "15/15층",
-          "building": "201동",
-          "direction": "동향",
-          "confirmedOn": "2026-11-05",
-          "description": "화장실포함 특올수리,산 전망,이마트 근접,정상입주",
-          "realtor": "거북이공인중개사사무소"
         },
         {
           "id": "2659833194",
@@ -364,7 +245,8 @@
       ],
       "collectionMethod": "browser",
       "coverage": "partial",
-      "sourceUrl": "https://new.land.naver.com/complexes/2663"
+      "sourceUrl": "https://new.land.naver.com/complexes/2663",
+      "tradeType": "A1"
     },
     {
       "favorite": {
@@ -576,23 +458,6 @@
           "realtor": "동천자이성실(031-889-7300)공인중개사사무소"
         },
         {
-          "id": "2660313039",
-          "name": "래미안수지이스트파크",
-          "tradeType": "B2",
-          "priceText": "3억",
-          "rentText": "220",
-          "priceMan": 30000,
-          "rentMan": 220,
-          "areaM2": 84,
-          "supplyAreaM2": 112,
-          "floor": "중/20",
-          "building": "103동",
-          "direction": "남서향",
-          "confirmedOn": "2026-11-07",
-          "description": "강추 1억300가능 인기대형드레스룸타입 내부컨디션최상  엘베2대",
-          "realtor": "래미안이스트파크(272-0999)공인중개사사무소"
-        },
-        {
           "id": "2658870460",
           "name": "래미안수지이스트파크",
           "tradeType": "A1",
@@ -732,7 +597,8 @@
       "collectionMethod": "browser",
       "coverage": "partial",
       "sourceUrl": "https://new.land.naver.com/complexes/107215",
-      "areaSource": "list"
+      "areaSource": "list",
+      "tradeType": "A1"
     },
     {
       "favorite": {
@@ -758,7 +624,8 @@
       "coverage": "complete",
       "pageCount": 1,
       "sourceUrl": "https://new.land.naver.com/complexes/121003",
-      "areaSource": "list"
+      "areaSource": "list",
+      "tradeType": "A1"
     },
     {
       "favorite": {
@@ -1126,7 +993,8 @@
       "collectionMethod": "browser",
       "coverage": "partial",
       "sourceUrl": "https://new.land.naver.com/complexes/114527",
-      "areaSource": "list"
+      "areaSource": "list",
+      "tradeType": "A1"
     },
     {
       "favorite": {
@@ -1492,7 +1360,8 @@
       "collectionMethod": "browser",
       "coverage": "partial",
       "sourceUrl": "https://new.land.naver.com/complexes/119831",
-      "areaSource": "list"
+      "areaSource": "list",
+      "tradeType": "A1"
     },
     {
       "favorite": {
@@ -1568,40 +1437,6 @@
           "realtor": "푸르지오황금공인중개사"
         },
         {
-          "id": "2657597774",
-          "name": "수지진산마을푸르지오",
-          "tradeType": "B2",
-          "priceText": "2억",
-          "rentText": "210",
-          "priceMan": 20000,
-          "rentMan": 210,
-          "areaM2": 84,
-          "supplyAreaM2": 112,
-          "floor": "6/25",
-          "building": "101동",
-          "direction": "남향",
-          "confirmedOn": "2026-10-26",
-          "description": "남향,귀한월세, 학교인접동, 관리잘된집,산전망",
-          "realtor": "푸르지오황금공인중개사"
-        },
-        {
-          "id": "2657678740",
-          "name": "수지진산마을푸르지오",
-          "tradeType": "B1",
-          "priceText": "7억 5,000",
-          "rentText": "",
-          "priceMan": 75000,
-          "rentMan": 0,
-          "areaM2": 84,
-          "supplyAreaM2": 113,
-          "floor": "20/25",
-          "building": "102동",
-          "direction": "남동향",
-          "confirmedOn": "2026-10-26",
-          "description": "입주협의,아주전망좋은집, 학군우수, 판상형,컨디션좋아요",
-          "realtor": "푸르지오황금공인중개사"
-        },
-        {
           "id": "2657366214",
           "name": "수지진산마을푸르지오",
           "tradeType": "A1",
@@ -1650,23 +1485,6 @@
           "direction": "남향",
           "confirmedOn": "2026-10-19",
           "description": "입주협의, 정남향, 사계절전망이 너무예뻐요,셔세권,학군우수단지",
-          "realtor": "푸르지오황금공인중개사"
-        },
-        {
-          "id": "2656304905",
-          "name": "수지진산마을푸르지오",
-          "tradeType": "B1",
-          "priceText": "7억 6,000",
-          "rentText": "",
-          "priceMan": 76000,
-          "rentMan": 0,
-          "areaM2": 84,
-          "supplyAreaM2": 113,
-          "floor": "11/25",
-          "building": "102동",
-          "direction": "남동향",
-          "confirmedOn": "2026-10-19",
-          "description": "공동안됨,예쁜산전망,오래거주가능,초중인접,판상형",
           "realtor": "푸르지오황금공인중개사"
         },
         {
@@ -1742,7 +1560,8 @@
       "coverage": "complete",
       "pageCount": 1,
       "sourceUrl": "https://new.land.naver.com/complexes/10959",
-      "areaSource": "list"
+      "areaSource": "list",
+      "tradeType": "A1"
     },
     {
       "favorite": {
@@ -1768,7 +1587,8 @@
       "coverage": "complete",
       "pageCount": 1,
       "sourceUrl": "https://new.land.naver.com/complexes/121004",
-      "areaSource": "list"
+      "areaSource": "list",
+      "tradeType": "A1"
     },
     {
       "favorite": {
@@ -2138,7 +1958,8 @@
       "collectionMethod": "browser",
       "coverage": "partial",
       "sourceUrl": "https://new.land.naver.com/complexes/11098",
-      "areaSource": "list"
+      "areaSource": "list",
+      "tradeType": "A1"
     },
     {
       "favorite": {
@@ -2161,40 +1982,6 @@
       "errorCode": null,
       "articles": [
         {
-          "id": "2660320586",
-          "name": "동천트리너스",
-          "tradeType": "B2",
-          "priceText": "4억",
-          "rentText": "100",
-          "priceMan": 40000,
-          "rentMan": 100,
-          "areaM2": 70,
-          "supplyAreaM2": 89,
-          "floor": "3/12",
-          "building": "102동",
-          "direction": "남동향",
-          "confirmedOn": "2026-11-07",
-          "description": "즉시입주가, 풀에어컨, 초초역세권, 신혼부부추천",
-          "realtor": "더샵이음(272-0777)공인중개사사무소"
-        },
-        {
-          "id": "2660323109",
-          "name": "동천트리너스",
-          "tradeType": "B1",
-          "priceText": "6억 5,000",
-          "rentText": "",
-          "priceMan": 65000,
-          "rentMan": 0,
-          "areaM2": 70,
-          "supplyAreaM2": 89,
-          "floor": "3/12",
-          "building": "102동",
-          "direction": "남동향",
-          "confirmedOn": "2026-11-07",
-          "description": "신축첫입주, 풀에어컨, 동천역4분거리, 방3화2, 신혼부부추천",
-          "realtor": "더샵이음(272-0777)공인중개사사무소"
-        },
-        {
           "id": "2660128927",
           "name": "동천트리너스",
           "tradeType": "A1",
@@ -2210,159 +1997,6 @@
           "confirmedOn": "2026-11-06",
           "description": "우리o 귀한27, 방3화2, 동천역 초역세권 첫입주, 올확장, 풀에어컨,",
           "realtor": "(031-273-0500)청명삼성우리공인중개사사무소"
-        },
-        {
-          "id": "2660194442",
-          "name": "동천트리너스",
-          "tradeType": "B2",
-          "priceText": "4억",
-          "rentText": "100",
-          "priceMan": 40000,
-          "rentMan": 100,
-          "areaM2": 70,
-          "supplyAreaM2": 89,
-          "floor": "3/12",
-          "building": "102동",
-          "direction": "남동향",
-          "confirmedOn": "2026-11-06",
-          "description": "풀에어컨, 방3 화2, 입주협의, 신분당선 동천역세권",
-          "realtor": "현대홈타운드림(265-2600)공인중개사사무소"
-        },
-        {
-          "id": "2660188605",
-          "name": "동천트리너스",
-          "tradeType": "B1",
-          "priceText": "6억 5,000",
-          "rentText": "",
-          "priceMan": 65000,
-          "rentMan": 0,
-          "areaM2": 70,
-          "supplyAreaM2": 89,
-          "floor": "3/12",
-          "building": "102동",
-          "direction": "남동향",
-          "confirmedOn": "2026-11-06",
-          "description": "풀에어컨, 방3 화2, 입주협의, 신분당선 동천역세권",
-          "realtor": "현대홈타운드림(265-2600)공인중개사사무소"
-        },
-        {
-          "id": "2659942587",
-          "name": "동천트리너스",
-          "tradeType": "B2",
-          "priceText": "3억 5,000",
-          "rentText": "120",
-          "priceMan": 35000,
-          "rentMan": 120,
-          "areaM2": 70,
-          "supplyAreaM2": 89,
-          "floor": "3/12",
-          "building": "102동",
-          "direction": "남동향",
-          "confirmedOn": "2026-11-06",
-          "description": "4억에 100가능. 첫입주.풀에어컨.하시.동천역 초역세권",
-          "realtor": "햇누리공인중개사사무소"
-        },
-        {
-          "id": "2659942033",
-          "name": "동천트리너스",
-          "tradeType": "B1",
-          "priceText": "6억 5,000",
-          "rentText": "",
-          "priceMan": 65000,
-          "rentMan": 0,
-          "areaM2": 70,
-          "supplyAreaM2": 89,
-          "floor": "3/12",
-          "building": "102동",
-          "direction": "남동향",
-          "confirmedOn": "2026-11-06",
-          "description": "첫입주.풀에어컨. 동천역초역세권.교통최고",
-          "realtor": "햇누리공인중개사사무소"
-        },
-        {
-          "id": "2659361108",
-          "name": "동천트리너스",
-          "tradeType": "B2",
-          "priceText": "3억 5,000",
-          "rentText": "120",
-          "priceMan": 35000,
-          "rentMan": 120,
-          "areaM2": 70,
-          "supplyAreaM2": 89,
-          "floor": "3/12",
-          "building": "102동",
-          "direction": "남동향",
-          "confirmedOn": "2026-11-03",
-          "description": "신축 첫입주. 에어컨4대. 동천역5분이내. 주차대수 1.4대1",
-          "realtor": "태인 공인중개사사무소"
-        },
-        {
-          "id": "2659484967",
-          "name": "동천트리너스",
-          "tradeType": "B2",
-          "priceText": "3억 5,000",
-          "rentText": "120",
-          "priceMan": 35000,
-          "rentMan": 120,
-          "areaM2": 70,
-          "supplyAreaM2": 89,
-          "floor": "3/12",
-          "building": "102동",
-          "direction": "남동향",
-          "confirmedOn": "2026-11-04",
-          "description": "신축첫입주, 시에어컨 4대, 방3,화2, 신혼부부추천, 동천역초역세권",
-          "realtor": "우미스타공인중개사사무소"
-        },
-        {
-          "id": "2659624746",
-          "name": "동천트리너스",
-          "tradeType": "B1",
-          "priceText": "6억 5,000",
-          "rentText": "",
-          "priceMan": 65000,
-          "rentMan": 0,
-          "areaM2": 70,
-          "supplyAreaM2": 89,
-          "floor": "3/12",
-          "building": "102동",
-          "direction": "남동향",
-          "confirmedOn": "2026-11-04",
-          "description": "신축첫입주, 방3화2, 풀에어컨, 초역세권, 주차편리",
-          "realtor": "더샵이음(272-0777)공인중개사사무소"
-        },
-        {
-          "id": "2659466725",
-          "name": "동천트리너스",
-          "tradeType": "B2",
-          "priceText": "3억 5,000",
-          "rentText": "120",
-          "priceMan": 35000,
-          "rentMan": 120,
-          "areaM2": 70,
-          "supplyAreaM2": 89,
-          "floor": "3/12",
-          "building": "102동",
-          "direction": "남동향",
-          "confirmedOn": "2026-11-03",
-          "description": "신축첫입주, 초역세권, 시에어컨 4대, 방3,화2, 신혼부부추천",
-          "realtor": "더샵이음(272-0777)공인중개사사무소"
-        },
-        {
-          "id": "2659436274",
-          "name": "동천트리너스",
-          "tradeType": "B2",
-          "priceText": "3억 5,000",
-          "rentText": "120",
-          "priceMan": 35000,
-          "rentMan": 120,
-          "areaM2": 70,
-          "supplyAreaM2": 89,
-          "floor": "3/12",
-          "building": "102동",
-          "direction": "남동향",
-          "confirmedOn": "2026-11-03",
-          "description": "즉시입주 신축  동천역 도보5분  방3화2  시에어컨4대 보증금조정가",
-          "realtor": "광교부동산오름공인중개사사무소"
         },
         {
           "id": "2660004487",
@@ -2382,91 +2016,6 @@
           "realtor": "태인 공인중개사사무소"
         },
         {
-          "id": "2658900950",
-          "name": "동천트리너스",
-          "tradeType": "B2",
-          "priceText": "3억 5,000",
-          "rentText": "125",
-          "priceMan": 35000,
-          "rentMan": 125,
-          "areaM2": 70,
-          "supplyAreaM2": 89,
-          "floor": "3/12",
-          "building": "102동",
-          "direction": "남동향",
-          "confirmedOn": "2026-10-31",
-          "description": "신분당선 도보5분,신축 첫입주,실용적 구조,신혼부부추천,생활편의시설 인접",
-          "realtor": "광교산자이공인중개사사무소"
-        },
-        {
-          "id": "2658662176",
-          "name": "동천트리너스",
-          "tradeType": "B1",
-          "priceText": "6억 5,000",
-          "rentText": "",
-          "priceMan": 65000,
-          "rentMan": 0,
-          "areaM2": 70,
-          "supplyAreaM2": 89,
-          "floor": "3/12",
-          "building": "102동",
-          "direction": "남동향",
-          "confirmedOn": "2026-10-30",
-          "description": "신축첫입주  동천역세권  방3화2",
-          "realtor": "광교부동산오름공인중개사사무소"
-        },
-        {
-          "id": "2658698519",
-          "name": "동천트리너스",
-          "tradeType": "B1",
-          "priceText": "6억 5,000",
-          "rentText": "",
-          "priceMan": 65000,
-          "rentMan": 0,
-          "areaM2": 70,
-          "supplyAreaM2": 89,
-          "floor": "3/12",
-          "building": "102동",
-          "direction": "남동향",
-          "confirmedOn": "2026-10-30",
-          "description": "완벽 풀에어컨,동천역 초역세 및 광역버스이용 편리,신축첫입주,대출x",
-          "realtor": "광교산자이공인중개사사무소"
-        },
-        {
-          "id": "2656998011",
-          "name": "동천트리너스",
-          "tradeType": "B1",
-          "priceText": "6억 5,000",
-          "rentText": "",
-          "priceMan": 65000,
-          "rentMan": 0,
-          "areaM2": 70,
-          "supplyAreaM2": 89,
-          "floor": "3/12",
-          "building": "102동",
-          "direction": "남동향",
-          "confirmedOn": "2026-10-22",
-          "description": "첫입주. 동천역 4분. 에어컨4대.  주차 1.4대  지하2층까지.",
-          "realtor": "태인 공인중개사사무소"
-        },
-        {
-          "id": "2656807275",
-          "name": "동천트리너스",
-          "tradeType": "B1",
-          "priceText": "6억 5,000",
-          "rentText": "",
-          "priceMan": 65000,
-          "rentMan": 0,
-          "areaM2": 70,
-          "supplyAreaM2": 89,
-          "floor": "3/12",
-          "building": "102동",
-          "direction": "남동향",
-          "confirmedOn": "2026-10-21",
-          "description": "방3화2, 대출불가, 신축첫입주, 동천역 도보권, 반전세가능",
-          "realtor": "푸르지오(단지내031-889-9997) 공인중개사사무소"
-        },
-        {
           "id": "2656678073",
           "name": "동천트리너스",
           "tradeType": "A1",
@@ -2482,29 +2031,13 @@
           "confirmedOn": "2026-10-20",
           "description": "풀옵션,  동천역4분, 주차 1.4대, 1인 or 신혼부부 강추드립니다.",
           "realtor": "태인 공인중개사사무소"
-        },
-        {
-          "id": "2654744061",
-          "name": "동천트리너스",
-          "tradeType": "B2",
-          "priceText": "4,500",
-          "rentText": "300",
-          "priceMan": 4500,
-          "rentMan": 300,
-          "areaM2": 81,
-          "supplyAreaM2": 104,
-          "floor": "9/12",
-          "building": "101동",
-          "direction": "남동향",
-          "confirmedOn": "2026-10-12",
-          "description": "",
-          "realtor": "시티공인중개사사무소"
         }
       ],
       "collectionMethod": "browser",
       "coverage": "partial",
       "sourceUrl": "https://new.land.naver.com/complexes/152738",
-      "areaSource": "list"
+      "areaSource": "list",
+      "tradeType": "A1"
     },
     {
       "favorite": {
@@ -2872,7 +2405,8 @@
       "collectionMethod": "browser",
       "coverage": "partial",
       "sourceUrl": "https://new.land.naver.com/complexes/24978",
-      "areaSource": "list"
+      "areaSource": "list",
+      "tradeType": "A1"
     },
     {
       "favorite": {
@@ -3240,7 +2774,8 @@
       "collectionMethod": "browser",
       "coverage": "partial",
       "sourceUrl": "https://new.land.naver.com/complexes/9390",
-      "areaSource": "list"
+      "areaSource": "list",
+      "tradeType": "A1"
     },
     {
       "favorite": {
@@ -3296,23 +2831,6 @@
           "direction": "남향",
           "confirmedOn": "2026-10-29",
           "description": "급매물 정남향 유럽풍인테링어 풀에어컨",
-          "realtor": "오성공인중개사사무소"
-        },
-        {
-          "id": "2658338333",
-          "name": "한빛마을래미안이스트팰리스1단지",
-          "tradeType": "B1",
-          "priceText": "11억",
-          "rentText": "",
-          "priceMan": 110000,
-          "rentMan": 0,
-          "areaM2": 172,
-          "supplyAreaM2": 210,
-          "floor": "9/29",
-          "building": "1103동",
-          "direction": "남향",
-          "confirmedOn": "2026-10-29",
-          "description": "인테리어 잘된집 우럽풍 풀에어커 전망도",
           "realtor": "오성공인중개사사무소"
         },
         {
@@ -3608,7 +3126,8 @@
       "collectionMethod": "browser",
       "coverage": "partial",
       "sourceUrl": "https://new.land.naver.com/complexes/26814",
-      "areaSource": "list"
+      "areaSource": "list",
+      "tradeType": "A1"
     },
     {
       "favorite": {
@@ -3671,7 +3190,8 @@
       "coverage": "complete",
       "pageCount": 1,
       "sourceUrl": "https://new.land.naver.com/complexes/128185",
-      "areaSource": "list"
+      "areaSource": "list",
+      "tradeType": "A1"
     },
     {
       "favorite": {
@@ -3832,23 +3352,6 @@
           "realtor": "1등자이(031-261-5004)공인중개사사무소"
         },
         {
-          "id": "2660268030",
-          "name": "더샵동천포레스트",
-          "tradeType": "B1",
-          "priceText": "7억 2,000",
-          "rentText": "",
-          "priceMan": 72000,
-          "rentMan": 0,
-          "areaM2": 84,
-          "supplyAreaM2": 112,
-          "floor": "고/21",
-          "building": "102동",
-          "direction": "남서향",
-          "confirmedOn": "2026-11-07",
-          "description": "34 막힘없이 확트인뷰 전망굿 2월중협의 시에2 거실폴리싱 완벽깨끗관리",
-          "realtor": "부동산이즈 동천파크자이 공인중개사사무소"
-        },
-        {
           "id": "2658750517",
           "name": "더샵동천포레스트",
           "tradeType": "A1",
@@ -3898,23 +3401,6 @@
           "confirmedOn": "2026-11-05",
           "description": "앞트인뷰, 후면숲뷰, 관리잘된 집",
           "realtor": "하나공인중개사사무소"
-        },
-        {
-          "id": "2658651122",
-          "name": "더샵동천포레스트",
-          "tradeType": "B1",
-          "priceText": "7억 2,000",
-          "rentText": "",
-          "priceMan": 72000,
-          "rentMan": 0,
-          "areaM2": 84,
-          "supplyAreaM2": 112,
-          "floor": "10/21",
-          "building": "104동",
-          "direction": "남서향",
-          "confirmedOn": "2026-10-30",
-          "description": "판상평, 2월하순협의, 채광좋음, 폴리싱타일, 시에2, 집상태최고",
-          "realtor": "더샵동천(265-8849)이스트포레공인중개사사무소"
         },
         {
           "id": "2659823026",
@@ -4017,29 +3503,13 @@
           "confirmedOn": "2026-10-27",
           "description": "남향. 소음없는 숲세권. 에어컨2. 상권좋습니다.",
           "realtor": "동천자이 해마루 공인중개사사무소"
-        },
-        {
-          "id": "2659941188",
-          "name": "더샵동천포레스트",
-          "tradeType": "B1",
-          "priceText": "7억 2,000",
-          "rentText": "",
-          "priceMan": 72000,
-          "rentMan": 0,
-          "areaM2": 84,
-          "supplyAreaM2": 112,
-          "floor": "고/21",
-          "building": "104동",
-          "direction": "남서향",
-          "confirmedOn": "2026-11-06",
-          "description": "2월.3월.조용하고 쾌적한 숲세권. 채광좋은 집. 시스템에어컨.",
-          "realtor": "햇누리공인중개사사무소"
         }
       ],
       "collectionMethod": "browser",
       "coverage": "partial",
       "sourceUrl": "https://new.land.naver.com/complexes/110798",
-      "areaSource": "list"
+      "areaSource": "list",
+      "tradeType": "A1"
     },
     {
       "favorite": {
@@ -4353,23 +3823,6 @@
           "realtor": "단지내더샵(264-4949)공인중개사사무소"
         },
         {
-          "id": "2659371778",
-          "name": "동천파크자이",
-          "tradeType": "B1",
-          "priceText": "6억 5,000",
-          "rentText": "",
-          "priceMan": 65000,
-          "rentMan": 0,
-          "areaM2": 61,
-          "supplyAreaM2": 81,
-          "floor": "저/22",
-          "building": "102동",
-          "direction": "남향",
-          "confirmedOn": "2026-11-03",
-          "description": "B 좋은층 정남향 4베이 12말부터2월가능 시에설치예정 수납공간넓어요",
-          "realtor": "부동산이즈 동천파크자이 공인중개사사무소"
-        },
-        {
           "id": "2659314233",
           "name": "동천파크자이",
           "tradeType": "A1",
@@ -4407,7 +3860,8 @@
       "collectionMethod": "browser",
       "coverage": "partial",
       "sourceUrl": "https://new.land.naver.com/complexes/115593",
-      "areaSource": "list"
+      "areaSource": "list",
+      "tradeType": "A1"
     },
     {
       "favorite": {
@@ -4600,23 +4054,6 @@
           "realtor": "동부공인중개사사무소"
         },
         {
-          "id": "2659931413",
-          "name": "더샵동천이스트포레",
-          "tradeType": "B1",
-          "priceText": "8억",
-          "rentText": "",
-          "priceMan": 80000,
-          "rentMan": 0,
-          "areaM2": 84,
-          "supplyAreaM2": 113,
-          "floor": "7/29",
-          "building": "105동",
-          "direction": "남서향",
-          "confirmedOn": "2026-11-05",
-          "description": "34A.귀한전세 시스템에어컨,식세기,인덕션",
-          "realtor": "단지내더샵(264-4949)공인중개사사무소"
-        },
-        {
           "id": "2659850884",
           "name": "더샵동천이스트포레",
           "tradeType": "A1",
@@ -4666,23 +4103,6 @@
           "confirmedOn": "2026-11-04",
           "description": "탁트인 전망 입구동과 부출입구 이용편리 주인거주",
           "realtor": "더샵단지내(276-1005)탑공인중개사사무소"
-        },
-        {
-          "id": "2659707461",
-          "name": "더샵동천이스트포레",
-          "tradeType": "B1",
-          "priceText": "8억",
-          "rentText": "",
-          "priceMan": 80000,
-          "rentMan": 0,
-          "areaM2": 84,
-          "supplyAreaM2": 113,
-          "floor": "7/29",
-          "building": "105동",
-          "direction": "남서향",
-          "confirmedOn": "2026-11-04",
-          "description": "귀한전세,시스템에어컨,인덕션,식세기,2월협의",
-          "realtor": "단지내더샵(264-4949)공인중개사사무소"
         },
         {
           "id": "2659714436",
@@ -4773,7 +4193,8 @@
       "collectionMethod": "browser",
       "coverage": "partial",
       "sourceUrl": "https://new.land.naver.com/complexes/115644",
-      "areaSource": "list"
+      "areaSource": "list",
+      "tradeType": "A1"
     },
     {
       "favorite": {
@@ -4938,7 +4359,8 @@
       "coverage": "complete",
       "pageCount": 1,
       "sourceUrl": "https://new.land.naver.com/complexes/8093",
-      "areaSource": "list"
+      "areaSource": "list",
+      "tradeType": "A1"
     },
     {
       "favorite": {
@@ -4962,23 +4384,6 @@
       "collectedAt": "2026-11-07T03:21:26.377Z",
       "errorCode": null,
       "articles": [
-        {
-          "id": "2659828194",
-          "name": "행림마을진로",
-          "tradeType": "B1",
-          "priceText": "5억",
-          "rentText": "",
-          "priceMan": 50000,
-          "rentMan": 0,
-          "areaM2": 59,
-          "supplyAreaM2": 80,
-          "floor": "5/20",
-          "building": "101동",
-          "direction": "남향",
-          "confirmedOn": "2026-11-05",
-          "description": "강추 동천역세권 올수리 전망좋음 분당생활권 교통편리",
-          "realtor": "일번지(264-6611) 공인중개사사무소"
-        },
         {
           "id": "2659834099",
           "name": "행림마을진로",
@@ -5099,40 +4504,6 @@
           "realtor": "쌍둥이공인중개사사무소"
         },
         {
-          "id": "2656620265",
-          "name": "행림마을진로",
-          "tradeType": "B2",
-          "priceText": "3억",
-          "rentText": "100",
-          "priceMan": 30000,
-          "rentMan": 100,
-          "areaM2": 84,
-          "supplyAreaM2": 108,
-          "floor": "9/20",
-          "building": "101동",
-          "direction": "남향",
-          "confirmedOn": "2026-10-20",
-          "description": "동천역세권, 교통편리.깨끗하고 햇살좋은남향집.",
-          "realtor": "대우공인중개사사무소"
-        },
-        {
-          "id": "2659370482",
-          "name": "행림마을진로",
-          "tradeType": "B2",
-          "priceText": "1억 5,000",
-          "rentText": "180",
-          "priceMan": 15000,
-          "rentMan": 180,
-          "areaM2": 84,
-          "supplyAreaM2": 108,
-          "floor": "고/20",
-          "building": "101동",
-          "direction": "남향",
-          "confirmedOn": "2026-11-03",
-          "description": "남향 탁트인뷰 관리잘되어 깨끗",
-          "realtor": "뉴현대공인중개사사무소"
-        },
-        {
           "id": "2658578444",
           "name": "행림마을진로",
           "tradeType": "A1",
@@ -5148,57 +4519,6 @@
           "confirmedOn": "2026-10-30",
           "description": "귀한 입주매물. 깨끗한집. 동천역7분. 바로앞 탄천산책로. 지하2층까지주",
           "realtor": "태인 공인중개사사무소"
-        },
-        {
-          "id": "2656346046",
-          "name": "행림마을진로",
-          "tradeType": "B2",
-          "priceText": "3억",
-          "rentText": "100",
-          "priceMan": 30000,
-          "rentMan": 100,
-          "areaM2": 84,
-          "supplyAreaM2": 108,
-          "floor": "중/20",
-          "building": "101동",
-          "direction": "남향",
-          "confirmedOn": "2026-10-19",
-          "description": "I일부수리됨 I 입주27.2.23 협의 I 집상태 좋아요 I",
-          "realtor": "홈타운공인중개사사무소"
-        },
-        {
-          "id": "2656886172",
-          "name": "행림마을진로",
-          "tradeType": "B1",
-          "priceText": "5억",
-          "rentText": "",
-          "priceMan": 50000,
-          "rentMan": 0,
-          "areaM2": 59,
-          "supplyAreaM2": 80,
-          "floor": "5/20",
-          "building": "101동",
-          "direction": "남향",
-          "confirmedOn": "2026-10-21",
-          "description": "상태좋으며 전망좋음",
-          "realtor": "동천1등공인중개사사무소"
-        },
-        {
-          "id": "2656503807",
-          "name": "행림마을진로",
-          "tradeType": "B2",
-          "priceText": "3억",
-          "rentText": "100",
-          "priceMan": 30000,
-          "rentMan": 100,
-          "areaM2": 84,
-          "supplyAreaM2": 108,
-          "floor": "9/20",
-          "building": "101동",
-          "direction": "남향",
-          "confirmedOn": "2026-10-20",
-          "description": "상태좋으며 전망좋고 햇빛좋음",
-          "realtor": "동천1등공인중개사사무소"
         },
         {
           "id": "2657487317",
@@ -5252,40 +4572,6 @@
           "realtor": "뉴현대공인중개사사무소"
         },
         {
-          "id": "2659678995",
-          "name": "행림마을진로",
-          "tradeType": "B1",
-          "priceText": "5억",
-          "rentText": "",
-          "priceMan": 50000,
-          "rentMan": 0,
-          "areaM2": 59,
-          "supplyAreaM2": 80,
-          "floor": "5/20",
-          "building": "101동",
-          "direction": "남향",
-          "confirmedOn": "2026-11-04",
-          "description": "",
-          "realtor": "동천1등공인중개사사무소"
-        },
-        {
-          "id": "2659482821",
-          "name": "행림마을진로",
-          "tradeType": "B2",
-          "priceText": "3억",
-          "rentText": "100",
-          "priceMan": 30000,
-          "rentMan": 100,
-          "areaM2": 84,
-          "supplyAreaM2": 108,
-          "floor": "9/20",
-          "building": "101동",
-          "direction": "남향",
-          "confirmedOn": "2026-11-03",
-          "description": "남향 수리깨끗  2월입주 채광굿",
-          "realtor": "뉴현대공인중개사사무소"
-        },
-        {
           "id": "2658041278",
           "name": "행림마을진로",
           "tradeType": "A1",
@@ -5306,7 +4592,8 @@
       "collectionMethod": "browser",
       "coverage": "partial",
       "sourceUrl": "https://new.land.naver.com/complexes/8094",
-      "areaSource": "list"
+      "areaSource": "list",
+      "tradeType": "A1"
     },
     {
       "favorite": {
@@ -5522,7 +4809,8 @@
       "coverage": "complete",
       "pageCount": 1,
       "sourceUrl": "https://new.land.naver.com/complexes/8091",
-      "areaSource": "list"
+      "areaSource": "list",
+      "tradeType": "A1"
     },
     {
       "favorite": {
@@ -5546,91 +4834,6 @@
       "collectedAt": "2026-11-07T03:21:30.649Z",
       "errorCode": null,
       "articles": [
-        {
-          "id": "2660048191",
-          "name": "동천역센트럴아이파크",
-          "tradeType": "B1",
-          "priceText": "9억",
-          "rentText": "",
-          "priceMan": 90000,
-          "rentMan": 0,
-          "areaM2": 113,
-          "supplyAreaM2": 142,
-          "floor": "1/17",
-          "building": "202동",
-          "direction": "남향",
-          "confirmedOn": "2026-11-06",
-          "description": "43,화이트특올수리,식세기,인덕션,에어컨4,반려동물X,1층단독출입문",
-          "realtor": "현대홈타운드림(265-2600)공인중개사사무소"
-        },
-        {
-          "id": "2659733013",
-          "name": "동천역센트럴아이파크",
-          "tradeType": "B1",
-          "priceText": "9억",
-          "rentText": "",
-          "priceMan": 90000,
-          "rentMan": 0,
-          "areaM2": 113,
-          "supplyAreaM2": 142,
-          "floor": "1/17",
-          "building": "202동",
-          "direction": "남향",
-          "confirmedOn": "2026-11-04",
-          "description": "에어컨4,화이트특올수리,방3확장,거실폴딩도어,빌트인가전,애완동물",
-          "realtor": "써니벨리승승부동산공인중개사사무소"
-        },
-        {
-          "id": "2659722646",
-          "name": "동천역센트럴아이파크",
-          "tradeType": "B1",
-          "priceText": "9억",
-          "rentText": "",
-          "priceMan": 90000,
-          "rentMan": 0,
-          "areaM2": 113,
-          "supplyAreaM2": 142,
-          "floor": "1/17",
-          "building": "202동",
-          "direction": "남향",
-          "confirmedOn": "2026-11-04",
-          "description": "화이트 특올수리 거실 폴딩도어 에어컨4,세탁,건조기,식세기 냉장고빌트인",
-          "realtor": "굿모닝 공인중개사사무소"
-        },
-        {
-          "id": "2659777984",
-          "name": "동천역센트럴아이파크",
-          "tradeType": "B1",
-          "priceText": "9억",
-          "rentText": "",
-          "priceMan": 90000,
-          "rentMan": 0,
-          "areaM2": 113,
-          "supplyAreaM2": 142,
-          "floor": "14/17",
-          "building": "205동",
-          "direction": "남향",
-          "confirmedOn": "2026-11-05",
-          "description": "정상 남향 로얄동 방4  전망 수리해줌 동천역세권 초중고인접",
-          "realtor": "센트럴아이파크공인중개사사무소"
-        },
-        {
-          "id": "2659777337",
-          "name": "동천역센트럴아이파크",
-          "tradeType": "B1",
-          "priceText": "9억",
-          "rentText": "",
-          "priceMan": 90000,
-          "rentMan": 0,
-          "areaM2": 113,
-          "supplyAreaM2": 142,
-          "floor": "1/17",
-          "building": "202동",
-          "direction": "남향",
-          "confirmedOn": "2026-11-05",
-          "description": "남향 화이트 특올수리 방4  방확장 거실폴딩도어 동천역세권 초중고인접",
-          "realtor": "센트럴아이파크공인중개사사무소"
-        },
         {
           "id": "2660318402",
           "name": "동천역센트럴아이파크",
@@ -5683,23 +4886,6 @@
           "realtor": "수지공인중개사"
         },
         {
-          "id": "2659724481",
-          "name": "동천역센트럴아이파크",
-          "tradeType": "B1",
-          "priceText": "9억",
-          "rentText": "",
-          "priceMan": 90000,
-          "rentMan": 0,
-          "areaM2": 113,
-          "supplyAreaM2": 142,
-          "floor": "1/17",
-          "building": "202동",
-          "direction": "남향",
-          "confirmedOn": "2026-11-05",
-          "description": "1층.전체특올수리샷시교체.폴딩도어.에어컨4",
-          "realtor": "효성공인중개사사무소"
-        },
-        {
           "id": "2659574113",
           "name": "동천역센트럴아이파크",
           "tradeType": "A1",
@@ -5749,23 +4935,6 @@
           "confirmedOn": "2026-10-30",
           "description": "빠른입주 정남향 탑층 다락방 개인옥상 및 창고 사용가능 동천역도보이용",
           "realtor": "파크나인부자부동산공인중개사사무소"
-        },
-        {
-          "id": "2658165887",
-          "name": "동천역센트럴아이파크",
-          "tradeType": "B1",
-          "priceText": "9억",
-          "rentText": "",
-          "priceMan": 90000,
-          "rentMan": 0,
-          "areaM2": 113,
-          "supplyAreaM2": 142,
-          "floor": "1/17",
-          "building": "202동",
-          "direction": "남향",
-          "confirmedOn": "2026-10-28",
-          "description": "남향 로얄동 올 수리한 집 1월 중순 입주",
-          "realtor": "좋은집공인중개사사무소"
         },
         {
           "id": "2658070947",
@@ -5857,7 +5026,8 @@
       "coverage": "complete",
       "pageCount": 1,
       "sourceUrl": "https://new.land.naver.com/complexes/8462",
-      "areaSource": "list"
+      "areaSource": "list",
+      "tradeType": "A1"
     },
     {
       "favorite": {
@@ -5882,23 +5052,6 @@
       "errorCode": null,
       "articles": [
         {
-          "id": "2659426918",
-          "name": "보뜨랑마을벽산블루밍",
-          "tradeType": "B2",
-          "priceText": "1억",
-          "rentText": "230",
-          "priceMan": 10000,
-          "rentMan": 230,
-          "areaM2": 84,
-          "supplyAreaM2": 109,
-          "floor": "중/24",
-          "building": "102동",
-          "direction": "남향",
-          "confirmedOn": "2026-11-03",
-          "description": "정남향으로 해 잘들고 트인 전망.깨끗하게 관리",
-          "realtor": "중앙공인중개사사무소"
-        },
-        {
           "id": "2658569186",
           "name": "보뜨랑마을벽산블루밍",
           "tradeType": "A1",
@@ -5914,23 +5067,6 @@
           "confirmedOn": "2026-10-30",
           "description": "거실 방2확장특올수리 입주가능 날자협의가",
           "realtor": "뉴현대공인중개사사무소"
-        },
-        {
-          "id": "2658474327",
-          "name": "보뜨랑마을벽산블루밍",
-          "tradeType": "B1",
-          "priceText": "5억",
-          "rentText": "",
-          "priceMan": 50000,
-          "rentMan": 0,
-          "areaM2": 84,
-          "supplyAreaM2": 109,
-          "floor": "고/23",
-          "building": "101동",
-          "direction": "남향",
-          "confirmedOn": "2026-10-29",
-          "description": "동천역세권 탁트인전망좋은남향집, 1년계약.",
-          "realtor": "대우공인중개사사무소"
         },
         {
           "id": "2656960402",
@@ -6005,7 +5141,8 @@
       "coverage": "complete",
       "pageCount": 1,
       "sourceUrl": "https://new.land.naver.com/complexes/9154",
-      "areaSource": "list"
+      "areaSource": "list",
+      "tradeType": "A1"
     },
     {
       "favorite": {
@@ -6068,7 +5205,8 @@
       "coverage": "complete",
       "pageCount": 1,
       "sourceUrl": "https://new.land.naver.com/complexes/13048",
-      "areaSource": "list"
+      "areaSource": "list",
+      "tradeType": "A1"
     },
     {
       "favorite": {
@@ -6093,40 +5231,6 @@
       "errorCode": null,
       "articles": [
         {
-          "id": "2659930985",
-          "name": "광교산자이",
-          "tradeType": "B2",
-          "priceText": "4억 5,000",
-          "rentText": "110",
-          "priceMan": 45000,
-          "rentMan": 110,
-          "areaM2": 101,
-          "supplyAreaM2": 129,
-          "floor": "12/15",
-          "building": "101동",
-          "direction": "남서향",
-          "confirmedOn": "2026-11-05",
-          "description": "39형,채광풍부,아주깔끔하게관리된집,일부수리,편리한입구동",
-          "realtor": "신봉자이(031-896-7788)공인중개사사무소"
-        },
-        {
-          "id": "2660043564",
-          "name": "광교산자이",
-          "tradeType": "B1",
-          "priceText": "6억 8,000",
-          "rentText": "",
-          "priceMan": 68000,
-          "rentMan": 0,
-          "areaM2": 101,
-          "supplyAreaM2": 129,
-          "floor": "중/15",
-          "building": "101동",
-          "direction": "남서향",
-          "confirmedOn": "2026-11-06",
-          "description": "환하고 밝은 집,완전깨끗,거실 방 모두 넓은 실용적구조,생활편안한 입구동",
-          "realtor": "광교산자이공인중개사사무소"
-        },
-        {
           "id": "2659793295",
           "name": "광교산자이",
           "tradeType": "A1",
@@ -6142,23 +5246,6 @@
           "confirmedOn": "2026-11-05",
           "description": "햇빛가득한 집,깔끔관리,완벽풀에어컨,식세기및오븐,신봉초중고도보,광역버스굿",
           "realtor": "광교산자이공인중개사사무소"
-        },
-        {
-          "id": "2659802861",
-          "name": "광교산자이",
-          "tradeType": "B1",
-          "priceText": "6억 8,000",
-          "rentText": "",
-          "priceMan": 68000,
-          "rentMan": 0,
-          "areaM2": 101,
-          "supplyAreaM2": 129,
-          "floor": "중/15",
-          "building": "101동",
-          "direction": "남서향",
-          "confirmedOn": "2026-11-05",
-          "description": "깨끗 귀한 추천전세,39타입,조용해요,신봉초등학교가까와요",
-          "realtor": "신봉대표부동산 공인중개사사무소"
         },
         {
           "id": "2659837620",
@@ -6403,7 +5490,8 @@
       "coverage": "complete",
       "pageCount": 1,
       "sourceUrl": "https://new.land.naver.com/complexes/107019",
-      "areaSource": "list"
+      "areaSource": "list",
+      "tradeType": "A1"
     },
     {
       "favorite": {
@@ -6771,7 +5859,8 @@
       "collectionMethod": "browser",
       "coverage": "partial",
       "sourceUrl": "https://new.land.naver.com/complexes/126607",
-      "areaSource": "list"
+      "areaSource": "list",
+      "tradeType": "A1"
     },
     {
       "favorite": {
@@ -6851,7 +5940,8 @@
       "coverage": "complete",
       "pageCount": 1,
       "sourceUrl": "https://new.land.naver.com/complexes/24707",
-      "areaSource": "list"
+      "areaSource": "list",
+      "tradeType": "A1"
     },
     {
       "favorite": {
@@ -7114,23 +6204,6 @@
           "realtor": "명품공인중개사사무소"
         },
         {
-          "id": "2659067777",
-          "name": "버들치마을경남아너스빌2차",
-          "tradeType": "B2",
-          "priceText": "4억",
-          "rentText": "90",
-          "priceMan": 40000,
-          "rentMan": 90,
-          "areaM2": 84,
-          "supplyAreaM2": 110,
-          "floor": "11/15",
-          "building": "203동",
-          "direction": "남향",
-          "confirmedOn": "2026-11-02",
-          "description": "광교산전망 올확장 빠른입주환영",
-          "realtor": "명품공인중개사사무소"
-        },
-        {
           "id": "2656857824",
           "name": "버들치마을경남아너스빌2차",
           "tradeType": "A1",
@@ -7219,7 +6292,8 @@
       "collectionMethod": "browser",
       "coverage": "partial",
       "sourceUrl": "https://new.land.naver.com/complexes/27415",
-      "areaSource": "list"
+      "areaSource": "list",
+      "tradeType": "A1"
     },
     {
       "favorite": {
@@ -7312,40 +6386,6 @@
           "realtor": "가가자이공인중개사사무소"
         },
         {
-          "id": "2660034334",
-          "name": "버들치마을성복자이1차",
-          "tradeType": "B1",
-          "priceText": "8억 5,000",
-          "rentText": "",
-          "priceMan": 85000,
-          "rentMan": 0,
-          "areaM2": 157,
-          "supplyAreaM2": 186,
-          "floor": "1/19",
-          "building": "107동",
-          "direction": "남향",
-          "confirmedOn": "2026-11-06",
-          "description": "へ강력추천へ 귀한1층. 잔잔한전망.내부깔끔. 학세권. 도서관인접.평지",
-          "realtor": "(주)로얄자산부동산중개법인"
-        },
-        {
-          "id": "2659987932",
-          "name": "버들치마을성복자이1차",
-          "tradeType": "B1",
-          "priceText": "8억 5,000",
-          "rentText": "",
-          "priceMan": 85000,
-          "rentMan": 0,
-          "areaM2": 157,
-          "supplyAreaM2": 186,
-          "floor": "1/19",
-          "building": "107동",
-          "direction": "남동향",
-          "confirmedOn": "2026-11-06",
-          "description": "전원주택전망 방4개 마루 초품아 입주협의",
-          "realtor": "가가자이공인중개사사무소"
-        },
-        {
           "id": "2660166814",
           "name": "버들치마을성복자이1차",
           "tradeType": "A1",
@@ -7380,23 +6420,6 @@
           "realtor": "가가자이공인중개사사무소"
         },
         {
-          "id": "2660096470",
-          "name": "버들치마을성복자이1차",
-          "tradeType": "B1",
-          "priceText": "8억 5,000",
-          "rentText": "",
-          "priceMan": 85000,
-          "rentMan": 0,
-          "areaM2": 157,
-          "supplyAreaM2": 186,
-          "floor": "1/19",
-          "building": "107동",
-          "direction": "남향",
-          "confirmedOn": "2026-11-06",
-          "description": "귀한1층  상태굿 전망굿 방4 융무 온돌마루",
-          "realtor": "현대(031-889-3300)공인중개사사무소"
-        },
-        {
           "id": "2659987599",
           "name": "버들치마을성복자이1차",
           "tradeType": "A1",
@@ -7412,40 +6435,6 @@
           "confirmedOn": "2026-11-06",
           "description": "풀옵션 폴리싱 방3개 초품아 단지옆도서관",
           "realtor": "가가자이공인중개사사무소"
-        },
-        {
-          "id": "2660086716",
-          "name": "버들치마을성복자이1차",
-          "tradeType": "B1",
-          "priceText": "8억 5,000",
-          "rentText": "",
-          "priceMan": 85000,
-          "rentMan": 0,
-          "areaM2": 157,
-          "supplyAreaM2": 186,
-          "floor": "1/19",
-          "building": "107동",
-          "direction": "남동향",
-          "confirmedOn": "2026-11-06",
-          "description": "귀한 전세, 입주 협의, 깨끗, 초품아, 도서관 인접, 추천",
-          "realtor": "성복힐스테이트(031-264-1234) 공인중개사사무소"
-        },
-        {
-          "id": "2659802649",
-          "name": "버들치마을성복자이1차",
-          "tradeType": "B1",
-          "priceText": "8억 5,000",
-          "rentText": "",
-          "priceMan": 85000,
-          "rentMan": 0,
-          "areaM2": 157,
-          "supplyAreaM2": 186,
-          "floor": "1/19",
-          "building": "107동",
-          "direction": "남향",
-          "confirmedOn": "2026-11-05",
-          "description": "추천. 아이키우기좋은집. 귀한전세.  마루. 초품아.  효자초. 도서관",
-          "realtor": "수지자이 공인중개사사무소(031-896-4000)"
         },
         {
           "id": "2659762085",
@@ -7587,7 +6576,8 @@
       "collectionMethod": "browser",
       "coverage": "partial",
       "sourceUrl": "https://new.land.naver.com/complexes/26925",
-      "areaSource": "list"
+      "areaSource": "list",
+      "tradeType": "A1"
     },
     {
       "favorite": {
@@ -7955,7 +6945,8 @@
       "collectionMethod": "browser",
       "coverage": "partial",
       "sourceUrl": "https://new.land.naver.com/complexes/26926",
-      "areaSource": "list"
+      "areaSource": "list",
+      "tradeType": "A1"
     },
     {
       "favorite": {
@@ -7995,40 +6986,6 @@
           "confirmedOn": "2026-11-07",
           "description": "입주날짜 협의, 방4, 폴리싱, 잔잔한 전망, 1월 22일이후 입주 가능",
           "realtor": "성복힐스테이트(031-264-1234) 공인중개사사무소"
-        },
-        {
-          "id": "2660271012",
-          "name": "버들치마을성복힐스테이트2차",
-          "tradeType": "B2",
-          "priceText": "5억",
-          "rentText": "270",
-          "priceMan": 50000,
-          "rentMan": 270,
-          "areaM2": 167,
-          "supplyAreaM2": 198,
-          "floor": "19/20",
-          "building": "207동",
-          "direction": "남향",
-          "confirmedOn": "2026-11-07",
-          "description": "전체시에 도배 방4 공사해줌 빠른입주가능",
-          "realtor": "대운공인중개사사무소"
-        },
-        {
-          "id": "2660290956",
-          "name": "버들치마을성복힐스테이트2차",
-          "tradeType": "B1",
-          "priceText": "9억 5,000",
-          "rentText": "",
-          "priceMan": 95000,
-          "rentMan": 0,
-          "areaM2": 167,
-          "supplyAreaM2": 198,
-          "floor": "19/20",
-          "building": "207동",
-          "direction": "남향",
-          "confirmedOn": "2026-11-07",
-          "description": "へ강력추천へ 로얄동. 방4. 시스템에어컨. 도배새로 수리예정. 평지.",
-          "realtor": "(주)로얄자산부동산중개법인"
         },
         {
           "id": "2660312788",
@@ -8116,23 +7073,6 @@
           "realtor": "성복조은집(031-889-5533)공인중개사사무소"
         },
         {
-          "id": "2660079559",
-          "name": "버들치마을성복힐스테이트2차",
-          "tradeType": "B1",
-          "priceText": "9억 5,000",
-          "rentText": "",
-          "priceMan": 95000,
-          "rentMan": 0,
-          "areaM2": 167,
-          "supplyAreaM2": 198,
-          "floor": "19/19",
-          "building": "210동",
-          "direction": "남향",
-          "confirmedOn": "2026-11-06",
-          "description": "へ강력추천へ 방3. 폴리싱. 시스템에어컨6. 단지쾌적.교통편리. 평지",
-          "realtor": "(주)로얄자산부동산중개법인"
-        },
-        {
           "id": "2660064019",
           "name": "버들치마을성복힐스테이트2차",
           "tradeType": "A1",
@@ -8148,23 +7088,6 @@
           "confirmedOn": "2026-11-06",
           "description": "방3, 폴리싱, 잔잔한 전망, 관리잘된집, 내부 깨끗",
           "realtor": "성복힐스테이트(031-264-1234)공인중개사사무소"
-        },
-        {
-          "id": "2660086072",
-          "name": "버들치마을성복힐스테이트2차",
-          "tradeType": "B1",
-          "priceText": "9억 5,000",
-          "rentText": "",
-          "priceMan": 95000,
-          "rentMan": 0,
-          "areaM2": 167,
-          "supplyAreaM2": 198,
-          "floor": "19/20",
-          "building": "207동",
-          "direction": "남서향",
-          "confirmedOn": "2026-11-06",
-          "description": "추천, 방4, 시스템에어컨,  등 도배 새로, 부분수리 예정",
-          "realtor": "성복힐스테이트(031-264-1234) 공인중개사사무소"
         },
         {
           "id": "2660083578",
@@ -8218,23 +7141,6 @@
           "realtor": "현대(031-889-3300)공인중개사사무소"
         },
         {
-          "id": "2660099491",
-          "name": "버들치마을성복힐스테이트2차",
-          "tradeType": "B1",
-          "priceText": "9억 5,000",
-          "rentText": "",
-          "priceMan": 95000,
-          "rentMan": 0,
-          "areaM2": 167,
-          "supplyAreaM2": 198,
-          "floor": "19/20",
-          "building": "207동",
-          "direction": "남향",
-          "confirmedOn": "2026-11-06",
-          "description": "빠른입주가능 시스템에어컨 도배 줄눈 폴리싱 융무 넓은방3 전망최고",
-          "realtor": "현대(031-889-3300)공인중개사사무소"
-        },
-        {
           "id": "2660049723",
           "name": "버들치마을성복힐스테이트2차",
           "tradeType": "A1",
@@ -8269,23 +7175,6 @@
           "realtor": "가가자이공인중개사사무소"
         },
         {
-          "id": "2660099502",
-          "name": "버들치마을성복힐스테이트2차",
-          "tradeType": "B1",
-          "priceText": "9억 5,000",
-          "rentText": "",
-          "priceMan": 95000,
-          "rentMan": 0,
-          "areaM2": 167,
-          "supplyAreaM2": 198,
-          "floor": "19/19",
-          "building": "210동",
-          "direction": "남향",
-          "confirmedOn": "2026-11-06",
-          "description": "귀한탑층 ,시원한전망,융무,시스템에어컨6대, 폴리싱,방3",
-          "realtor": "현대(031-889-3300)공인중개사사무소"
-        },
-        {
           "id": "2660208673",
           "name": "버들치마을성복힐스테이트2차",
           "tradeType": "A1",
@@ -8301,29 +7190,13 @@
           "confirmedOn": "2026-11-06",
           "description": "45형 입주가능한 귀한매물 27년1월22일 이후 입주가능 방4 폴리싱",
           "realtor": "현대(031-889-3300)공인중개사사무소"
-        },
-        {
-          "id": "2660085862",
-          "name": "버들치마을성복힐스테이트2차",
-          "tradeType": "B1",
-          "priceText": "9억 5,000",
-          "rentText": "",
-          "priceMan": 95000,
-          "rentMan": 0,
-          "areaM2": 167,
-          "supplyAreaM2": 198,
-          "floor": "19/19",
-          "building": "210동",
-          "direction": "남향",
-          "confirmedOn": "2026-11-06",
-          "description": "방3, 시스템에어컨6, 전망 아주 좋은 집, 깨끗, 로얄동",
-          "realtor": "성복힐스테이트(031-264-1234) 공인중개사사무소"
         }
       ],
       "collectionMethod": "browser",
       "coverage": "partial",
       "sourceUrl": "https://new.land.naver.com/complexes/27191",
-      "areaSource": "list"
+      "areaSource": "list",
+      "tradeType": "A1"
     },
     {
       "favorite": {
@@ -8365,40 +7238,6 @@
           "realtor": "힐앤자이공인중개사사무소"
         },
         {
-          "id": "2660012308",
-          "name": "성복센트럴자이",
-          "tradeType": "B2",
-          "priceText": "2억",
-          "rentText": "320",
-          "priceMan": 20000,
-          "rentMan": 320,
-          "areaM2": 159,
-          "supplyAreaM2": 194,
-          "floor": "14/20",
-          "building": "201동",
-          "direction": "남향",
-          "confirmedOn": "2026-11-06",
-          "description": "へ강력추천へ 화이트부분수리. 방4. 입구로얄동. 내부깔끔. 전망트임.",
-          "realtor": "(주)로얄자산부동산중개법인"
-        },
-        {
-          "id": "2660084648",
-          "name": "성복센트럴자이",
-          "tradeType": "B2",
-          "priceText": "2억",
-          "rentText": "320",
-          "priceMan": 20000,
-          "rentMan": 320,
-          "areaM2": 159,
-          "supplyAreaM2": 194,
-          "floor": "14/20",
-          "building": "201동",
-          "direction": "남향",
-          "confirmedOn": "2026-11-06",
-          "description": "추천매물  전망동 전망굿  초중고인접  교통편리  신분당선이용편리",
-          "realtor": "자이힐스테이트(031-896-0006)공인중개사사무소"
-        },
-        {
           "id": "2659983601",
           "name": "성복센트럴자이",
           "tradeType": "A1",
@@ -8414,23 +7253,6 @@
           "confirmedOn": "2026-11-06",
           "description": "へ강력추천へ 환상적인뷰. 내부최상. 입구동. 학세권. 단지쾌적.",
           "realtor": "(주)로얄자산부동산중개법인"
-        },
-        {
-          "id": "2660098316",
-          "name": "성복센트럴자이",
-          "tradeType": "B2",
-          "priceText": "2억",
-          "rentText": "320",
-          "priceMan": 20000,
-          "rentMan": 320,
-          "areaM2": 159,
-          "supplyAreaM2": 194,
-          "floor": "14/20",
-          "building": "201동",
-          "direction": "남향",
-          "confirmedOn": "2026-11-06",
-          "description": "입구동 성복천뷰 화이트부분수리 수납풍부 큰방4  상태굿",
-          "realtor": "현대(031-889-3300)공인중개사사무소"
         },
         {
           "id": "2659906079",
@@ -8552,23 +7374,6 @@
           "realtor": "힐앤자이공인중개사사무소"
         },
         {
-          "id": "2659959561",
-          "name": "성복센트럴자이",
-          "tradeType": "B1",
-          "priceText": "7억 5,000",
-          "rentText": "",
-          "priceMan": 75000,
-          "rentMan": 0,
-          "areaM2": 84,
-          "supplyAreaM2": 121,
-          "floor": "중/20",
-          "building": "210동",
-          "direction": "남향",
-          "confirmedOn": "2026-11-06",
-          "description": "귀한36 방3 관리잘된깨끗한집 교통편리 성서초옆",
-          "realtor": "힐스테이트(031-896-8949)공인중개사사무소"
-        },
-        {
           "id": "2658624995",
           "name": "성복센트럴자이",
           "tradeType": "A1",
@@ -8637,23 +7442,6 @@
           "realtor": "LG뱅크(031-264-0114)공인중개사사무소"
         },
         {
-          "id": "2658673116",
-          "name": "성복센트럴자이",
-          "tradeType": "B2",
-          "priceText": "2억",
-          "rentText": "320",
-          "priceMan": 20000,
-          "rentMan": 320,
-          "areaM2": 159,
-          "supplyAreaM2": 194,
-          "floor": "14/20",
-          "building": "201동",
-          "direction": "남향",
-          "confirmedOn": "2026-10-30",
-          "description": "입구동 풀옵션 올확장 전망최고",
-          "realtor": "힐앤자이공인중개사사무소"
-        },
-        {
           "id": "2658531502",
           "name": "성복센트럴자이",
           "tradeType": "A1",
@@ -8691,7 +7479,8 @@
       "collectionMethod": "browser",
       "coverage": "partial",
       "sourceUrl": "https://new.land.naver.com/complexes/26712",
-      "areaSource": "list"
+      "areaSource": "list",
+      "tradeType": "A1"
     },
     {
       "favorite": {
@@ -9037,29 +7826,13 @@
           "confirmedOn": "2026-11-07",
           "description": "풀옵션 폴리싱 방3개 숲세권 예쁜전망",
           "realtor": "가가자이공인중개사사무소"
-        },
-        {
-          "id": "2660318716",
-          "name": "버들치마을성복자이2차",
-          "tradeType": "B1",
-          "priceText": "8억",
-          "rentText": "",
-          "priceMan": 80000,
-          "rentMan": 0,
-          "areaM2": 124,
-          "supplyAreaM2": 156,
-          "floor": "19/19",
-          "building": "212동",
-          "direction": "남향",
-          "confirmedOn": "2026-11-07",
-          "description": "풀옵션 폴리싱 방3개 입주가능 숲세권",
-          "realtor": "가가자이공인중개사사무소"
         }
       ],
       "collectionMethod": "browser",
       "coverage": "partial",
       "sourceUrl": "https://new.land.naver.com/complexes/27006",
-      "areaSource": "list"
+      "areaSource": "list",
+      "tradeType": "A1"
     },
     {
       "favorite": {
@@ -9084,57 +7857,6 @@
       "errorCode": null,
       "articles": [
         {
-          "id": "2660280960",
-          "name": "버들치마을성복힐스테이트1차",
-          "tradeType": "B1",
-          "priceText": "8억",
-          "rentText": "",
-          "priceMan": 80000,
-          "rentMan": 0,
-          "areaM2": 134,
-          "supplyAreaM2": 170,
-          "floor": "3/16",
-          "building": "111동",
-          "direction": "남향",
-          "confirmedOn": "2026-11-07",
-          "description": "へ강력추천へ 방4. 폴리싱. 관리잘된집. 조용한 산전망. 학숲세권.",
-          "realtor": "(주)로얄자산부동산중개법인"
-        },
-        {
-          "id": "2660298843",
-          "name": "버들치마을성복힐스테이트1차",
-          "tradeType": "B1",
-          "priceText": "8억",
-          "rentText": "",
-          "priceMan": 80000,
-          "rentMan": 0,
-          "areaM2": 134,
-          "supplyAreaM2": 170,
-          "floor": "3/16",
-          "building": "111동",
-          "direction": "남향",
-          "confirmedOn": "2026-11-07",
-          "description": "10월입주시8억. 11월이후입주시8억5천. 조용한동. 산전망. 풀옵션",
-          "realtor": "LG뱅크(031-264-0114)공인중개사사무소"
-        },
-        {
-          "id": "2659984301",
-          "name": "버들치마을성복힐스테이트1차",
-          "tradeType": "B1",
-          "priceText": "8억 5,000",
-          "rentText": "",
-          "priceMan": 85000,
-          "rentMan": 0,
-          "areaM2": 134,
-          "supplyAreaM2": 170,
-          "floor": "3/16",
-          "building": "111동",
-          "direction": "남향",
-          "confirmedOn": "2026-11-06",
-          "description": "추천 방4 광교산전망 공기쾌적 대형슈퍼단지바로앞생활편리 초중근접",
-          "realtor": "럭키(265-5252)공인중개사사무소"
-        },
-        {
           "id": "2659983614",
           "name": "버들치마을성복힐스테이트1차",
           "tradeType": "A1",
@@ -9149,23 +7871,6 @@
           "direction": "남향",
           "confirmedOn": "2026-11-06",
           "description": "へ강력추천へ 전망좋음. 내부깔끔. 학세권. 숲세권. 성복역도보.",
-          "realtor": "(주)로얄자산부동산중개법인"
-        },
-        {
-          "id": "2659988729",
-          "name": "버들치마을성복힐스테이트1차",
-          "tradeType": "B2",
-          "priceText": "6억",
-          "rentText": "100",
-          "priceMan": 60000,
-          "rentMan": 100,
-          "areaM2": 134,
-          "supplyAreaM2": 170,
-          "floor": "2/20",
-          "building": "104동",
-          "direction": "남향",
-          "confirmedOn": "2026-11-06",
-          "description": "へ강력추천へ 입구동. 방4. 폴리싱. 내부깔끔. 성복역도보권.교통편리",
           "realtor": "(주)로얄자산부동산중개법인"
         },
         {
@@ -9201,74 +7906,6 @@
           "confirmedOn": "2026-11-06",
           "description": "へ강력추천へ 방4. 폴리싱. 내부깔끔. 채광좋음. 풀옵션. 성복역도보",
           "realtor": "(주)로얄자산부동산중개법인"
-        },
-        {
-          "id": "2660186731",
-          "name": "버들치마을성복힐스테이트1차",
-          "tradeType": "B1",
-          "priceText": "8억 3,000",
-          "rentText": "",
-          "priceMan": 83000,
-          "rentMan": 0,
-          "areaM2": 134,
-          "supplyAreaM2": 170,
-          "floor": "6/16",
-          "building": "110동",
-          "direction": "남향",
-          "confirmedOn": "2026-11-06",
-          "description": "o 강추 o 방4  폴리싱  주인거주  올수리  관리잘된집  산전망",
-          "realtor": "성복조은집(031-889-5533)공인중개사사무소"
-        },
-        {
-          "id": "2660211931",
-          "name": "버들치마을성복힐스테이트1차",
-          "tradeType": "B1",
-          "priceText": "8억 5,000",
-          "rentText": "",
-          "priceMan": 85000,
-          "rentMan": 0,
-          "areaM2": 134,
-          "supplyAreaM2": 170,
-          "floor": "3/16",
-          "building": "110동",
-          "direction": "남향",
-          "confirmedOn": "2026-11-06",
-          "description": "산전망동 폴리싱 방3 성복역도보",
-          "realtor": "더엘지공인중개사사무소"
-        },
-        {
-          "id": "2660070949",
-          "name": "버들치마을성복힐스테이트1차",
-          "tradeType": "B1",
-          "priceText": "8억 3,000",
-          "rentText": "",
-          "priceMan": 83000,
-          "rentMan": 0,
-          "areaM2": 134,
-          "supplyAreaM2": 170,
-          "floor": "6/16",
-          "building": "110동",
-          "direction": "남향",
-          "confirmedOn": "2026-11-06",
-          "description": "へ강력추천へ 특올수리. 방4. 폴리싱. 숲학세권. 채광좋고 조용한동",
-          "realtor": "(주)로얄자산부동산중개법인"
-        },
-        {
-          "id": "2660213191",
-          "name": "버들치마을성복힐스테이트1차",
-          "tradeType": "B1",
-          "priceText": "8억 3,000",
-          "rentText": "",
-          "priceMan": 83000,
-          "rentMan": 0,
-          "areaM2": 134,
-          "supplyAreaM2": 170,
-          "floor": "6/16",
-          "building": "110동",
-          "direction": "남향",
-          "confirmedOn": "2026-11-06",
-          "description": "강력추천 폴리싱 부분수리 화이트 방4 전망좋은집",
-          "realtor": "LG뱅크(031-264-0114)공인중개사사무소"
         },
         {
           "id": "2660213869",
@@ -9322,74 +7959,6 @@
           "realtor": "힐스테이트(031-896-8949)공인중개사사무소"
         },
         {
-          "id": "2659959564",
-          "name": "버들치마을성복힐스테이트1차",
-          "tradeType": "B1",
-          "priceText": "8억",
-          "rentText": "",
-          "priceMan": 80000,
-          "rentMan": 0,
-          "areaM2": 134,
-          "supplyAreaM2": 170,
-          "floor": "3/16",
-          "building": "111동",
-          "direction": "남향",
-          "confirmedOn": "2026-11-06",
-          "description": "방4 폴리싱 산전망동 생활편리단지 깨끗",
-          "realtor": "힐스테이트(031-896-8949)공인중개사사무소"
-        },
-        {
-          "id": "2660087019",
-          "name": "버들치마을성복힐스테이트1차",
-          "tradeType": "B1",
-          "priceText": "8억 5,000",
-          "rentText": "",
-          "priceMan": 85000,
-          "rentMan": 0,
-          "areaM2": 134,
-          "supplyAreaM2": 170,
-          "floor": "3/16",
-          "building": "110동",
-          "direction": "남서향",
-          "confirmedOn": "2026-11-06",
-          "description": "1월 입주협의, 방3, 풀옵션, 완전 깨끗, 잔잔한 산정망",
-          "realtor": "성복힐스테이트(031-264-1234) 공인중개사사무소"
-        },
-        {
-          "id": "2660087233",
-          "name": "버들치마을성복힐스테이트1차",
-          "tradeType": "B1",
-          "priceText": "8억 2,000",
-          "rentText": "",
-          "priceMan": 82000,
-          "rentMan": 0,
-          "areaM2": 134,
-          "supplyAreaM2": 170,
-          "floor": "2/20",
-          "building": "104동",
-          "direction": "남서향",
-          "confirmedOn": "2026-11-06",
-          "description": "1월말2월중 입주협의, 입구동, 깨끗, 공원뷰, 추천 전제",
-          "realtor": "성복힐스테이트(031-264-1234) 공인중개사사무소"
-        },
-        {
-          "id": "2660181805",
-          "name": "버들치마을성복힐스테이트1차",
-          "tradeType": "B2",
-          "priceText": "6억",
-          "rentText": "100",
-          "priceMan": 60000,
-          "rentMan": 100,
-          "areaM2": 134,
-          "supplyAreaM2": 170,
-          "floor": "2/20",
-          "building": "104동",
-          "direction": "남향",
-          "confirmedOn": "2026-11-06",
-          "description": "방4 성복역 이용편리 입구동",
-          "realtor": "대운공인중개사사무소"
-        },
-        {
           "id": "2660215884",
           "name": "버들치마을성복힐스테이트1차",
           "tradeType": "A1",
@@ -9427,7 +7996,8 @@
       "collectionMethod": "browser",
       "coverage": "partial",
       "sourceUrl": "https://new.land.naver.com/complexes/26760",
-      "areaSource": "list"
+      "areaSource": "list",
+      "tradeType": "A1"
     },
     {
       "favorite": {
@@ -9554,23 +8124,6 @@
           "realtor": "힐스테이트(031-896-8949)공인중개사사무소"
         },
         {
-          "id": "2660230702",
-          "name": "용인성복아이파크",
-          "tradeType": "B1",
-          "priceText": "6억 5,000",
-          "rentText": "",
-          "priceMan": 65000,
-          "rentMan": 0,
-          "areaM2": 84,
-          "supplyAreaM2": 114,
-          "floor": "5/16",
-          "building": "103동",
-          "direction": "남서향",
-          "confirmedOn": "2026-11-07",
-          "description": "귀한전세 입구동 전망굿 내부깔끔 학세권",
-          "realtor": "LG뱅크(031-264-0114)공인중개사사무소"
-        },
-        {
           "id": "2659959252",
           "name": "용인성복아이파크",
           "tradeType": "A1",
@@ -9654,23 +8207,6 @@
           "confirmedOn": "2026-11-06",
           "description": "추천 판상형 입주협의 교통편리단지 학군우수 전망최고",
           "realtor": "힐스테이트(031-896-8949)공인중개사사무소"
-        },
-        {
-          "id": "2659753295",
-          "name": "용인성복아이파크",
-          "tradeType": "B1",
-          "priceText": "6억 5,000",
-          "rentText": "",
-          "priceMan": 65000,
-          "rentMan": 0,
-          "areaM2": 84,
-          "supplyAreaM2": 114,
-          "floor": "5/16",
-          "building": "103동",
-          "direction": "남서향",
-          "confirmedOn": "2026-11-05",
-          "description": "초록뷰. 붙박이장. 넓은방과 거실의 판상형. 깨끗한 관리.",
-          "realtor": "아이파크 공인중개사사무소"
         },
         {
           "id": "2659753385",
@@ -9795,7 +8331,8 @@
       "collectionMethod": "browser",
       "coverage": "partial",
       "sourceUrl": "https://new.land.naver.com/complexes/102710",
-      "areaSource": "list"
+      "areaSource": "list",
+      "tradeType": "A1"
     },
     {
       "favorite": {
@@ -9851,74 +8388,6 @@
           "direction": "남서향",
           "confirmedOn": "2026-11-03",
           "description": "입점공인,멋진테라스의펜트하우스,파노라마뷰,내부상태최상",
-          "realtor": "서희앤KCC(263-8400)공인중개사사무소"
-        },
-        {
-          "id": "2660275965",
-          "name": "성복역서희스타힐스(주상복합)",
-          "tradeType": "B1",
-          "priceText": "7억",
-          "rentText": "",
-          "priceMan": 70000,
-          "rentMan": 0,
-          "areaM2": 84,
-          "supplyAreaM2": 112,
-          "floor": "고/25",
-          "building": "102동",
-          "direction": "남서향",
-          "confirmedOn": "2026-11-07",
-          "description": "입점공인,공원산뷰,채광좋고,관리잘된집,편리한 인프라,성복역도보",
-          "realtor": "서희앤KCC(263-8400)공인중개사사무소"
-        },
-        {
-          "id": "2660276483",
-          "name": "성복역서희스타힐스(주상복합)",
-          "tradeType": "B1",
-          "priceText": "7억",
-          "rentText": "",
-          "priceMan": 70000,
-          "rentMan": 0,
-          "areaM2": 84,
-          "supplyAreaM2": 112,
-          "floor": "고/25",
-          "building": "102동",
-          "direction": "남향",
-          "confirmedOn": "2026-11-07",
-          "description": "추천 산뷰 인기타입 채광 통풍 최고  창있는 넓은드레스룸",
-          "realtor": "성복랜드(264-7900) 공인중개사사무소"
-        },
-        {
-          "id": "2660275969",
-          "name": "성복역서희스타힐스(주상복합)",
-          "tradeType": "B1",
-          "priceText": "6억 8,000",
-          "rentText": "",
-          "priceMan": 68000,
-          "rentMan": 0,
-          "areaM2": 84,
-          "supplyAreaM2": 112,
-          "floor": "저/25",
-          "building": "102동",
-          "direction": "남서향",
-          "confirmedOn": "2026-11-07",
-          "description": "입점공인,시스템에어컨풀,중문,내부상태최상,생활편리,성복역도보",
-          "realtor": "서희앤KCC(263-8400)공인중개사사무소"
-        },
-        {
-          "id": "2660275960",
-          "name": "성복역서희스타힐스(주상복합)",
-          "tradeType": "B2",
-          "priceText": "4억 5,000",
-          "rentText": "100",
-          "priceMan": 45000,
-          "rentMan": 100,
-          "areaM2": 84,
-          "supplyAreaM2": 112,
-          "floor": "고/25",
-          "building": "101동",
-          "direction": "남서향",
-          "confirmedOn": "2026-11-07",
-          "description": "입점공인,완전탁트인뷰,시스템에어컨,내부상태최상,효자초인접",
           "realtor": "서희앤KCC(263-8400)공인중개사사무소"
         },
         {
@@ -9990,40 +8459,6 @@
           "realtor": "서희앤KCC(263-8400)공인중개사사무소"
         },
         {
-          "id": "2660025373",
-          "name": "성복역서희스타힐스(주상복합)",
-          "tradeType": "B1",
-          "priceText": "6억 8,000",
-          "rentText": "",
-          "priceMan": 68000,
-          "rentMan": 0,
-          "areaM2": 84,
-          "supplyAreaM2": 112,
-          "floor": "저/25",
-          "building": "102동",
-          "direction": "남향",
-          "confirmedOn": "2026-11-06",
-          "description": "타입좋은 로얄라인 산뷰 시스템에어컨, 중문.인덕션 성복역10분",
-          "realtor": "성복랜드(264-7900) 공인중개사사무소"
-        },
-        {
-          "id": "2660270910",
-          "name": "성복역서희스타힐스(주상복합)",
-          "tradeType": "B2",
-          "priceText": "4억 5,000",
-          "rentText": "100",
-          "priceMan": 45000,
-          "rentMan": 100,
-          "areaM2": 84,
-          "supplyAreaM2": 112,
-          "floor": "고/25",
-          "building": "101동",
-          "direction": "남동향",
-          "confirmedOn": "2026-11-07",
-          "description": "00융무,시스템에어컨,27년2월초00",
-          "realtor": "성복역대림261-9599공인중개사사무소"
-        },
-        {
           "id": "2659905658",
           "name": "성복역서희스타힐스(주상복합)",
           "tradeType": "A1",
@@ -10038,23 +8473,6 @@
           "direction": "남향",
           "confirmedOn": "2026-11-05",
           "description": "성복역도보 공원전망 생활편리 정상입주 깨끗",
-          "realtor": "엘지3차(266-5500)공인중개사무소"
-        },
-        {
-          "id": "2659905883",
-          "name": "성복역서희스타힐스(주상복합)",
-          "tradeType": "B1",
-          "priceText": "6억 8,000",
-          "rentText": "",
-          "priceMan": 68000,
-          "rentMan": 0,
-          "areaM2": 84,
-          "supplyAreaM2": 112,
-          "floor": "저/25",
-          "building": "102동",
-          "direction": "남향",
-          "confirmedOn": "2026-11-05",
-          "description": "성복역도보 산전망 수납풍부 시스템에어컨 깨끗",
           "realtor": "엘지3차(266-5500)공인중개사무소"
         },
         {
@@ -10126,23 +8544,6 @@
           "realtor": "성복LG1차승리공인중개사사무소"
         },
         {
-          "id": "2659631062",
-          "name": "성복역서희스타힐스(주상복합)",
-          "tradeType": "B2",
-          "priceText": "4억 5,000",
-          "rentText": "100",
-          "priceMan": 45000,
-          "rentMan": 100,
-          "areaM2": 84,
-          "supplyAreaM2": 112,
-          "floor": "고/25",
-          "building": "101동",
-          "direction": "남동향",
-          "confirmedOn": "2026-11-04",
-          "description": "00융무,시스템에어컨,27년2월초00",
-          "realtor": "성복역대림261-9599공인중개사사무소"
-        },
-        {
           "id": "2658073466",
           "name": "성복역서희스타힐스(주상복합)",
           "tradeType": "A1",
@@ -10163,7 +8564,8 @@
       "collectionMethod": "browser",
       "coverage": "partial",
       "sourceUrl": "https://new.land.naver.com/complexes/111564",
-      "areaSource": "list"
+      "areaSource": "list",
+      "tradeType": "A1"
     },
     {
       "favorite": {
@@ -10187,23 +8589,6 @@
       "collectedAt": "2026-11-07T03:24:05.595Z",
       "errorCode": null,
       "articles": [
-        {
-          "id": "2660137466",
-          "name": "벽산블루밍",
-          "tradeType": "B1",
-          "priceText": "6억 5,000",
-          "rentText": "",
-          "priceMan": 65000,
-          "rentMan": 0,
-          "areaM2": 84,
-          "supplyAreaM2": 109,
-          "floor": "9/20",
-          "building": "107동",
-          "direction": "동향",
-          "confirmedOn": "2026-11-06",
-          "description": "좋은 전망에 샷시빼고 전체 올수리",
-          "realtor": "중앙벽산단지내031-276-5000공인중개사사무소"
-        },
         {
           "id": "2660136291",
           "name": "벽산블루밍",
@@ -10307,23 +8692,6 @@
           "realtor": "제일(031-266-1300)공인중개사사무소"
         },
         {
-          "id": "2660274721",
-          "name": "벽산블루밍",
-          "tradeType": "B2",
-          "priceText": "1억",
-          "rentText": "210",
-          "priceMan": 10000,
-          "rentMan": 210,
-          "areaM2": 84,
-          "supplyAreaM2": 109,
-          "floor": "저/20",
-          "building": "103동",
-          "direction": "동향",
-          "confirmedOn": "2026-11-07",
-          "description": "최근올수리 입구동  성복역롯데몰도보권 초품아",
-          "realtor": "가나(266-1155)공인중개사사무소"
-        },
-        {
           "id": "2659986874",
           "name": "벽산블루밍",
           "tradeType": "A1",
@@ -10356,23 +8724,6 @@
           "confirmedOn": "2026-11-06",
           "description": "세안고 샷시빼고 일부수리",
           "realtor": "중앙벽산단지내031-276-5000공인중개사사무소"
-        },
-        {
-          "id": "2658730350",
-          "name": "벽산블루밍",
-          "tradeType": "B1",
-          "priceText": "6억 5,000",
-          "rentText": "",
-          "priceMan": 65000,
-          "rentMan": 0,
-          "areaM2": 84,
-          "supplyAreaM2": 109,
-          "floor": "9/20",
-          "building": "107동",
-          "direction": "동향",
-          "confirmedOn": "2026-10-30",
-          "description": "샷시빼고 최근올수리 1월20일 확정 초품아 성복역슬세권",
-          "realtor": "힐스테이트(031-264-0700) 공인중개사사무소"
         },
         {
           "id": "2658705427",
@@ -10460,23 +8811,6 @@
           "realtor": "삼성원(031-265-1020)공인중개사사무소"
         },
         {
-          "id": "2657992002",
-          "name": "벽산블루밍",
-          "tradeType": "B1",
-          "priceText": "6억 5,000",
-          "rentText": "",
-          "priceMan": 65000,
-          "rentMan": 0,
-          "areaM2": 84,
-          "supplyAreaM2": 109,
-          "floor": "9/20",
-          "building": "107동",
-          "direction": "동향",
-          "confirmedOn": "2026-10-28",
-          "description": "샷시빼고 최근올수리 1월20일 확정 초품아 성복역슬세권",
-          "realtor": "힐스테이트(031-264-0700)공인중개사사무소"
-        },
-        {
           "id": "2659428385",
           "name": "벽산블루밍",
           "tradeType": "A1",
@@ -10492,46 +8826,13 @@
           "confirmedOn": "2026-11-03",
           "description": "세안고 성복역 역세권 화이트로 샷시빼고 올수리",
           "realtor": "중앙벽산단지내031-276-5000공인중개사사무소"
-        },
-        {
-          "id": "2659356115",
-          "name": "벽산블루밍",
-          "tradeType": "B1",
-          "priceText": "6억 1,000",
-          "rentText": "",
-          "priceMan": 61000,
-          "rentMan": 0,
-          "areaM2": 84,
-          "supplyAreaM2": 109,
-          "floor": "고/20",
-          "building": "106동",
-          "direction": "동향",
-          "confirmedOn": "2026-11-03",
-          "description": "탁트인 전망에 샷시포함 전체 올수리",
-          "realtor": "중앙벽산단지내031-276-5000공인중개사사무소"
-        },
-        {
-          "id": "2658719152",
-          "name": "벽산블루밍",
-          "tradeType": "B2",
-          "priceText": "1억",
-          "rentText": "170",
-          "priceMan": 10000,
-          "rentMan": 170,
-          "areaM2": 59,
-          "supplyAreaM2": 81,
-          "floor": "고/16",
-          "building": "102동",
-          "direction": "동향",
-          "confirmedOn": "2026-10-30",
-          "description": "최근올수리 거실확장 초품아 성복역슬세권 지하주차장 연결됨",
-          "realtor": "힐스테이트(031-264-0700) 공인중개사사무소"
         }
       ],
       "collectionMethod": "browser",
       "coverage": "partial",
       "sourceUrl": "https://new.land.naver.com/complexes/2511",
-      "areaSource": "list"
+      "areaSource": "list",
+      "tradeType": "A1"
     },
     {
       "favorite": {
@@ -10899,7 +9200,8 @@
       "collectionMethod": "browser",
       "coverage": "partial",
       "sourceUrl": "https://new.land.naver.com/complexes/8692",
-      "areaSource": "list"
+      "areaSource": "list",
+      "tradeType": "A1"
     },
     {
       "favorite": {
@@ -10990,23 +9292,6 @@
           "confirmedOn": "2026-11-07",
           "description": "화이트로 완전 올수리된 관리 잘되고 전망좋은 예쁜집",
           "realtor": "동일금호(261-7300) 코너공인중개사사무소"
-        },
-        {
-          "id": "2660288430",
-          "name": "상현마을금호베스트빌4단지",
-          "tradeType": "B2",
-          "priceText": "4억",
-          "rentText": "120",
-          "priceMan": 40000,
-          "rentMan": 120,
-          "areaM2": 174,
-          "supplyAreaM2": 224,
-          "floor": "3/19",
-          "building": "131동",
-          "direction": "남동향",
-          "confirmedOn": "2026-11-07",
-          "description": "입주협의, 부분수리된 아주깨끗한집, 솔개초학군",
-          "realtor": "수지상현뱅크(266-0075)공인중개사사무소"
         },
         {
           "id": "2659759403",
@@ -11267,7 +9552,8 @@
       "collectionMethod": "browser",
       "coverage": "partial",
       "sourceUrl": "https://new.land.naver.com/complexes/26963",
-      "areaSource": "list"
+      "areaSource": "list",
+      "tradeType": "A1"
     },
     {
       "favorite": {
@@ -11291,23 +9577,6 @@
       "collectedAt": "2026-11-07T03:24:12.064Z",
       "errorCode": null,
       "articles": [
-        {
-          "id": "2659986358",
-          "name": "수지쌍용파크뷰",
-          "tradeType": "B2",
-          "priceText": "4억",
-          "rentText": "100",
-          "priceMan": 40000,
-          "rentMan": 100,
-          "areaM2": 144,
-          "supplyAreaM2": 184,
-          "floor": "5/15",
-          "building": "604동",
-          "direction": "남향",
-          "confirmedOn": "2026-11-06",
-          "description": "깨끗함,숲단지,산책로,상가이용편리,초중고인접,성복역",
-          "realtor": "원희캐슬공인중개사사무소"
-        },
         {
           "id": "2660079674",
           "name": "수지쌍용파크뷰",
@@ -11513,23 +9782,6 @@
           "realtor": "원희캐슬공인중개사사무소"
         },
         {
-          "id": "2657044342",
-          "name": "수지쌍용파크뷰",
-          "tradeType": "B1",
-          "priceText": "7억",
-          "rentText": "",
-          "priceMan": 70000,
-          "rentMan": 0,
-          "areaM2": 144,
-          "supplyAreaM2": 184,
-          "floor": "14/15",
-          "building": "604동",
-          "direction": "남서향",
-          "confirmedOn": "2026-10-22",
-          "description": "올수리,산책로,지하주차장 엘베 연결,상가이용편리,초중고인접,성복역",
-          "realtor": "원희캐슬공인중개사사무소"
-        },
-        {
           "id": "2658115375",
           "name": "수지쌍용파크뷰",
           "tradeType": "A1",
@@ -11562,23 +9814,6 @@
           "confirmedOn": "2026-10-28",
           "description": "강추,남향,최근화이트전체수리,아주깨끗한집,상권이용편리",
           "realtor": "자이신세계(031-276-0076) 공인중개사사무소"
-        },
-        {
-          "id": "2657923039",
-          "name": "수지쌍용파크뷰",
-          "tradeType": "B1",
-          "priceText": "6억 8,000",
-          "rentText": "",
-          "priceMan": 68000,
-          "rentMan": 0,
-          "areaM2": 144,
-          "supplyAreaM2": 184,
-          "floor": "고/15",
-          "building": "604동",
-          "direction": "남향",
-          "confirmedOn": "2026-10-27",
-          "description": "올수리,아주깨끗해요,상현동중심상가앞,성복역롯데몰인근,지하주차장연결",
-          "realtor": "굿모닝(031-266-3553)공인중개사사무소"
         },
         {
           "id": "2656534380",
@@ -11635,7 +9870,8 @@
       "collectionMethod": "browser",
       "coverage": "partial",
       "sourceUrl": "https://new.land.naver.com/complexes/3709",
-      "areaSource": "list"
+      "areaSource": "list",
+      "tradeType": "A1"
     },
     {
       "favorite": {
@@ -11813,23 +10049,6 @@
           "realtor": "우리 공인중개사사무소"
         },
         {
-          "id": "2660286473",
-          "name": "만현마을2단지아이파크",
-          "tradeType": "B2",
-          "priceText": "4억",
-          "rentText": "160",
-          "priceMan": 40000,
-          "rentMan": 160,
-          "areaM2": 175,
-          "supplyAreaM2": 222,
-          "floor": "고/18",
-          "building": "204동",
-          "direction": "남향",
-          "confirmedOn": "2026-11-07",
-          "description": "융자무 로얄동으로 전망과채광좋은 남향 집",
-          "realtor": "상현(031-265-2700)공인중개사사무소"
-        },
-        {
           "id": "2660292127",
           "name": "만현마을2단지아이파크",
           "tradeType": "A1",
@@ -11845,23 +10064,6 @@
           "confirmedOn": "2026-11-07",
           "description": "올수리 된 남향 집",
           "realtor": "상현(031-265-2700) 공인중개사사무소"
-        },
-        {
-          "id": "2659936423",
-          "name": "만현마을2단지아이파크",
-          "tradeType": "B2",
-          "priceText": "3억",
-          "rentText": "200",
-          "priceMan": 30000,
-          "rentMan": 200,
-          "areaM2": 175,
-          "supplyAreaM2": 222,
-          "floor": "고/18",
-          "building": "204동",
-          "direction": "남향",
-          "confirmedOn": "2026-11-06",
-          "description": "전망 공원 유치원 초교 주착넉넉함 깨끗",
-          "realtor": "연세공인중개사사무소"
         },
         {
           "id": "2659973253",
@@ -11949,23 +10151,6 @@
           "realtor": "우리 공인중개사사무소"
         },
         {
-          "id": "2660101655",
-          "name": "만현마을2단지아이파크",
-          "tradeType": "B2",
-          "priceText": "4억",
-          "rentText": "160",
-          "priceMan": 40000,
-          "rentMan": 160,
-          "areaM2": 175,
-          "supplyAreaM2": 222,
-          "floor": "고/18",
-          "building": "204동",
-          "direction": "남향",
-          "confirmedOn": "2026-11-06",
-          "description": "신분당선 도보가능 초등인접 만현공원 인접 일자형 남향배치",
-          "realtor": "우리 공인중개사사무소"
-        },
-        {
           "id": "2660311358",
           "name": "만현마을2단지아이파크",
           "tradeType": "A1",
@@ -11981,29 +10166,13 @@
           "confirmedOn": "2026-11-07",
           "description": "특올수리예쁜집. 주인거주. 일조량굿.정상입주",
           "realtor": "성복역태양부동산공인중개사사무소"
-        },
-        {
-          "id": "2659968588",
-          "name": "만현마을2단지아이파크",
-          "tradeType": "B2",
-          "priceText": "3억",
-          "rentText": "200",
-          "priceMan": 30000,
-          "rentMan": 200,
-          "areaM2": 175,
-          "supplyAreaM2": 222,
-          "floor": "고/18",
-          "building": "204동",
-          "direction": "남향",
-          "confirmedOn": "2026-11-06",
-          "description": "융자무 로얄동으로 전망좋은 남향 집",
-          "realtor": "상현(031-265-2700)공인중개사사무소"
         }
       ],
       "collectionMethod": "browser",
       "coverage": "partial",
       "sourceUrl": "https://new.land.naver.com/complexes/3714",
-      "areaSource": "list"
+      "areaSource": "list",
+      "tradeType": "A1"
     },
     {
       "favorite": {
@@ -12371,7 +10540,8 @@
       "collectionMethod": "browser",
       "coverage": "partial",
       "sourceUrl": "https://new.land.naver.com/complexes/3707",
-      "areaSource": "list"
+      "areaSource": "list",
+      "tradeType": "A1"
     },
     {
       "favorite": {
@@ -12430,23 +10600,6 @@
           "realtor": "상현(031-265-2700) 공인중개사사무소"
         },
         {
-          "id": "2660275439",
-          "name": "만현마을5단지아이파크",
-          "tradeType": "B1",
-          "priceText": "6억 5,000",
-          "rentText": "",
-          "priceMan": 65000,
-          "rentMan": 0,
-          "areaM2": 99,
-          "supplyAreaM2": 125,
-          "floor": "12/15",
-          "building": "507동",
-          "direction": "남향",
-          "confirmedOn": "2026-11-07",
-          "description": "신분당선역세권 남향 초교인접 깨끗 수리함",
-          "realtor": "이레(261-9400)공인중개사사무소"
-        },
-        {
           "id": "2660289870",
           "name": "만현마을5단지아이파크",
           "tradeType": "A1",
@@ -12462,23 +10615,6 @@
           "confirmedOn": "2026-11-07",
           "description": "성복역 역세권으로 아주 깨끗한 남향 집",
           "realtor": "상현(031-265-2700) 공인중개사사무소"
-        },
-        {
-          "id": "2660289509",
-          "name": "만현마을5단지아이파크",
-          "tradeType": "B1",
-          "priceText": "6억 5,000",
-          "rentText": "",
-          "priceMan": 65000,
-          "rentMan": 0,
-          "areaM2": 99,
-          "supplyAreaM2": 125,
-          "floor": "12/15",
-          "building": "507동",
-          "direction": "남향",
-          "confirmedOn": "2026-11-07",
-          "description": "융자무 아주 깨끗한 남향 집",
-          "realtor": "상현(031-265-2700)공인중개사사무소"
         },
         {
           "id": "2660190637",
@@ -12583,23 +10719,6 @@
           "realtor": "럭키(265-5252)공인중개사사무소"
         },
         {
-          "id": "2659892940",
-          "name": "만현마을5단지아이파크",
-          "tradeType": "B1",
-          "priceText": "6억 5,000",
-          "rentText": "",
-          "priceMan": 65000,
-          "rentMan": 0,
-          "areaM2": 99,
-          "supplyAreaM2": 125,
-          "floor": "12/15",
-          "building": "507동",
-          "direction": "남향",
-          "confirmedOn": "2026-11-05",
-          "description": "신분당선 도보가능  초등인접  교통편리  편의시설 용이",
-          "realtor": "우리 공인중개사사무소"
-        },
-        {
           "id": "2659505030",
           "name": "만현마을5단지아이파크",
           "tradeType": "A1",
@@ -12615,23 +10734,6 @@
           "confirmedOn": "2026-11-03",
           "description": "부분수리아주깨끗 솔개초 중심상가인접 성복역도보10여분",
           "realtor": "아이파크(031-276-6100)공인중개사사무소"
-        },
-        {
-          "id": "2659466386",
-          "name": "만현마을5단지아이파크",
-          "tradeType": "B1",
-          "priceText": "6억 5,000",
-          "rentText": "",
-          "priceMan": 65000,
-          "rentMan": 0,
-          "areaM2": 99,
-          "supplyAreaM2": 125,
-          "floor": "12/15",
-          "building": "507동",
-          "direction": "남향",
-          "confirmedOn": "2026-11-03",
-          "description": "강추 성복역 도보 역세권 로얄동 로얄층 매우깨끗해요",
-          "realtor": "솔하임공인중개사사무소"
         },
         {
           "id": "2660292579",
@@ -12685,23 +10787,6 @@
           "realtor": "우리 공인중개사사무소"
         },
         {
-          "id": "2660285870",
-          "name": "만현마을5단지아이파크",
-          "tradeType": "B1",
-          "priceText": "6억",
-          "rentText": "",
-          "priceMan": 60000,
-          "rentMan": 0,
-          "areaM2": 99,
-          "supplyAreaM2": 125,
-          "floor": "저/19",
-          "building": "506동",
-          "direction": "동향",
-          "confirmedOn": "2026-11-07",
-          "description": "융자무 성복역 역세권 상권과대중교통 이용 편리",
-          "realtor": "상현(031-265-2700) 공인중개사사무소"
-        },
-        {
           "id": "2660190879",
           "name": "만현마을5단지아이파크",
           "tradeType": "A1",
@@ -12739,7 +10824,8 @@
       "collectionMethod": "browser",
       "coverage": "partial",
       "sourceUrl": "https://new.land.naver.com/complexes/9014",
-      "areaSource": "list"
+      "areaSource": "list",
+      "tradeType": "A1"
     },
     {
       "favorite": {
@@ -12951,23 +11037,6 @@
           "realtor": "현대홈타운031-262-7100공인중개사사무소"
         },
         {
-          "id": "2660199472",
-          "name": "서원마을3단지아이파크",
-          "tradeType": "B1",
-          "priceText": "6억 9,000",
-          "rentText": "",
-          "priceMan": 69000,
-          "rentMan": 0,
-          "areaM2": 127,
-          "supplyAreaM2": 159,
-          "floor": "고/17",
-          "building": "306동",
-          "direction": "남동향",
-          "confirmedOn": "2026-11-06",
-          "description": "",
-          "realtor": "현대홈타운031-262-7100공인중개사사무소"
-        },
-        {
           "id": "2660031717",
           "name": "서원마을3단지아이파크",
           "tradeType": "A1",
@@ -13019,23 +11088,6 @@
           "realtor": "스마트(031-266-9977)공인중개사사무소"
         },
         {
-          "id": "2659549352",
-          "name": "서원마을3단지아이파크",
-          "tradeType": "B2",
-          "priceText": "2억 8,000",
-          "rentText": "168",
-          "priceMan": 28000,
-          "rentMan": 168,
-          "areaM2": 127,
-          "supplyAreaM2": 159,
-          "floor": "저/17",
-          "building": "306동",
-          "direction": "남동향",
-          "confirmedOn": "2026-11-04",
-          "description": "일부 수리해줌, 심곡초 성복역 롯데몰 인접.",
-          "realtor": "현대홈타운031-262-7100공인중개사사무소"
-        },
-        {
           "id": "2657866536",
           "name": "서원마을3단지아이파크",
           "tradeType": "A1",
@@ -13050,23 +11102,6 @@
           "direction": "남동향",
           "confirmedOn": "2026-10-27",
           "description": "34P 주인거주 입주협의가능 초품아 성복역도보권",
-          "realtor": "현대(272-5200)공인중개사사무소"
-        },
-        {
-          "id": "2658805477",
-          "name": "서원마을3단지아이파크",
-          "tradeType": "B2",
-          "priceText": "2억 5,000",
-          "rentText": "180",
-          "priceMan": 25000,
-          "rentMan": 180,
-          "areaM2": 127,
-          "supplyAreaM2": 159,
-          "floor": "고/19",
-          "building": "305동",
-          "direction": "남동향",
-          "confirmedOn": "2026-10-31",
-          "description": "48P 1월 입주협의가능 깔끔하게 관리된집 초품아 성복역도보권 애완동물x",
           "realtor": "현대(272-5200)공인중개사사무소"
         },
         {
@@ -13085,29 +11120,13 @@
           "confirmedOn": "2026-10-28",
           "description": "추천매물,성복역롯데몰도보8분초역세권,초품아,언제든입주가능",
           "realtor": "굿모닝(031-266-3553)공인중개사사무소"
-        },
-        {
-          "id": "2660170612",
-          "name": "서원마을3단지아이파크",
-          "tradeType": "B2",
-          "priceText": "1억",
-          "rentText": "220",
-          "priceMan": 10000,
-          "rentMan": 220,
-          "areaM2": 84,
-          "supplyAreaM2": 113,
-          "floor": "고/20",
-          "building": "301동",
-          "direction": "남동향",
-          "confirmedOn": "2026-11-06",
-          "description": "공동X 빠른입주가능 협의가능 최근올수리 애완동물X",
-          "realtor": "현대(272-5200)공인중개사사무소"
         }
       ],
       "collectionMethod": "browser",
       "coverage": "partial",
       "sourceUrl": "https://new.land.naver.com/complexes/8425",
-      "areaSource": "list"
+      "areaSource": "list",
+      "tradeType": "A1"
     },
     {
       "favorite": {
@@ -13164,40 +11183,6 @@
           "confirmedOn": "2026-11-06",
           "description": "주인거주로깨끗 남향 상가인접 생활편리 보정플렛폼시티호재",
           "realtor": "미래(031-266-7600)공인중개사사무소"
-        },
-        {
-          "id": "2659766282",
-          "name": "만현마을8단지두산위브",
-          "tradeType": "B1",
-          "priceText": "7억 5,000",
-          "rentText": "",
-          "priceMan": 75000,
-          "rentMan": 0,
-          "areaM2": 159,
-          "supplyAreaM2": 204,
-          "floor": "11/19",
-          "building": "805동",
-          "direction": "남향",
-          "confirmedOn": "2026-11-05",
-          "description": "전망 최고 전체 화이트 올수리 시스템에어컨4대 투인원에어컨",
-          "realtor": "쌍용플러스(031-266-4949)공인중개사사무소"
-        },
-        {
-          "id": "2660271208",
-          "name": "만현마을8단지두산위브",
-          "tradeType": "B1",
-          "priceText": "7억 5,000",
-          "rentText": "",
-          "priceMan": 75000,
-          "rentMan": 0,
-          "areaM2": 159,
-          "supplyAreaM2": 204,
-          "floor": "중/19",
-          "building": "805동",
-          "direction": "남향",
-          "confirmedOn": "2026-11-07",
-          "description": "특올수리 상권교통학원이용편리 남향전망 관리비저렴",
-          "realtor": "수지공인중개사사무소"
         },
         {
           "id": "2658874189",
@@ -13387,23 +11372,6 @@
           "realtor": "부동산플랫폼위브공인중개사사무소"
         },
         {
-          "id": "2656660326",
-          "name": "만현마을8단지두산위브",
-          "tradeType": "B1",
-          "priceText": "7억 5,000",
-          "rentText": "",
-          "priceMan": 75000,
-          "rentMan": 0,
-          "areaM2": 159,
-          "supplyAreaM2": 204,
-          "floor": "11/19",
-          "building": "805동",
-          "direction": "남향",
-          "confirmedOn": "2026-10-20",
-          "description": "확트인 전망  올수리 거실 방 확장,  시스템에어컨4대",
-          "realtor": "쌍용플러스(031-266-4949)공인중개사사무소"
-        },
-        {
           "id": "2656571586",
           "name": "만현마을8단지두산위브",
           "tradeType": "A1",
@@ -13436,46 +11404,13 @@
           "confirmedOn": "2026-10-20",
           "description": "초록전망최고,조용한대단지,날짜협의,상가이용편리",
           "realtor": "금호(266-8600)공인중개사사무소"
-        },
-        {
-          "id": "2659605935",
-          "name": "만현마을8단지두산위브",
-          "tradeType": "B2",
-          "priceText": "2억",
-          "rentText": "250",
-          "priceMan": 20000,
-          "rentMan": 250,
-          "areaM2": 159,
-          "supplyAreaM2": 204,
-          "floor": "고/19",
-          "building": "805동",
-          "direction": "남향",
-          "confirmedOn": "2026-11-04",
-          "description": "환상적인 전망 ,화이트 올수리,남향 .관리비 저렴, 1억300가능",
-          "realtor": "엘리트(264-9933)공인중개사 사무소"
-        },
-        {
-          "id": "2656098682",
-          "name": "만현마을8단지두산위브",
-          "tradeType": "B1",
-          "priceText": "7억 5,000",
-          "rentText": "",
-          "priceMan": 75000,
-          "rentMan": 0,
-          "areaM2": 159,
-          "supplyAreaM2": 204,
-          "floor": "11/19",
-          "building": "805동",
-          "direction": "남향",
-          "confirmedOn": "2026-10-17",
-          "description": "전망좋은 뻥뷰, 확장형 올수리, 시스템에어컨 설치, 교통편리",
-          "realtor": "타임 공인중개사사무소"
         }
       ],
       "collectionMethod": "browser",
       "coverage": "partial",
       "sourceUrl": "https://new.land.naver.com/complexes/3700",
-      "areaSource": "list"
+      "areaSource": "list",
+      "tradeType": "A1"
     },
     {
       "favorite": {
@@ -13583,23 +11518,6 @@
           "confirmedOn": "2026-11-05",
           "description": "샤시,올수리,초중고,상현역,호수공원 도보,수영헬스사우나골프이용",
           "realtor": "수지리치(031-266-5600)공인중개사사무소"
-        },
-        {
-          "id": "2659723549",
-          "name": "광교상떼빌파크뷰",
-          "tradeType": "B1",
-          "priceText": "6억",
-          "rentText": "",
-          "priceMan": 60000,
-          "rentMan": 0,
-          "areaM2": 134,
-          "supplyAreaM2": 183,
-          "floor": "20/20",
-          "building": "4807동",
-          "direction": "남향",
-          "confirmedOn": "2026-11-04",
-          "description": "호수조망굿 샷시외7년전올수리 단지전용휘트니스 초중고학세권",
-          "realtor": "성원(031-272-2255)공인중개사사무소"
         },
         {
           "id": "2659379290",
@@ -13843,7 +11761,8 @@
       "collectionMethod": "browser",
       "coverage": "partial",
       "sourceUrl": "https://new.land.naver.com/complexes/9029",
-      "areaSource": "list"
+      "areaSource": "list",
+      "tradeType": "A1"
     },
     {
       "favorite": {
@@ -13867,40 +11786,6 @@
       "collectedAt": "2026-11-07T03:24:27.105Z",
       "errorCode": null,
       "articles": [
-        {
-          "id": "2660255756",
-          "name": "성복역금호베스트빌",
-          "tradeType": "B1",
-          "priceText": "7억 3,000",
-          "rentText": "",
-          "priceMan": 73000,
-          "rentMan": 0,
-          "areaM2": 151,
-          "supplyAreaM2": 194,
-          "floor": "20/20",
-          "building": "509동",
-          "direction": "남서향",
-          "confirmedOn": "2026-11-07",
-          "description": "강추ヘ단독테라스,올수리,멋진뷰,빠른입주가능",
-          "realtor": "수지 공인중개사사무소"
-        },
-        {
-          "id": "2660344029",
-          "name": "성복역금호베스트빌",
-          "tradeType": "B1",
-          "priceText": "7억 1,000",
-          "rentText": "",
-          "priceMan": 71000,
-          "rentMan": 0,
-          "areaM2": 151,
-          "supplyAreaM2": 194,
-          "floor": "20/20",
-          "building": "509동",
-          "direction": "남서향",
-          "confirmedOn": "2026-11-07",
-          "description": "최근샷시포함올수리성복역도보거리 조용하고 주변환경굿 단지옆심곡서원 대형마트",
-          "realtor": "성복역탑(272-6666)공인중개사사무소"
-        },
         {
           "id": "2660267823",
           "name": "성복역금호베스트빌",
@@ -14089,40 +11974,6 @@
           "realtor": "당신은선물입니다 공인중개사사무소"
         },
         {
-          "id": "2660034298",
-          "name": "성복역금호베스트빌",
-          "tradeType": "B1",
-          "priceText": "6억",
-          "rentText": "",
-          "priceMan": 60000,
-          "rentMan": 0,
-          "areaM2": 84,
-          "supplyAreaM2": 116,
-          "floor": "18/20",
-          "building": "505동",
-          "direction": "북동향",
-          "confirmedOn": "2026-11-06",
-          "description": "27년6월입주 조용한로얄동",
-          "realtor": "가나(266-1155)공인중개사사무소"
-        },
-        {
-          "id": "2660246509",
-          "name": "성복역금호베스트빌",
-          "tradeType": "B1",
-          "priceText": "7억 3,000",
-          "rentText": "",
-          "priceMan": 73000,
-          "rentMan": 0,
-          "areaM2": 151,
-          "supplyAreaM2": 194,
-          "floor": "20/20",
-          "building": "509동",
-          "direction": "남서향",
-          "confirmedOn": "2026-11-06",
-          "description": "강추ヘ단독테라스,올수리,멋진뷰,빠른입주가능",
-          "realtor": "수지 공인중개사사무소"
-        },
-        {
           "id": "2660176706",
           "name": "성복역금호베스트빌",
           "tradeType": "A1",
@@ -14211,7 +12062,8 @@
       "collectionMethod": "browser",
       "coverage": "partial",
       "sourceUrl": "https://new.land.naver.com/complexes/3696",
-      "areaSource": "list"
+      "areaSource": "list",
+      "tradeType": "A1"
     },
     {
       "favorite": {
@@ -14353,23 +12205,6 @@
           "confirmedOn": "2026-11-06",
           "description": "강추,주방거실방1개확장,화이트수리,붙박이장3,초중고교인접,플랫폼시티",
           "realtor": "자이신세계(031-276-0076)공인중개사사무소"
-        },
-        {
-          "id": "2660307814",
-          "name": "만현마을9단지엘지자이",
-          "tradeType": "B1",
-          "priceText": "7억",
-          "rentText": "",
-          "priceMan": 70000,
-          "rentMan": 0,
-          "areaM2": 125,
-          "supplyAreaM2": 158,
-          "floor": "16/20",
-          "building": "902동",
-          "direction": "남향",
-          "confirmedOn": "2026-11-07",
-          "description": "추천 주인거주 올확장 올수리 입주협의 명문초중인접 조용하고 쾌적한단지",
-          "realtor": "일번지(264-6611) 공인중개사사무소"
         },
         {
           "id": "2660090889",
@@ -14579,7 +12414,8 @@
       "collectionMethod": "browser",
       "coverage": "partial",
       "sourceUrl": "https://new.land.naver.com/complexes/9125",
-      "areaSource": "list"
+      "areaSource": "list",
+      "tradeType": "A1"
     },
     {
       "favorite": {
@@ -14930,7 +12766,8 @@
       "collectionMethod": "browser",
       "coverage": "partial",
       "sourceUrl": "https://new.land.naver.com/complexes/2215",
-      "areaSource": "list"
+      "areaSource": "list",
+      "tradeType": "A1"
     },
     {
       "favorite": {
@@ -14952,23 +12789,6 @@
       "collectedAt": "2026-11-07T03:24:05.595Z",
       "errorCode": null,
       "articles": [
-        {
-          "id": "2660137466",
-          "name": "벽산블루밍",
-          "tradeType": "B1",
-          "priceText": "6억 5,000",
-          "rentText": "",
-          "priceMan": 65000,
-          "rentMan": 0,
-          "areaM2": 84,
-          "supplyAreaM2": 109,
-          "floor": "9/20",
-          "building": "107동",
-          "direction": "동향",
-          "confirmedOn": "2026-11-06",
-          "description": "좋은 전망에 샷시빼고 전체 올수리",
-          "realtor": "중앙벽산단지내031-276-5000공인중개사사무소"
-        },
         {
           "id": "2660136291",
           "name": "벽산블루밍",
@@ -15072,23 +12892,6 @@
           "realtor": "제일(031-266-1300)공인중개사사무소"
         },
         {
-          "id": "2660274721",
-          "name": "벽산블루밍",
-          "tradeType": "B2",
-          "priceText": "1억",
-          "rentText": "210",
-          "priceMan": 10000,
-          "rentMan": 210,
-          "areaM2": 84,
-          "supplyAreaM2": 109,
-          "floor": "저/20",
-          "building": "103동",
-          "direction": "동향",
-          "confirmedOn": "2026-11-07",
-          "description": "최근올수리 입구동  성복역롯데몰도보권 초품아",
-          "realtor": "가나(266-1155)공인중개사사무소"
-        },
-        {
           "id": "2659986874",
           "name": "벽산블루밍",
           "tradeType": "A1",
@@ -15121,23 +12924,6 @@
           "confirmedOn": "2026-11-06",
           "description": "세안고 샷시빼고 일부수리",
           "realtor": "중앙벽산단지내031-276-5000공인중개사사무소"
-        },
-        {
-          "id": "2658730350",
-          "name": "벽산블루밍",
-          "tradeType": "B1",
-          "priceText": "6억 5,000",
-          "rentText": "",
-          "priceMan": 65000,
-          "rentMan": 0,
-          "areaM2": 84,
-          "supplyAreaM2": 109,
-          "floor": "9/20",
-          "building": "107동",
-          "direction": "동향",
-          "confirmedOn": "2026-10-30",
-          "description": "샷시빼고 최근올수리 1월20일 확정 초품아 성복역슬세권",
-          "realtor": "힐스테이트(031-264-0700) 공인중개사사무소"
         },
         {
           "id": "2658705427",
@@ -15225,23 +13011,6 @@
           "realtor": "삼성원(031-265-1020)공인중개사사무소"
         },
         {
-          "id": "2657992002",
-          "name": "벽산블루밍",
-          "tradeType": "B1",
-          "priceText": "6억 5,000",
-          "rentText": "",
-          "priceMan": 65000,
-          "rentMan": 0,
-          "areaM2": 84,
-          "supplyAreaM2": 109,
-          "floor": "9/20",
-          "building": "107동",
-          "direction": "동향",
-          "confirmedOn": "2026-10-28",
-          "description": "샷시빼고 최근올수리 1월20일 확정 초품아 성복역슬세권",
-          "realtor": "힐스테이트(031-264-0700)공인중개사사무소"
-        },
-        {
           "id": "2659428385",
           "name": "벽산블루밍",
           "tradeType": "A1",
@@ -15257,46 +13026,13 @@
           "confirmedOn": "2026-11-03",
           "description": "세안고 성복역 역세권 화이트로 샷시빼고 올수리",
           "realtor": "중앙벽산단지내031-276-5000공인중개사사무소"
-        },
-        {
-          "id": "2659356115",
-          "name": "벽산블루밍",
-          "tradeType": "B1",
-          "priceText": "6억 1,000",
-          "rentText": "",
-          "priceMan": 61000,
-          "rentMan": 0,
-          "areaM2": 84,
-          "supplyAreaM2": 109,
-          "floor": "고/20",
-          "building": "106동",
-          "direction": "동향",
-          "confirmedOn": "2026-11-03",
-          "description": "탁트인 전망에 샷시포함 전체 올수리",
-          "realtor": "중앙벽산단지내031-276-5000공인중개사사무소"
-        },
-        {
-          "id": "2658719152",
-          "name": "벽산블루밍",
-          "tradeType": "B2",
-          "priceText": "1억",
-          "rentText": "170",
-          "priceMan": 10000,
-          "rentMan": 170,
-          "areaM2": 59,
-          "supplyAreaM2": 81,
-          "floor": "고/16",
-          "building": "102동",
-          "direction": "동향",
-          "confirmedOn": "2026-10-30",
-          "description": "최근올수리 거실확장 초품아 성복역슬세권 지하주차장 연결됨",
-          "realtor": "힐스테이트(031-264-0700) 공인중개사사무소"
         }
       ],
       "collectionMethod": "browser",
       "coverage": "partial",
       "sourceUrl": "https://new.land.naver.com/complexes/2511",
-      "areaSource": "list"
+      "areaSource": "list",
+      "tradeType": "A1"
     },
     {
       "favorite": {
@@ -15321,23 +13057,6 @@
       "errorCode": null,
       "articles": [
         {
-          "id": "2659848290",
-          "name": "만현마을1단지롯데캐슬",
-          "tradeType": "B2",
-          "priceText": "2억",
-          "rentText": "160",
-          "priceMan": 20000,
-          "rentMan": 160,
-          "areaM2": 84,
-          "supplyAreaM2": 106,
-          "floor": "9/20",
-          "building": "102동",
-          "direction": "남동향",
-          "confirmedOn": "2026-11-05",
-          "description": "전망좋은집 보증금 조정가능 싱크대 화장실수리해드림",
-          "realtor": "롯데부동산(264-4000)공인중개사사무소"
-        },
-        {
           "id": "2659892756",
           "name": "만현마을1단지롯데캐슬",
           "tradeType": "A1",
@@ -15353,40 +13072,6 @@
           "confirmedOn": "2026-11-05",
           "description": "로얄동 전망좋은집",
           "realtor": "롯데부동산(264-4000)공인중개사사무소"
-        },
-        {
-          "id": "2659902899",
-          "name": "만현마을1단지롯데캐슬",
-          "tradeType": "B1",
-          "priceText": "6억 5,000",
-          "rentText": "",
-          "priceMan": 65000,
-          "rentMan": 0,
-          "areaM2": 134,
-          "supplyAreaM2": 160,
-          "floor": "18/20",
-          "building": "108동",
-          "direction": "남서향",
-          "confirmedOn": "2026-11-05",
-          "description": "기본집, 이현초중학군, 신분당선도보역세권",
-          "realtor": "롯데캐슬(266-2277)공인중개사사무소"
-        },
-        {
-          "id": "2659634047",
-          "name": "만현마을1단지롯데캐슬",
-          "tradeType": "B2",
-          "priceText": "6억",
-          "rentText": "60",
-          "priceMan": 60000,
-          "rentMan": 60,
-          "areaM2": 174,
-          "supplyAreaM2": 205,
-          "floor": "19/20",
-          "building": "110동",
-          "direction": "남서향",
-          "confirmedOn": "2026-11-04",
-          "description": "로얄동 공원뷰, 이현초중학군, 신분당선 성복역 도보역세권",
-          "realtor": "롯데캐슬(266-2277)공인중개사사무소"
         },
         {
           "id": "2659643648",
@@ -15508,23 +13193,6 @@
           "realtor": "롯데캐슬(266-2277)공인중개사사무소"
         },
         {
-          "id": "2658769679",
-          "name": "만현마을1단지롯데캐슬",
-          "tradeType": "B1",
-          "priceText": "8억",
-          "rentText": "",
-          "priceMan": 80000,
-          "rentMan": 0,
-          "areaM2": 174,
-          "supplyAreaM2": 205,
-          "floor": "10/20",
-          "building": "111동",
-          "direction": "남서향",
-          "confirmedOn": "2026-10-31",
-          "description": "조망권굿,  주인거주, 부분수리, 이현초중학군, 플랫폼시티호재",
-          "realtor": "롯데캐슬(266-2277)공인중개사사무소"
-        },
-        {
           "id": "2658699988",
           "name": "만현마을1단지롯데캐슬",
           "tradeType": "A1",
@@ -15540,23 +13208,6 @@
           "confirmedOn": "2026-10-30",
           "description": "전세안고,부분수리 깨끗",
           "realtor": "캐슬스카이(031-266-5115)공인중개사사무소"
-        },
-        {
-          "id": "2659659733",
-          "name": "만현마을1단지롯데캐슬",
-          "tradeType": "B1",
-          "priceText": "6억 3,000",
-          "rentText": "",
-          "priceMan": 63000,
-          "rentMan": 0,
-          "areaM2": 101,
-          "supplyAreaM2": 125,
-          "floor": "중/20",
-          "building": "104동",
-          "direction": "남동향",
-          "confirmedOn": "2026-11-04",
-          "description": "정상 빠른입주가능 일부수리됨 아주깨끗 탄천 공원 이현초 롯데몰 성복역",
-          "realtor": "조은집공인중개사"
         },
         {
           "id": "2658036244",
@@ -15664,7 +13315,8 @@
       "collectionMethod": "browser",
       "coverage": "partial",
       "sourceUrl": "https://new.land.naver.com/complexes/3701",
-      "areaSource": "list"
+      "areaSource": "list",
+      "tradeType": "A1"
     },
     {
       "favorite": {
@@ -15829,7 +13481,8 @@
       "coverage": "complete",
       "pageCount": 1,
       "sourceUrl": "https://new.land.naver.com/complexes/9216",
-      "areaSource": "list"
+      "areaSource": "list",
+      "tradeType": "A1"
     }
   ]
 }

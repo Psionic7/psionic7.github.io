@@ -79,9 +79,9 @@ export async function runAutomation(action) {
       console.log(`실거래 수집 완료: ${result.tasks}개 지역·월, ${result.rows}건, 새 주소 ${result.addresses.completed}건`);
       const listings=result.listings;
       atomicWrite(path.join(ROOT,'local/data-validation/listings.json'),JSON.stringify(listings,null,2)+'\n');
-      console.log(`매물 일일 수집: ${listings.dayKst} · 성공 ${listings.successCount}/${listings.targetCount}곳 · 실패 ${listings.failureCount} · 미확정 ${listings.unmatchedCount} · 미시도 ${listings.notAttemptedCount}`);
+      console.log(`매매 매물 일일 수집: ${listings.dayKst} · 성공 ${listings.successCount}/${listings.targetCount}곳 · 실패 ${listings.failureCount} · 미확정 ${listings.unmatchedCount} · 미시도 ${listings.notAttemptedCount}`);
       if(listings.status!=='complete')console.log('::warning title=매물 수집 미완료::일부 또는 전체 매물을 확인하지 못했습니다. 이전 자료와 실패 상태를 보존합니다.');
-      if(process.env.GITHUB_STEP_SUMMARY)fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY,`\n### 매물 일일 수집 (${listings.dayKst} KST)\n\n대상 ${listings.targetCount}곳 · 성공 ${listings.successCount} · 실패 ${listings.failureCount} · 미확정 ${listings.unmatchedCount} · 미시도 ${listings.notAttemptedCount}\n\n상태: ${listings.status}${listings.alreadyCollected?' (당일 시도한 단지는 재수집하지 않음)':''}\n`);
+      if(process.env.GITHUB_STEP_SUMMARY)fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY,`\n### 매매 매물 일일 수집 (${listings.dayKst} KST)\n\n대상 ${listings.targetCount}곳 · 성공 ${listings.successCount} · 실패 ${listings.failureCount} · 미확정 ${listings.unmatchedCount} · 미시도 ${listings.notAttemptedCount}\n\n상태: ${listings.status}${listings.alreadyCollected?' (당일 시도한 단지는 재수집하지 않음)':''}\n`);
     }
     finally {db.close();}
   } else if (action === 'export') {

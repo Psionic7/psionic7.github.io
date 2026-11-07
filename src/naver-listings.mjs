@@ -2,6 +2,12 @@ import {validApartmentFavorites,sameApartmentFavorite} from './apartment-favorit
 
 export const LISTING_SOURCE='naver-land';
 export const TRADE_TYPES={A1:'매매',B1:'전세',B2:'월세'};
+export const LISTING_TRADE_TYPE='A1';
+// Older snapshots may contain rentals; an empty partial page is never proof of zero sale ads.
+export function saleListingGroup(group) {
+  const articles=group.articles.filter(article=>article.tradeType===LISTING_TRADE_TYPE);
+  return group.coverage==='partial'&&!articles.length?null:{...group,tradeType:LISTING_TRADE_TYPE,articles};
+}
 export const LISTING_ERRORS={
   rate_limited:'네이버 요청 제한으로 수집을 중단했습니다. 잠시 후 다시 시도하세요.',
   unauthorized:'네이버에서 접근을 허용하지 않았습니다. 수집 서버의 인증 설정을 확인하세요.',
@@ -48,10 +54,12 @@ export function validArticle(value) {
   return object(value)&&validComplexNo(value.id)&&Object.hasOwn(TRADE_TYPES,value.tradeType)&&text(value.name)&&text(value.priceText,100)&&value.priceText.length>0&&text(value.rentText,100)&&Number.isSafeInteger(value.priceMan)&&value.priceMan>=0&&Number.isSafeInteger(value.rentMan)&&value.rentMan>=0&&number(value.areaM2)&&(value.supplyAreaM2===null||number(value.supplyAreaM2))&&['floor','building','direction','description','realtor'].every(key=>text(value[key]))&&text(value.confirmedOn,10)&&(!value.confirmedOn||date(value.confirmedOn));
 }
 export function validListingGroup(group) {
+  if(group?.tradeType!==undefined&&(group.tradeType!==LISTING_TRADE_TYPE||!Array.isArray(group.articles)||group.articles.some(a=>a?.tradeType!==LISTING_TRADE_TYPE)))return false;
   return object(group)&&validApartmentFavorites([group.favorite])&&validComplexNo(group.complexNo)&&text(group.complexName)&&timestamp(group.attemptedAt)&&['ready','failed'].includes(group.status)&&Array.isArray(group.articles)&&group.articles.length<=20000&&new Set(group.articles.map(a=>a?.id)).size===group.articles.length&&group.articles.every(validArticle)&&(group.collectedAt===null?group.articles.length===0&&group.status==='failed':timestamp(group.collectedAt)&&group.collectedAt<=group.attemptedAt)&&(group.status==='ready'?group.collectedAt!==null&&group.errorCode===null:Object.hasOwn(LISTING_ERRORS,group.errorCode))&&(group.collectionMethod===undefined?group.coverage===undefined:group.collectionMethod==='browser'&&(group.coverage==='partial'?group.articles.length>0:group.coverage==='complete'&&Number.isInteger(group.pageCount)&&group.pageCount>0&&group.pageCount<=2000)&&typeof group.sourceUrl==='string'&&group.sourceUrl.startsWith('https://')&&parseComplexNo(group.sourceUrl)===group.complexNo);
 }
 export const kstListingDay=(value=new Date())=>new Date(new Date(value).getTime()+9*60*60*1000).toISOString().slice(0,10);
 export function validListingCollection(value) {
+  if(value?.tradeType!==undefined&&value.tradeType!==LISTING_TRADE_TYPE)return false;
   if(!object(value)||!date(value.dayKst)||!timestamp(value.startedAt)||!(value.finishedAt===null||timestamp(value.finishedAt))||!['running','complete','partial','failed'].includes(value.status)||!Array.isArray(value.regionIds)||value.regionIds.length>5000||value.regionIds.some(id=>typeof id!=='string'||!/^dong_\d{8}$/.test(id)&&!/^custom_\d{5}_[a-f0-9]{12}$/.test(id))||new Set(value.regionIds).size!==value.regionIds.length||!Array.isArray(value.results)||value.results.length>1000)return false;
   if(!['targetCount','successCount','failureCount','unmatchedCount','notAttemptedCount'].every(key=>Number.isInteger(value[key])&&value[key]>=0&&value[key]<=1000)||value.targetCount!==value.results.length||value.successCount+value.failureCount+value.unmatchedCount+value.notAttemptedCount!==value.targetCount)return false;
   if(new Set(value.results.map(r=>r?.favoriteId)).size!==value.results.length||!value.results.every(r=>object(r)&&text(r.favoriteId,2000)&&r.favoriteId&&(r.favorite===undefined||validApartmentFavorites([r.favorite])&&r.favorite.id===r.favoriteId)&&['ready','failed','unmatched','not_attempted'].includes(r.status)&&(r.errorCode===null||Object.hasOwn(LISTING_ERRORS,r.errorCode))&&(r.status==='not_attempted'?r.attemptedAt===null:timestamp(r.attemptedAt))&&(r.status==='ready'?r.errorCode===null:r.status==='failed'||r.status==='unmatched'?Object.hasOwn(LISTING_ERRORS,r.errorCode):true)))return false;

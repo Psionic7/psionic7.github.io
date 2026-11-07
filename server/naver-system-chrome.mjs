@@ -46,7 +46,7 @@ export async function createSystemChromeListingSource({python=process.env.NAVER_
         if(firstPageOnly&&!pages.ready(payload.complexNo)){
           const state=pages.complexes.get(payload.complexNo),first=state?.pages.get(1);
           if(!first)throw new BrowserListingError('incomplete');
-          const articles=first.articleList.filter(a=>(!a.realEstateTypeCode||a.realEstateTypeCode==='APT')&&['A1','B1','B2'].includes(a.tradeTypeCode));
+          const articles=first.articleList.filter(a=>(!a.realEstateTypeCode||a.realEstateTypeCode==='APT')&&a.tradeTypeCode==='A1');
           if(!articles.length)throw new BrowserListingError('incomplete');
           if(!state.detail?.complexDetail)throw new BrowserListingError('invalid_response');
           return {...browserCaptureGroup({version:1,favorite:target.favorite,complexDetail:state.detail.complexDetail,sourceUrl:`https://new.land.naver.com/complexes/${payload.complexNo}`,observedAt,articles}),areaSource:'list'};

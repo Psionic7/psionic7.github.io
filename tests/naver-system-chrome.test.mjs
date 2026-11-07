@@ -8,7 +8,7 @@ import {makeApartmentFavorite} from '../src/apartment-favorites.js';
 const favorite=makeApartmentFavorite({apartment:'수지테스트',dong:'풍덕천동',jibun:'1191'},{region_code:'41465',region_name:'경기도 용인시 수지구'});
 const detail={complexDetail:{complexNo:'10959',complexName:'수지테스트',cortarAddress:'경기도 용인시 수지구 풍덕천동',detailAddress:'1191'}};
 const article={articleNo:'2660123456',articleName:'수지테스트',realEstateTypeCode:'APT',tradeTypeCode:'A1',dealOrWarrantPrc:'13억',area1:112.56,area2:84.97};
-const responses=[{url:'https://new.land.naver.com/api/complexes/10959',status:200,payload:detail},{url:'https://new.land.naver.com/api/articles/complex/10959?sameAddressGroup=false&page=1',status:200,payload:{articleList:[article],isMoreData:false}}];
+const responses=[{url:'https://new.land.naver.com/api/complexes/10959',status:200,payload:detail},{url:'https://new.land.naver.com/api/articles/complex/10959?sameAddressGroup=false&realEstateType=APT&tradeType=A1&page=1',status:200,payload:{articleList:[article],isMoreData:false}}];
 function worker(reply){
   const child=new EventEmitter();child.stdout=new PassThrough();child.kill=()=>{child.killed=true;child.emit('exit',1);};
   child.stdin=new Writable({write(chunk,encoding,done){const request=JSON.parse(String(chunk));if(request.close)child.emit('exit',0);else {child.request=request;const value=reply(request);if(value!==undefined)queueMicrotask(()=>child.stdout.write(JSON.stringify(value)+'\n'));}done();}});
@@ -47,7 +47,7 @@ test('missing or ambiguous browser search connections remain unmatched without r
   try{await assert.rejects(source.collect({favorite,query:'test'}),e=>e.code==='unmatched');assert.equal(child.request,undefined);}finally{await source.close();}
 });
 test('explicit first-page mode retains partial coverage and never presents an empty filtered page as zero listings',async()=>{
-  for(const [raw,expected] of [[article,'partial'],[{...article,realEstateTypeCode:'ABYG'},'incomplete']]){
+  for(const [raw,expected] of [[article,'partial'],[{...article,realEstateTypeCode:'ABYG'},'incomplete'],[{...article,tradeTypeCode:'B1'},'incomplete'],[{...article,tradeTypeCode:'B2'},'incomplete']]){
     const payload={complexNo:'10959',complexDetail:detail.complexDetail,responses:[{...responses[1],payload:{articleList:[raw],isMoreData:true}}]};
     const source=await createSystemChromeListingSource({python:'test-python',connections:[{id:favorite.id,complexNo:'10959'}],firstPageOnly:true,spawnWorker:()=>worker(()=>payload)});
     try{if(expected==='partial'){const group=await source.collect({favorite});assert.equal(group.coverage,'partial');assert.equal(group.articles.length,1);assert.equal(group.pageCount,undefined);}else await assert.rejects(source.collect({favorite}),e=>e.code==='incomplete');}finally{await source.close();}

@@ -30,7 +30,7 @@ function fixture(t){
 function source({onCollect=()=>{},now=()=>Date.parse('2026-11-06T00:00:00.000Z')}={}){
   return {close:async()=>{},collect:async(target,connection)=>{
     onCollect(target,connection);const at=new Date(now()).toISOString();
-    return {favorite:target.favorite,complexNo:target.favorite.jibun==='1'?'111':'222',complexName:target.favorite.apartment,status:'ready',attemptedAt:at,collectedAt:at,errorCode:null,articles:[],collectionMethod:'browser',coverage:'complete',pageCount:1,sourceUrl:`https://new.land.naver.com/complexes/${target.favorite.jibun==='1'?'111':'222'}`};
+    return {favorite:target.favorite,complexNo:target.favorite.jibun==='1'?'111':'222',complexName:target.favorite.apartment,tradeType:'A1',status:'ready',attemptedAt:at,collectedAt:at,errorCode:null,articles:[],collectionMethod:'browser',coverage:'complete',pageCount:1,sourceUrl:`https://new.land.naver.com/complexes/${target.favorite.jibun==='1'?'111':'222'}`};
   }};
 }
 
@@ -43,9 +43,27 @@ test('KST day and same-day attempts persist in DB; next Korean day recollects al
   const db=fixture(t),calls=[];let tick=Date.parse('2026-11-05T15:00:00.000Z');
   const options={now:()=>tick,sourceFactory:async()=>source({now:()=>tick,onCollect:target=>calls.push(target.favorite.id)})};
   assert.equal(kstListingDay('2026-11-05T14:59:59Z'),'2026-11-05');assert.equal(kstListingDay(tick),'2026-11-06');
-  const first=await collectDailyListings(db,config,options);assert.equal(first.status,'complete');assert.equal(first.successCount,2);
+  const first=await collectDailyListings(db,config,options);assert.equal(first.status,'complete');assert.equal(first.tradeType,'A1');assert.equal(first.successCount,2);
   assert.equal((await collectDailyListings(db,config,options)).alreadyCollected,true);assert.equal(calls.length,2);
   tick+=86400000;await collectDailyListings(db,config,options);assert.equal(calls.length,4);assert.equal(readListingCollection(db).dayKst,'2026-11-07');
+});
+
+test('a legacy mixed-type attempt does not skip the new sale-only collection on the same Korean day',async t=>{
+  const db=fixture(t),options={now:()=>Date.parse('2026-11-06T00:00:00.000Z'),sourceFactory:async()=>source()};
+  const old=await collectDailyListings(db,config,options);delete old.tradeType;
+  db.prepare('UPDATE naver_listing_days SET report_json=?').run(JSON.stringify(old));
+  const calls=[];
+  const sale=await collectDailyListings(db,config,{...options,sourceFactory:async()=>source({onCollect:target=>calls.push(target.favorite.id)})});
+  assert.equal(sale.tradeType,'A1');assert.equal(sale.alreadyCollected,undefined);assert.equal(calls.length,2);
+  const resumed=await collectDailyListings(db,config,{...options,sourceFactory:async()=>{throw Error('must not repeat');}});
+  assert.equal(resumed.alreadyCollected,true);
+});
+
+test('daily persistence refuses a rental mixed into a source claiming sale-only coverage',async t=>{
+  const db=fixture(t),browser=source(),collect=browser.collect;
+  browser.collect=async(...args)=>({...await collect(...args),articles:[{id:'123',tradeType:'B1'}]});
+  await assert.rejects(collectDailyListings(db,config,{sourceFactory:async()=>browser}),/매매 매물 브라우저/);
+  assert.equal(listingExport(db).groups.length,0);assert.equal(readListingCollection(db).successCount,0);
 });
 
 test('known per-apartment failures do not stop other apartments; previous successful snapshots survive with failure timestamps',async t=>{
@@ -82,6 +100,17 @@ test('trade automation runs addresses then listings using saved regions; listing
   const db=fixture(t),order=[];
   const result=await collectConfigured(db,config,{tradeKey:'trade',jusoKey:'address',now:new Date('2026-11-06T00:00:00Z'),onProgress:()=>{},collector:async()=>{order.push('trade');return 3;},addressCollector:async()=>{order.push('address');return {completed:1};},listingCollector:async(_db,settings)=>{order.push('listings');assert.deepEqual(settings.region_ids,config.region_ids);return {status:'failed'};}});
   assert.deepEqual(order,['trade','address','listings']);assert.equal(result.rows,3);assert.equal(result.listings.status,'failed');assert(db.prepare("SELECT value FROM metadata WHERE key='last_refresh'").get());
+});
+
+test('the shared trade job collects sale listings once per Korean day and its saved time matches the daily workflow',async t=>{
+  const db=fixture(t),calls=[],options={tradeKey:'trade',jusoKey:'address',now:new Date('2026-11-06T00:00:00Z'),onProgress:()=>{},collector:async()=>1,addressCollector:async()=>({completed:0}),listingOptions:{sourceFactory:async()=>source({onCollect:target=>calls.push(target.favorite.id)})}};
+  const first=await collectConfigured(db,config,options);assert.equal(first.listings.tradeType,'A1');assert.equal(first.listings.status,'complete');
+  const again=await collectConfigured(db,config,options);assert.equal(again.listings.alreadyCollected,true);assert.deepEqual(calls,['hub:a','hub:b']);
+  const saved=JSON.parse(fs.readFileSync(new URL('../automation/config.json',import.meta.url),'utf8'));
+  const workflow=fs.readFileSync(new URL('../.github/workflows/refresh-data.yml',import.meta.url),'utf8');
+  const [hour,minute]=saved.time_kst.split(':').map(Number);
+  assert.equal(workflow.match(/- cron: '([^']+)' # collection-schedule/)[1],`${minute} ${(hour+15)%24} * * *`);
+  assert.match(workflow,/node --dns-result-order=ipv4first scripts\/automation.mjs collect/);
 });
 
 test('new apartments added in the same day are attempted while existing targets remain untouched',async t=>{

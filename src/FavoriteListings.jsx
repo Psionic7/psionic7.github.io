@@ -1,7 +1,7 @@
 import React,{useEffect,useMemo,useRef,useState} from 'react';
 import {ExternalLink,RefreshCw,Download,Building2} from 'lucide-react';
 import {useStoredState} from './preferences.js';
-import {TRADE_TYPES,LISTING_ERRORS,validConnections,validListingGroup,parseComplexNo,complexUrl,articleUrl,listingSearchUrl,listingIsStale,selectArticles,listingGroupForFavorite} from './naver-listings.mjs';
+import {TRADE_TYPES,saleListingGroup,LISTING_ERRORS,validConnections,validListingGroup,parseComplexNo,complexUrl,articleUrl,listingSearchUrl,listingIsStale,selectArticles,listingGroupForFavorite} from './naver-listings.mjs';
 import ListingDailyStatus from './ListingDailyStatus.jsx';
 import {sameApartmentFavorite} from './apartment-favorites.js';
 import {listingClient,downloadListingTargets} from './naver-listings-client.js';
@@ -31,14 +31,14 @@ function ListingRows({favorite,group,filters}) {
   useEffect(()=>setPage(0),[group,filters]);
   const safePage=Math.min(page,Math.max(0,Math.ceil(rows.length/PAGE_SIZE)-1));
   if(!group.collectedAt)return null;
-  if(!group.articles.length)return <p className="listing-empty">{group.status==='failed'?'이전 수집 당시':'수집 당시'} 네이버에 노출된 매매·전세·월세 아파트 광고가 없습니다.</p>;
-  if(!rows.length)return <p className="listing-empty">현재 필터에 맞는 광고가 없습니다. 거래 유형과 전용면적을 확인하세요.</p>;
+  if(!group.articles.length)return <p className="listing-empty">{group.status==='failed'?'이전 수집 당시':'수집 당시'} 네이버에 노출된 매매 아파트 광고가 없습니다.</p>;
+  if(!rows.length)return <p className="listing-empty">현재 필터에 맞는 광고가 없습니다. 전용면적을 확인하세요.</p>;
   return <>
     <div className="table-scroll listing-table" role="region" aria-label={`${favorite.apartment} 네이버 매물 광고`} tabIndex={0}><table>
-      <thead><tr><th scope="col">거래</th><th scope="col">호가 / 보증금</th><th scope="col">전용 / 공급</th><th scope="col">동 · 층 · 방향</th><th scope="col">확인일 · 중개사</th><th scope="col">설명 · 원문</th></tr></thead>
+      <thead><tr><th scope="col">거래</th><th scope="col">매매 호가</th><th scope="col">전용 / 공급</th><th scope="col">동 · 층 · 방향</th><th scope="col">확인일 · 중개사</th><th scope="col">설명 · 원문</th></tr></thead>
       <tbody>{rows.slice(safePage*PAGE_SIZE,(safePage+1)*PAGE_SIZE).map(article=><tr key={article.id}>
         <td><span className={'listing-type listing-type-'+article.tradeType}>{TRADE_TYPES[article.tradeType]}</span></td>
-        <td className="listing-price">{article.priceText}{!/[억만원]/.test(article.priceText)&&'만원'}{article.tradeType==='B2'&&<small>월 {article.rentText}만원</small>}</td>
+        <td className="listing-price">{article.priceText}{!/[억만원]/.test(article.priceText)&&'만원'}</td>
         <td>{article.areaM2.toLocaleString('ko-KR')}㎡<small>{article.supplyAreaM2===null?'공급 미제공':article.supplyAreaM2.toLocaleString('ko-KR')+'㎡'}</small></td>
         <td>{article.building||'동 미제공'}<small>{article.floor||'층 미제공'} · {article.direction||'방향 미제공'}</small></td>
         <td>{article.confirmedOn||'확인일 미제공'}<small>{article.realtor||'중개사 미제공'}</small></td>
@@ -54,7 +54,7 @@ export default function FavoriteListings({apartments,client=listingClient,onDown
   const [groups,setGroups]=useState([]),[available,setAvailable]=useState(false),[loading,setLoading]=useState(true),[error,setError]=useState('');
   const [collection,setCollection]=useState(null);
   const [retry,setRetry]=useState(0),[progress,setProgress]=useState(null),[message,setMessage]=useState('');
-  const [filters,setFilters]=useState({tradeType:'',minArea:'',maxArea:'',sort:'priceAsc'});
+  const [filters,setFilters]=useState({tradeType:'A1',minArea:'',maxArea:'',sort:'priceAsc'});
   const run=useRef(0),stop=useRef(false);
   const favoriteKey=JSON.stringify(apartments),connectionKey=JSON.stringify(connections);
   useEffect(()=>{let active=true;if(client.status)client.status().then(value=>{if(active)setCollection(value);}).catch(()=>{});return()=>{active=false;};},[client,retry]);
@@ -65,7 +65,7 @@ export default function FavoriteListings({apartments,client=listingClient,onDown
     const currentConnections=connections.filter(c=>apartments.some(f=>f.id===c.favoriteId));
     client.load(apartments,currentConnections).then(result=>{
       if(generation!==run.current)return;
-      setGroups(result.snapshot.groups);if(result.snapshot.collection)setCollection(result.snapshot.collection);setAvailable(result.available);setLoading(false);
+      setGroups(result.snapshot.groups.map(saleListingGroup).filter(Boolean));if(result.snapshot.collection)setCollection(result.snapshot.collection);setAvailable(result.available);setLoading(false);
     }).catch(reason=>{if(generation===run.current){setError(reason.message);setLoading(false);setAvailable(false);}});
     return()=>{++run.current;stop.current=true;};
   },[favoriteKey,connectionKey,client,retry]);
@@ -94,14 +94,14 @@ export default function FavoriteListings({apartments,client=listingClient,onDown
     if(generation!==run.current)return;
     setProgress(null);setMessage(`${done} / ${connected.length}곳 확인${failed?' · 수집 실패 '+failed+'곳':''}${done<connected.length?' · 나머지 단지는 수집하지 않았습니다.':''}`);
   };
-  if(!apartments.length)return <section className="panel favorite-listings" aria-label="즐겨찾기 아파트 네이버 매물"><h2><Building2 size={18}/>즐겨찾기 아파트의 현재 매물</h2><ListingDailyStatus collection={collection}/><p className="small-note">아파트를 즐겨찾기에 추가하면 이곳에서 네이버 단지를 연결하고 매물 광고를 모아볼 수 있습니다.</p></section>;
+  if(!apartments.length)return <section className="panel favorite-listings" aria-label="즐겨찾기 아파트 네이버 매물"><h2><Building2 size={18}/>즐겨찾기 아파트의 현재 매매 매물</h2><ListingDailyStatus collection={collection}/><p className="small-note">아파트를 즐겨찾기에 추가하면 이곳에서 네이버 단지를 연결하고 매물 광고를 모아볼 수 있습니다.</p></section>;
   return <section className="panel favorite-listings" aria-label="즐겨찾기 아파트 네이버 매물">
-    <div className="listing-heading"><div><p className="listing-eyebrow">NAVER 부동산 · 매매 / 전세 / 월세</p><h2>즐겨찾기 아파트의 현재 매물</h2><p>관심 단지의 호가를 실거래가와 함께 살펴보세요.</p></div><div className="listing-actions"><button onClick={()=>onDownload(apartments,connected.map(({favorite,complexNo})=>({favoriteId:favorite.id,complexNo})))} disabled={!!progress}><Download size={14}/>수집 대상 내려받기</button>{available&&<button className="primary" onClick={collect} disabled={loading||!!progress||!connected.length}><RefreshCw size={14}/>네이버 매물 수집</button>}</div></div>
+    <div className="listing-heading"><div><p className="listing-eyebrow">NAVER 부동산 · 매매</p><h2>즐겨찾기 아파트의 현재 매매 매물</h2><p>관심 단지의 호가를 실거래가와 함께 살펴보세요.</p></div><div className="listing-actions"><button onClick={()=>onDownload(apartments,connected.map(({favorite,complexNo})=>({favoriteId:favorite.id,complexNo})))} disabled={!!progress}><Download size={14}/>수집 대상 내려받기</button>{available&&<button className="primary" onClick={collect} disabled={loading||!!progress||!connected.length}><RefreshCw size={14}/>네이버 매물 수집</button>}</div></div>
     <ListingDailyStatus collection={collection}/>
     {loading?<p role="status">매물 수집 결과를 불러오는 중입니다.</p>:!available&&<p className="listing-notice">저장된 수집 결과를 표시합니다. 새 매물 수집은 로컬 미리보기에서 실행할 수 있습니다.</p>}
     {progress&&<div className="listing-progress" role="status"><span>네이버 매물 수집 {progress.done} / {progress.total}곳 · 전체 페이지를 확인하고 있습니다.</span><button onClick={()=>{stop.current=true;setMessage('진행 중인 단지 확인 후 중단합니다.');}}>수집 중단</button></div>}
     {(message||error)&&<div className="listing-notice" role={error?'alert':'status'}>{error||message}{error&&!progress&&<button onClick={()=>setRetry(v=>v+1)}>수집 결과 다시 불러오기</button>}</div>}
-    <div className="listing-filters"><label>매물 거래 유형<select value={filters.tradeType} onChange={e=>setFilters({...filters,tradeType:e.target.value})}><option value="">전체 거래</option>{Object.entries(TRADE_TYPES).map(([code,label])=><option key={code} value={code}>{label}</option>)}</select></label><label>최소 전용면적(㎡)<input type="number" min="0" max="100000" value={filters.minArea} onChange={e=>setFilters({...filters,minArea:e.target.value})}/></label><label>최대 전용면적(㎡)<input type="number" min="0" max="100000" value={filters.maxArea} onChange={e=>setFilters({...filters,maxArea:e.target.value})}/></label><label>매물 정렬<select value={filters.sort} onChange={e=>setFilters({...filters,sort:e.target.value})}><option value="priceAsc">매매가·보증금 낮은 순</option><option value="priceDesc">매매가·보증금 높은 순</option><option value="latest">확인일 최신순</option><option value="areaAsc">전용면적 작은 순</option></select></label></div>
+    <div className="listing-filters"><label>최소 전용면적(㎡)<input type="number" min="0" max="100000" value={filters.minArea} onChange={e=>setFilters({...filters,minArea:e.target.value})}/></label><label>최대 전용면적(㎡)<input type="number" min="0" max="100000" value={filters.maxArea} onChange={e=>setFilters({...filters,maxArea:e.target.value})}/></label><label>매물 정렬<select value={filters.sort} onChange={e=>setFilters({...filters,sort:e.target.value})}><option value="priceAsc">매매가 낮은 순</option><option value="priceDesc">매매가 높은 순</option><option value="latest">확인일 최신순</option><option value="areaAsc">전용면적 작은 순</option></select></label></div>
     <div className="listing-groups">{selected.map(({favorite,group,daily,complexNo})=><article key={favorite.id} className="listing-group" aria-label={`${favorite.apartment} 매물 수집 정보`}>
       <header><div><h3>{favorite.apartment}</h3><p>{favorite.region_name} {favorite.dong} · 지번 {favorite.jibun||'미상'}</p></div>{complexNo&&<a href={complexUrl(complexNo)} target="_blank" rel="noopener noreferrer">네이버 단지 {complexNo}<ExternalLink size={12}/></a>}</header>
       <ComplexConnection favorite={favorite} complexNo={complexNo} disabled={!!progress} onConnect={id=>{setGroups(previous=>previous.filter(g=>g.favorite.id!==favorite.id));setConnections(previous=>[...previous.filter(c=>c.favoriteId!==favorite.id),{favoriteId:favorite.id,complexNo:id}]);}}/>

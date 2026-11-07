@@ -35,14 +35,14 @@ it('connects a valid Naver URL, rejects forged domains, preserves favorites and 
   expect(within(table).getByRole('link',{name:'관심아파트 매물 26000000001 네이버 원문'}).href).toBe('https://fin.land.naver.com/articles/26000000001');
 });
 
-it('filters exclusive areas, trade types, sorts and paginates ads',async()=>{
+it('shows only sale ads from older mixed snapshots and filters, sorts and paginates sales',async()=>{
   save();const articles=Array.from({length:22},(_,i)=>article(String(26000000001+i),{priceMan:135000+i}));articles.push(article('26000000100',{tradeType:'B2',priceText:'1억',priceMan:10000,rentText:'120',rentMan:120,areaM2:59}));
   render(<FavoriteListings apartments={[favorite]} client={client([group({articles})])}/>);
   const table=await screen.findByRole('region',{name:'관심아파트 네이버 매물 광고'});expect(within(table).getAllByRole('row')).toHaveLength(21);
-  fireEvent.click(screen.getByRole('button',{name:'관심아파트 다음 매물 페이지'}));expect(within(table).getAllByRole('row')).toHaveLength(4);
-  fireEvent.change(screen.getByLabelText('매물 거래 유형'),{target:{value:'B2'}});expect(within(table).getAllByRole('row')).toHaveLength(2);expect(within(table).getByText('월 120만원')).toBeTruthy();
-  fireEvent.change(screen.getByLabelText('최소 전용면적(㎡)'),{target:{value:'60'}});expect(screen.getByText(/현재 필터에 맞는 광고가 없습니다/)).toBeTruthy();
-  fireEvent.change(screen.getByLabelText('최소 전용면적(㎡)'),{target:{value:''}});fireEvent.change(screen.getByLabelText('매물 거래 유형'),{target:{value:''}});fireEvent.change(screen.getByLabelText('매물 정렬'),{target:{value:'priceDesc'}});
+  fireEvent.click(screen.getByRole('button',{name:'관심아파트 다음 매물 페이지'}));expect(within(table).getAllByRole('row')).toHaveLength(3);
+  expect(screen.queryByLabelText('매물 거래 유형')).toBeNull();expect(screen.queryByText('월 120만원')).toBeNull();
+  fireEvent.change(screen.getByLabelText('최소 전용면적(㎡)'),{target:{value:'90'}});expect(screen.getByText(/현재 필터에 맞는 광고가 없습니다/)).toBeTruthy();
+  fireEvent.change(screen.getByLabelText('최소 전용면적(㎡)'),{target:{value:''}});fireEvent.change(screen.getByLabelText('매물 정렬'),{target:{value:'priceDesc'}});
   expect(within(screen.getByRole('region',{name:'관심아파트 네이버 매물 광고'})).getAllByRole('row')[1].textContent).toContain('84.9㎡');
   expect(screen.getByRole('button',{name:'관심아파트 이전 매물 페이지'}).disabled).toBe(true);
 });

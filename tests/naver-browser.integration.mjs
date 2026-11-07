@@ -22,7 +22,7 @@ async function fixture(t,{pages=[{articleList:[raw('26000000001'),raw('260000000
       if(location.pathname.includes('/12345')){
         fetch('/api/complexes/12345').then(r=>r.json());
         let page=1,busy=false,more=true;
-        const load=async()=>{if(busy||!more)return;busy=true;const response=await fetch('/api/articles/complex/12345?sameAddressGroup=false&realEstateType=APT&page='+page++);const data=await response.json();more=data.isMoreData;document.getElementById('articleListArea').style.height=(500+page*200)+'px';busy=false;};
+        const load=async()=>{if(busy||!more)return;busy=true;const response=await fetch('/api/articles/complex/12345?sameAddressGroup=false&realEstateType=APT&tradeType='+new URLSearchParams(location.search).get('b')+'&page='+page++);const data=await response.json();more=data.isMoreData;document.getElementById('articleListArea').style.height=(500+page*200)+'px';busy=false;};
         load();document.querySelector('.item_list--article').addEventListener('scroll',load);
       }
     </script></body></html>`;
@@ -41,13 +41,13 @@ async function fixture(t,{pages=[{articleList:[raw('26000000001'),raw('260000000
 
 test('real Chromium searches the visible page, scrolls its list and captures every page through normal browser requests',async t=>{
   const {source,requests}=await fixture(t),group=await source.collect({favorite,query:'정자동 브라우저테스트단지'});
-  assert.equal(group.coverage,'complete');assert.equal(group.collectionMethod,'browser');assert.equal(group.pageCount,2);assert.equal(group.articles.length,3);assert.equal(group.articles[2].rentMan,70);
+  assert.equal(group.coverage,'complete');assert.equal(group.collectionMethod,'browser');assert.equal(group.pageCount,2);assert.equal(group.articles.length,2);assert.equal(group.tradeType,'A1');assert(group.articles.every(a=>a.tradeType==='A1'));
   assert(requests.some(url=>url==='/'));assert(requests.some(url=>url.includes('page=2')));
 });
 
 test('known mapping revalidates the actual complex address and preserves precise areas',async t=>{
   const {source,requests}=await fixture(t),group=await source.collect({favorite,query:'unused'},{complexNo:'12345'});
-  assert.equal(group.articles[0].areaM2,48.84);assert(requests.includes('/complexes/12345'));
+  assert.equal(group.articles[0].areaM2,48.84);assert(requests.includes('/complexes/12345?a=APT&b=A1&e=RETAIL'));
 });
 
 test('a verified empty first page is complete zero, while repeated IDs and address mismatch are failures',async t=>{
@@ -66,7 +66,15 @@ test('browser 429 stops without requesting another page',async t=>{
 test('page coverage rejects missing pages and grouped responses rather than calling them complete',()=>{
   const pages=new BrowserListingPages();pages.consume('https://new.land.naver.com/api/complexes/12345',200,detail);
   pages.consume('https://new.land.naver.com/api/articles/complex/12345?sameAddressGroup=true&page=1',200,{articleList:[raw('26000000001')],isMoreData:false});assert.equal(pages.ready('12345'),false);
-  pages.consume('https://new.land.naver.com/api/articles/complex/12345?sameAddressGroup=false&page=2',200,{articleList:[raw('26000000001')],isMoreData:false});assert.equal(pages.ready('12345'),false);assert.throws(()=>pages.finish(favorite,'12345'),error=>error.code==='incomplete');
+  pages.consume('https://new.land.naver.com/api/articles/complex/12345?sameAddressGroup=false&realEstateType=APT&tradeType=A1&page=2',200,{articleList:[raw('26000000001')],isMoreData:false});assert.equal(pages.ready('12345'),false);assert.throws(()=>pages.finish(favorite,'12345'),error=>error.code==='incomplete');
+});
+
+test('unfiltered and rental query pages cannot establish complete sale coverage',()=>{
+  for(const tradeType of ['', 'B1', 'B2', 'A1:B1:B2']){
+    const pages=new BrowserListingPages();pages.consume('https://new.land.naver.com/api/complexes/12345',200,detail);
+    pages.consume(`https://new.land.naver.com/api/articles/complex/12345?sameAddressGroup=false&realEstateType=APT&tradeType=${tradeType}&page=1`,200,{articleList:[],isMoreData:false});
+    assert.equal(pages.ready('12345'),false);assert.throws(()=>pages.finish(favorite,'12345'),e=>e.code==='incomplete');
+  }
 });
 
 test('an unavailable browser entry page fails immediately without producing an empty successful collection',async t=>{

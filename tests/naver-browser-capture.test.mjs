@@ -14,6 +14,13 @@ import {validListingGroup} from '../src/naver-listings.mjs';
 const favorite=makeApartmentFavorite({apartment:'테스트단지',dong:'풍덕천동',jibun:'1112'},{region_code:'41465',region_name:'경기도 용인시 수지구'});
 const observedAt='2026-11-06T00:00:00.000Z';
 const capture=()=>({version:1,favorite,sourceUrl:'https://new.land.naver.com/complexes/12345',observedAt,complexDetail:{complexNo:'12345',complexName:'테스트단지',cortarAddress:'경기도 용인시 수지구 풍덕천동',detailAddress:'1112'},articles:[{articleNo:'26000000001',articleName:'테스트단지',tradeTypeCode:'A1',dealOrWarrantPrc:'13억 5,000',area2:84.9,area1:112.3,floorInfo:'10/20',buildingName:'101동',direction:'남향',articleConfirmYmd:'20261105'}]});
+
+test('manual browser imports retain only sale ads and rental-only samples never become zero sale ads',()=>{
+  const mixed=capture(),sale=mixed.articles[0];
+  mixed.articles.push({...sale,articleNo:'26000000002',tradeTypeCode:'B1'},{...sale,articleNo:'26000000003',tradeTypeCode:'B2',rentPrc:'100'});
+  const group=browserCaptureGroup(mixed,{now});assert.equal(group.tradeType,'A1');assert.deepEqual(group.articles.map(a=>a.id),[sale.articleNo]);
+  assert.throws(()=>browserCaptureGroup({...mixed,articles:mixed.articles.slice(1)},{now}),/매매 광고/);
+});
 const now=Date.parse(observedAt)+1000;
 function fixture(t){const folder=fs.mkdtempSync(path.join(os.tmpdir(),'naver-browser-'));t.after(()=>fs.rmSync(folder,{recursive:true,force:true}));return path.join(folder,'snapshot.json');}
 

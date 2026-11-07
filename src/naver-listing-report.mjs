@@ -1,6 +1,7 @@
 import {LISTING_SOURCE,LISTING_ERRORS,validListingSnapshot,validComplexNo} from './naver-listings.mjs';
 
 export function validRegionalListingReport(report,snapshot,regionCode) {
+  if(report?.tradeType!==undefined&&report.tradeType!=='A1')return false;
   const time=value=>typeof value==='string'&&Number.isFinite(Date.parse(value))&&new Date(value).toISOString()===value;
   const integer=value=>Number.isSafeInteger(value)&&value>=0;
   if(!report||report.version!==1||report.source!==LISTING_SOURCE||!/^\d{5}$/.test(regionCode)||report.regionCode!==regionCode||typeof report.firstPageOnly!=='boolean'||!time(report.startedAt)||!time(report.finishedAt)||report.startedAt>report.finishedAt||!validListingSnapshot(snapshot))return false;
@@ -11,6 +12,7 @@ export function validRegionalListingReport(report,snapshot,regionCode) {
     counts[row.status]++;
     if(row.status==='complete'||row.status==='partial'){
       const group=groups.get(row.favoriteId);
+      if(report.tradeType==='A1'&&group?.articles.some(article=>article.tradeType!=='A1'))return false;
       if(!validComplexNo(row.complexNo)||!integer(row.articleCount)||!time(row.collectedAt)||row.collectedAt>report.finishedAt||!group||group.status!=='ready'||group.complexNo!==row.complexNo||group.articles.length!==row.articleCount||group.collectedAt!==row.collectedAt||group.coverage!==row.status)return false;
       saved.push(group);
     }else if(!Object.hasOwn(LISTING_ERRORS,row.errorCode))return false;

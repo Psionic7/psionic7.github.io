@@ -53,7 +53,7 @@ class Collector:
             parsed = urlsplit(record["url"])
             if parsed.path == f"/api/articles/complex/{complex_no}":
                 params = parse_qs(parsed.query)
-                if params.get("sameAddressGroup") == ["false"]:
+                if params.get("sameAddressGroup") == ["false"] and params.get("tradeType") == ["A1"] and params.get("realEstateType") == ["APT"]:
                     pages[int(params.get("page", ["1"])[0])] = record["payload"]
         if not pages:
             return False
@@ -85,7 +85,7 @@ class Collector:
         complex_no = request.get("complexNo")
         if not complex_no or not re.fullmatch(r"[1-9]\d{0,11}", complex_no):
             return {"errorCode": "unmatched"}
-        await self.tab.send(uc.cdp.page.navigate(f"https://new.land.naver.com/complexes/{complex_no}"))
+        await self.tab.send(uc.cdp.page.navigate(f"https://new.land.naver.com/complexes/{complex_no}?a=APT&b=A1&e=RETAIL"))
         started = time.monotonic()
         deadline = started + request.get("timeoutSeconds", 45)
         selected = False

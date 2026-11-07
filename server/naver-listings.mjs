@@ -3,7 +3,8 @@ import path from 'node:path';
 import {randomUUID} from 'node:crypto';
 import {setTimeout as sleep} from 'node:timers/promises';
 import {validApartmentFavorites} from '../src/apartment-favorites.js';
-import {LISTING_ERRORS,TRADE_TYPES,validComplexNo,validArticle,validListingGroup,validListingSnapshot,listingSnapshot,listingGroupForFavorite} from '../src/naver-listings.mjs';
+import {validRegionalListingReport} from '../src/naver-listing-report.mjs';
+import {LISTING_ERRORS,TRADE_TYPES,LISTING_TRADE_TYPE,saleListingGroup,validComplexNo,validArticle,validListingGroup,validListingSnapshot,listingSnapshot,listingGroupForFavorite} from '../src/naver-listings.mjs';
 
 class ListingError extends Error {constructor(code){super(LISTING_ERRORS[code]);this.code=code;}}
 const fail=code=>{throw new ListingError(code);};
@@ -59,6 +60,12 @@ export function writeListingSnapshot(filename,snapshot) {
   const temporary=filename+'.'+randomUUID()+'.tmp';
   try{fs.writeFileSync(temporary,JSON.stringify(snapshot,null,2)+'\n',{encoding:'utf8',flag:'wx'});fs.renameSync(temporary,filename);}
   finally{if(fs.existsSync(temporary))fs.unlinkSync(temporary);}
+  // A regional report describes one observation; discard it when a later export supersedes it.
+  for(const file of fs.readdirSync(path.dirname(filename))){
+    const match=file.match(/^region-(\d{5})-report\.json$/);if(!match)continue;
+    const reportFile=path.join(path.dirname(filename),file),report=JSON.parse(fs.readFileSync(reportFile,'utf8'));
+    if(!validRegionalListingReport(report,snapshot,match[1]))fs.unlinkSync(reportFile);
+  }
 }
 
 export function createListingCollector({stateFile,initialSnapshot,fetcher=fetch,authorization='',now=()=>Date.now(),pause=sleep,requestGap=1200,maxPages=200,timeoutMs=20000}={}) {
@@ -66,7 +73,7 @@ export function createListingCollector({stateFile,initialSnapshot,fetcher=fetch,
   const restore=snapshot=>{
     if(!validListingSnapshot(snapshot))throw new Error('저장된 네이버 매물 파일 검증 실패');
     const saved=new Map(groups.map(g=>[g.favorite.id,g]));
-    for(const group of snapshot.groups){const previous=saved.get(group.favorite.id);if(!previous||group.attemptedAt>=previous.attemptedAt)saved.set(group.favorite.id,group);}
+    for(const stored of snapshot.groups){const group=saleListingGroup(stored);if(!group)continue;const previous=saved.get(group.favorite.id);if(!previous||group.attemptedAt>=previous.attemptedAt)saved.set(group.favorite.id,group);}
     groups=[...saved.values()];
   };
   if(initialSnapshot)restore(initialSnapshot);
@@ -108,7 +115,7 @@ export function createListingCollector({stateFile,initialSnapshot,fetcher=fetch,
       const complexName=verifyComplex(await request(`/api/complexes/${complexNo}`),favorite,complexNo);
       const articles=[],seen=new Set();
       for(let page=1;page<=maxPages;page++) {
-        const params=new URLSearchParams({realEstateType:'APT',tradeType:'A1:B1:B2',tag:'::::::::',rentPriceMin:'0',rentPriceMax:'900000000',priceMin:'0',priceMax:'900000000',areaMin:'0',areaMax:'900000000',showArticle:'false',sameAddressGroup:'false',priceType:'RETAIL',directions:'',page:String(page),complexNo,buildingNos:'',areaNos:'',type:'list',order:'rank'});
+        const params=new URLSearchParams({realEstateType:'APT',tradeType:LISTING_TRADE_TYPE,tag:'::::::::',rentPriceMin:'0',rentPriceMax:'900000000',priceMin:'0',priceMax:'900000000',areaMin:'0',areaMax:'900000000',showArticle:'false',sameAddressGroup:'false',priceType:'RETAIL',directions:'',page:String(page),complexNo,buildingNos:'',areaNos:'',type:'list',order:'rank'});
         const payload=await request(`/api/articles/complex/${complexNo}?${params}`);
         if(!Array.isArray(payload.articleList)||typeof payload.isMoreData!=='boolean'||payload.articleList.length>1000||payload.isMoreData&&payload.articleList.length===0)fail('invalid_response');
         if(page>1&&payload.articleList.length===0)fail('incomplete');
@@ -117,11 +124,12 @@ export function createListingCollector({stateFile,initialSnapshot,fetcher=fetch,
           if(!validComplexNo(id)||seen.has(id))fail('incomplete');
           seen.add(id);
           if(seen.size>20000||raw.complexNo!==undefined&&String(raw.complexNo)!==complexNo)fail('incomplete');
+          if(raw.tradeTypeCode!==LISTING_TRADE_TYPE)continue;
           const article=normalizeArticle(raw);if(article)articles.push(article);
         }
         if(!payload.isMoreData) {
           const collectedAt=new Date(now()).toISOString();
-          group={favorite,complexNo,complexName,status:'ready',attemptedAt:collectedAt,collectedAt,errorCode:null,articles};
+          group={favorite,complexNo,complexName,tradeType:LISTING_TRADE_TYPE,status:'ready',attemptedAt:collectedAt,collectedAt,errorCode:null,articles};
           break;
         }
       }

@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
     inputs:
       collect:
-        description: '실거래·새 주소·지역 전체 아파트 매물 수집 (해제하면 저장 DB로 재배포)'
+        description: '실거래·새 주소·지역 전체 아파트 매매 매물 수집 (해제하면 저장 DB로 재배포)'
         type: boolean
         default: true
       recent_months:
@@ -38,10 +38,10 @@ jobs:
         with:
           version: '11.25.0'
       - run: pnpm install --frozen-lockfile
-      - name: Install Chromium for daily apartment listings
+      - name: Install Chromium for daily apartment sale listings
         if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.collect)
         run: pnpm exec playwright install --with-deps chromium
-      - name: Test daily listing schedule and browser collection
+      - name: Test daily sale listing schedule and browser collection
         if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.collect)
         run: pnpm test:listings
       - name: Restore encrypted working database
@@ -54,7 +54,7 @@ jobs:
         run: node --dns-result-order=ipv4first scripts/automation.mjs repair
         env:
           MOLIT_SERVICE_KEY: ${{ secrets.MOLIT_SERVICE_KEY }}
-      - name: Collect trades, addresses and all regional apartment listings
+      - name: Collect trades, addresses and regional apartment sale listings
         if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.collect)
         run: node --dns-result-order=ipv4first scripts/automation.mjs collect
         env:

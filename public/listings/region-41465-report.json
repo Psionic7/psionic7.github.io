@@ -25,7 +25,7 @@
       "apartment": "수지 진산마을 푸르지오",
       "complexNo": "10959",
       "status": "complete",
-      "articleCount": 13,
+      "articleCount": 10,
       "collectedAt": "2026-11-07T03:20:58.331Z"
     },
     {
@@ -39,7 +39,7 @@
       "apartment": "래미안수지이스트파크",
       "complexNo": "107215",
       "status": "partial",
-      "articleCount": 20,
+      "articleCount": 19,
       "collectedAt": "2026-11-07T03:12:05.192Z"
     },
     {
@@ -283,7 +283,7 @@
       "apartment": "동천 트리너스",
       "complexNo": "152738",
       "status": "partial",
-      "articleCount": 20,
+      "articleCount": 3,
       "collectedAt": "2026-11-07T03:21:05.006Z"
     },
     {
@@ -331,7 +331,7 @@
       "apartment": "한빛마을 래미안 이스트팰리스 1단지",
       "complexNo": "26814",
       "status": "partial",
-      "articleCount": 20,
+      "articleCount": 19,
       "collectedAt": "2026-11-07T03:21:11.454Z"
     },
     {
@@ -353,7 +353,7 @@
       "apartment": "더샵 동천 포레스트",
       "complexNo": "110798",
       "status": "partial",
-      "articleCount": 20,
+      "articleCount": 17,
       "collectedAt": "2026-11-07T03:21:15.659Z"
     },
     {
@@ -373,7 +373,7 @@
       "apartment": "동천파크자이",
       "complexNo": "115593",
       "status": "partial",
-      "articleCount": 20,
+      "articleCount": 19,
       "collectedAt": "2026-11-07T03:21:19.919Z"
     },
     {
@@ -381,7 +381,7 @@
       "apartment": "더샵 동천이스트포레",
       "complexNo": "115644",
       "status": "partial",
-      "articleCount": 20,
+      "articleCount": 18,
       "collectedAt": "2026-11-07T03:21:22.111Z"
     },
     {
@@ -403,7 +403,7 @@
       "apartment": "행림마을진로아파트",
       "complexNo": "8094",
       "status": "partial",
-      "articleCount": 20,
+      "articleCount": 12,
       "collectedAt": "2026-11-07T03:21:26.377Z"
     },
     {
@@ -449,7 +449,7 @@
       "apartment": "동천역  센트럴아이파크",
       "complexNo": "8462",
       "status": "complete",
-      "articleCount": 18,
+      "articleCount": 11,
       "collectedAt": "2026-11-07T03:21:30.649Z"
     },
     {
@@ -463,7 +463,7 @@
       "apartment": "보뜨랑마을벽산블루밍아파트",
       "complexNo": "9154",
       "status": "complete",
-      "articleCount": 7,
+      "articleCount": 5,
       "collectedAt": "2026-11-07T03:21:32.758Z"
     },
     {
@@ -551,7 +551,7 @@
       "apartment": "광교산자이",
       "complexNo": "107019",
       "status": "complete",
-      "articleCount": 18,
+      "articleCount": 15,
       "collectedAt": "2026-11-07T03:21:37.107Z"
     },
     {
@@ -641,7 +641,7 @@
       "apartment": "버들치마을 경남아너스빌2차",
       "complexNo": "27415",
       "status": "partial",
-      "articleCount": 20,
+      "articleCount": 19,
       "collectedAt": "2026-11-07T03:21:43.628Z"
     },
     {
@@ -649,7 +649,7 @@
       "apartment": "버들치마을 성복자이1차",
       "complexNo": "26925",
       "status": "partial",
-      "articleCount": 20,
+      "articleCount": 15,
       "collectedAt": "2026-11-07T03:21:45.743Z"
     },
     {
@@ -665,7 +665,7 @@
       "apartment": "버들치마을 성복 힐스테이트 2차",
       "complexNo": "27191",
       "status": "partial",
-      "articleCount": 20,
+      "articleCount": 13,
       "collectedAt": "2026-11-07T03:21:54.219Z"
     },
     {
@@ -673,7 +673,7 @@
       "apartment": "성복센트럴자이",
       "complexNo": "26712",
       "status": "partial",
-      "articleCount": 20,
+      "articleCount": 15,
       "collectedAt": "2026-11-07T03:21:56.578Z"
     },
     {
@@ -681,7 +681,7 @@
       "apartment": "버들치마을 성복자이2차",
       "complexNo": "27006",
       "status": "partial",
-      "articleCount": 20,
+      "articleCount": 19,
       "collectedAt": "2026-11-07T03:21:58.819Z"
     },
     {
@@ -689,7 +689,7 @@
       "apartment": "버들치마을 성복 힐스테이트 1차",
       "complexNo": "26760",
       "status": "partial",
-      "articleCount": 20,
+      "articleCount": 8,
       "collectedAt": "2026-11-07T03:22:00.936Z"
     },
     {
@@ -697,7 +697,7 @@
       "apartment": "용인성복아이파크",
       "complexNo": "102710",
       "status": "partial",
-      "articleCount": 20,
+      "articleCount": 18,
       "collectedAt": "2026-11-07T03:22:03.538Z"
     },
     {
@@ -705,7 +705,7 @@
       "apartment": "성복역 서희스타힐스",
       "complexNo": "111564",
       "status": "partial",
-      "articleCount": 20,
+      "articleCount": 12,
       "collectedAt": "2026-11-07T03:22:05.776Z"
     },
     {
@@ -983,7 +983,7 @@
       "apartment": "벽산블루밍아파트",
       "complexNo": "2511",
       "status": "partial",
-      "articleCount": 20,
+      "articleCount": 14,
       "collectedAt": "2026-11-07T03:24:05.595Z"
     },
     {
@@ -1059,7 +1059,7 @@
       "apartment": "상현마을 금호베스트빌 4단지",
       "complexNo": "26963",
       "status": "partial",
-      "articleCount": 20,
+      "articleCount": 19,
       "collectedAt": "2026-11-07T03:24:09.933Z"
     },
     {
@@ -1085,7 +1085,7 @@
       "apartment": "수지 쌍용 파크뷰",
       "complexNo": "3709",
       "status": "partial",
-      "articleCount": 20,
+      "articleCount": 17,
       "collectedAt": "2026-11-07T03:24:12.064Z"
     },
     {
@@ -1105,7 +1105,7 @@
       "apartment": "만현마을2단지 아이파크",
       "complexNo": "3714",
       "status": "partial",
-      "articleCount": 20,
+      "articleCount": 16,
       "collectedAt": "2026-11-07T03:24:14.175Z"
     },
     {
@@ -1121,7 +1121,7 @@
       "apartment": "만현마을 5단지 아이파크",
       "complexNo": "9014",
       "status": "partial",
-      "articleCount": 20,
+      "articleCount": 15,
       "collectedAt": "2026-11-07T03:24:18.413Z"
     },
     {
@@ -1129,7 +1129,7 @@
       "apartment": "서원마을3단지 아이파크",
       "complexNo": "8425",
       "status": "partial",
-      "articleCount": 20,
+      "articleCount": 16,
       "collectedAt": "2026-11-07T03:24:20.619Z"
     },
     {
@@ -1137,7 +1137,7 @@
       "apartment": "만현마을8단지 두산위브아파트",
       "complexNo": "3700",
       "status": "partial",
-      "articleCount": 20,
+      "articleCount": 15,
       "collectedAt": "2026-11-07T03:24:22.784Z"
     },
     {
@@ -1151,7 +1151,7 @@
       "apartment": "광교상떼빌파크뷰",
       "complexNo": "9029",
       "status": "partial",
-      "articleCount": 20,
+      "articleCount": 19,
       "collectedAt": "2026-11-07T03:24:24.993Z"
     },
     {
@@ -1159,7 +1159,7 @@
       "apartment": "성복역금호베스트빌",
       "complexNo": "3696",
       "status": "partial",
-      "articleCount": 20,
+      "articleCount": 16,
       "collectedAt": "2026-11-07T03:24:27.105Z"
     },
     {
@@ -1167,7 +1167,7 @@
       "apartment": "만현마을9단지 엘지 자이 아파트",
       "complexNo": "9125",
       "status": "partial",
-      "articleCount": 20,
+      "articleCount": 19,
       "collectedAt": "2026-11-07T03:24:29.213Z"
     },
     {
@@ -1183,7 +1183,7 @@
       "apartment": "벽산블루밍아파트",
       "complexNo": "2511",
       "status": "partial",
-      "articleCount": 20,
+      "articleCount": 14,
       "collectedAt": "2026-11-07T03:24:05.595Z"
     },
     {
@@ -1191,7 +1191,7 @@
       "apartment": "만현마을1단지 롯데캐슬아파트",
       "complexNo": "3701",
       "status": "partial",
-      "articleCount": 20,
+      "articleCount": 15,
       "collectedAt": "2026-11-07T03:24:33.509Z"
     },
     {
@@ -1307,6 +1307,7 @@
     "failedTargets": 0,
     "notAttemptedTargets": 0,
     "complexCount": 48,
-    "advertisementCount": 809
-  }
+    "advertisementCount": 681
+  },
+  "tradeType": "A1"
 }

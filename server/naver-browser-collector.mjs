@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import {fileURLToPath} from 'node:url';
 import {setTimeout as sleep} from 'node:timers/promises';
-import {LISTING_ERRORS,TRADE_TYPES,complexUrl,validListingGroup} from '../src/naver-listings.mjs';
+import {LISTING_ERRORS,LISTING_TRADE_TYPE,complexUrl,validListingGroup} from '../src/naver-listings.mjs';
 import {normalizeArticle,verifyComplex} from './naver-listings.mjs';
 
 export class BrowserListingError extends Error {
@@ -22,7 +22,7 @@ export class BrowserListingPages {
     if(!this.complexes.has(id))this.complexes.set(id,{detail:null,pages:new Map(),signature:null});
     const state=this.complexes.get(id);
     if(detail){state.detail=payload;return;}
-    if(parsed.searchParams.get('sameAddressGroup')!=='false')return;
+    if(parsed.searchParams.get('sameAddressGroup')!=='false'||parsed.searchParams.get('tradeType')!==LISTING_TRADE_TYPE||parsed.searchParams.get('realEstateType')!=='APT')return;
     const page=Number(parsed.searchParams.get('page')||1),signature=new URLSearchParams(parsed.searchParams);signature.delete('page');signature.sort();
     if(!Number.isInteger(page)||page<1||page>this.maxPages)fail('incomplete');
     if(!Array.isArray(payload.articleList)||payload.articleList.length>1000||typeof payload.isMoreData!=='boolean'||payload.isMoreData&&payload.articleList.length===0||page>1&&payload.articleList.length===0)fail('invalid_response');
@@ -45,12 +45,12 @@ export class BrowserListingPages {
         const articleId=String(raw?.articleNo||'');
         if(!/^[1-9]\d{0,11}$/.test(articleId)||seen.has(articleId)||raw.complexNo!==undefined&&String(raw.complexNo)!==id)fail('incomplete');
         seen.add(articleId);if(seen.size>20000)fail('incomplete');
-        if(raw.realEstateTypeCode&&raw.realEstateTypeCode!=='APT'||!Object.hasOwn(TRADE_TYPES,raw.tradeTypeCode))continue;
+        if(raw.realEstateTypeCode&&raw.realEstateTypeCode!=='APT'||raw.tradeTypeCode!==LISTING_TRADE_TYPE)continue;
         const article=normalizeArticle(raw);if(article)articles.push(article);
       }
     }
     const collectedAt=new Date(now).toISOString();
-    const group={favorite,complexNo:id,complexName,status:'ready',attemptedAt:collectedAt,collectedAt,errorCode:null,articles,collectionMethod:'browser',coverage:'complete',pageCount:state.pages.size,sourceUrl:complexUrl(id)};
+    const group={favorite,complexNo:id,complexName,tradeType:LISTING_TRADE_TYPE,status:'ready',attemptedAt:collectedAt,collectedAt,errorCode:null,articles,collectionMethod:'browser',coverage:'complete',pageCount:state.pages.size,sourceUrl:complexUrl(id)};
     if(!validListingGroup(group))fail('invalid_response');return group;
   }
 }
@@ -71,10 +71,13 @@ export async function createBrowserListingSource({browser,page,baseUrl='https://
   let initialized=false;
   async function collect(target,{complexNo,signal}={}) {
     signal?.throwIfAborted();
-    const {favorite}=target,pages=new BrowserListingPages({maxPages:maxScrolls+1}),pending=new Set(),started=now();let observedError=null;
+    const {favorite}=target,pages=new BrowserListingPages({maxPages:maxScrolls+1}),pending=new Set(),requests=new Set(),started=now();let observedError=null,capturing=false;
+    const requestListener=request=>{if(capturing&&/^\/api\/(articles\/complex|complexes)\/[1-9]\d*$/.test(new URL(request.url()).pathname))requests.add(request);};
     const responseListener=response=>{
+      if(!requests.delete(response.request()))return;
       const url=new URL(response.url());
       if(url.origin!==origin||!/^\/api\/(articles\/complex|complexes)\/[1-9]\d*$/.test(url.pathname))return;
+      if(url.pathname.startsWith('/api/articles/')&&(url.searchParams.get('tradeType')!==LISTING_TRADE_TYPE||url.searchParams.get('realEstateType')!=='APT'))return;
       const task=(async()=>{
         try{
           if(response.status()>=400){pages.consume(response.url(),response.status(),{});return;}
@@ -83,7 +86,7 @@ export async function createBrowserListingSource({browser,page,baseUrl='https://
         }catch(error){observedError=Object.hasOwn(LISTING_ERRORS,error.code)?error:new BrowserListingError('invalid_response');}
       })();pending.add(task);task.finally(()=>pending.delete(task));
     };
-    page.on('response',responseListener);
+    page.on('request',requestListener);page.on('response',responseListener);
     const abort=()=>{void page.close().catch(()=>{});};signal?.addEventListener('abort',abort,{once:true});
     const check=async()=>{
       signal?.throwIfAborted();
@@ -99,7 +102,8 @@ export async function createBrowserListingSource({browser,page,baseUrl='https://
         if(home?.status()===404||new URL(page.url()).pathname==='/404')fail('site_unavailable');
         await page.getByRole('button',{name:'단지, 지역검색',exact:true}).waitFor({state:'visible',timeout:timeoutMs});initialized=true;
       }
-      const url=complexNo?`${baseUrl}/complexes/${complexNo}`:baseUrl+'/';
+      const url=complexNo?`${baseUrl}/complexes/${complexNo}?a=APT&b=A1&e=RETAIL`:baseUrl+'/';
+      capturing=Boolean(complexNo);
       const response=await page.goto(url,{waitUntil:'domcontentloaded',timeout:timeoutMs});
       if(response?.status()===429)fail('rate_limited');if(response?.status()===403||response?.status()===401)fail('unauthorized');
       if(response?.status()===404||new URL(page.url()).pathname==='/404')fail(complexNo?'unmatched':'site_unavailable');
@@ -112,6 +116,7 @@ export async function createBrowserListingSource({browser,page,baseUrl='https://
       catch{await check();fail('unmatched');}
       const current=new URL(page.url()),id=current.origin===origin?current.pathname.match(/^\/complexes\/([1-9]\d{0,11})\/?$/)?.[1]:null;if(!id)fail('unmatched');
       if(complexNo&&id!==complexNo)fail('address_mismatch');
+      if(!complexNo){capturing=true;await page.goto(`${baseUrl}/complexes/${id}?a=APT&b=A1&e=RETAIL`,{waitUntil:'domcontentloaded',timeout:timeoutMs});}
       await page.locator('#complexTitle').waitFor({state:'visible',timeout:timeoutMs});
       const grouped=page.locator('#address_group2');
       if(await grouped.count())await grouped.setChecked(false,{force:true});
@@ -132,7 +137,7 @@ export async function createBrowserListingSource({browser,page,baseUrl='https://
       signal?.throwIfAborted();
       if(Object.hasOwn(LISTING_ERRORS,error.code))throw error;
       await check();fail(error.name==='TimeoutError'?'timeout':'unavailable');
-    }finally{signal?.removeEventListener('abort',abort);page.off('response',responseListener);await Promise.all([...pending]);}
+    }finally{signal?.removeEventListener('abort',abort);page.off('request',requestListener);page.off('response',responseListener);await Promise.all([...pending]);}
   }
   return {collect,close:async()=>{if(owned)await browser.close();}};
 }
