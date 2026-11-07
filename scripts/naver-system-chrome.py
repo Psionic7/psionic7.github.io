@@ -182,21 +182,23 @@ async def main():
     parser=argparse.ArgumentParser()
     parser.add_argument('--base-url',default='https://new.land.naver.com')
     args=parser.parse_args()
+    for attempt in range(3):
+        try:
+            browser = await uc.start(headless=os.environ.get('NAVER_CHROME_HEADLESS')=='1',browser_executable_path=os.environ.get('NAVER_CHROME_PATH') or None,browser_args=['--lang=ko-KR','--window-size=1280,1000'])
+            break
+        except Exception:
+            for instance in list(uc.util.get_registered_instances()):
+                process=getattr(instance,'_process',None)
+                if process and process.stderr and os.environ.get('NAVER_BROWSER_DIAGNOSTICS')=='1':
+                    try:
+                        error=await asyncio.wait_for(process.stderr.read(4096),timeout=1)
+                        print(error.decode('utf-8',errors='replace'),file=sys.stderr,flush=True)
+                    except (asyncio.TimeoutError,ValueError,RuntimeError):pass
+                instance.stop()
+            if attempt==2:raise
+            await asyncio.sleep(1)
     try:
-        browser = await uc.start(headless=os.environ.get('NAVER_CHROME_HEADLESS')=='1',browser_executable_path=os.environ.get('NAVER_CHROME_PATH') or None,browser_args=['--lang=ko-KR','--window-size=1280,1000'])
-    except Exception:
-        for instance in list(uc.util.get_registered_instances()):
-            process=getattr(instance,'_process',None)
-            if process and process.stderr and os.environ.get('NAVER_BROWSER_DIAGNOSTICS')=='1':
-                try:
-                    error=await asyncio.wait_for(process.stderr.read(4096),timeout=1)
-                    print(error.decode('utf-8',errors='replace'),file=sys.stderr,flush=True)
-                except asyncio.TimeoutError:pass
-            instance.stop()
-        raise
-    try:
-        tab = await browser.get(args.base_url+'/')
-        await asyncio.sleep(3)
+        tab = await browser.get('about:blank')
         collector = Collector(browser, tab,args.base_url)
         tab.add_handler(uc.cdp.network.ResponseReceived, collector.response)
         tab.add_handler(uc.cdp.network.LoadingFinished, collector.finished)
@@ -210,6 +212,11 @@ async def main():
                 operation=collector.discover(request) if request.get('discover') else collector.collect(request)
                 result = await asyncio.wait_for(operation,timeout=request.get('timeoutSeconds',45))
             except asyncio.TimeoutError:
+                if os.environ.get('NAVER_BROWSER_DIAGNOSTICS')=='1':
+                    try:
+                        state=await asyncio.wait_for(tab.evaluate("JSON.stringify({path:location.pathname,title:document.title,body:document.body?.innerText.slice(0,300)})"),timeout=3)
+                        print(json.dumps({'stage':'navigation-timeout','state':json.loads(state),'responses':len(collector.responses)}),file=sys.stderr,flush=True)
+                    except Exception:pass
                 result = {"errorCode": "timeout"}
             except PermissionError:
                 result = {"errorCode": "blocked"}

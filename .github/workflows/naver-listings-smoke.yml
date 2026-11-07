@@ -14,8 +14,23 @@ permissions:
   contents: read
 jobs:
   verify:
-    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-24.04
+            chrome: /usr/bin/google-chrome
+          - os: windows-2025
+            chrome: C:\Program Files\Google\Chrome\Application\chrome.exe
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 10
+    defaults:
+      run:
+        shell: bash
+    env:
+      NAVER_BROWSER_PYTHON: python
+      NAVER_CHROME_PATH: ${{ matrix.chrome }}
+      NAVER_BROWSER_DIAGNOSTICS: '1'
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
@@ -29,24 +44,28 @@ jobs:
       - run: python -m pip install -r scripts/requirements-naver-browser.txt
       - name: Verify Chrome and virtual display
         run: |
-          google-chrome --version
-          command -v xvfb-run
+          python -c "import os; from pathlib import Path; p=Path(os.environ['NAVER_CHROME_PATH']); print(p); assert p.is_file()"
+          if [[ "$RUNNER_OS" == "Linux" ]]; then google-chrome --version; command -v xvfb-run; fi
       - name: Test Python IPC, browser search and every-page coverage
-        run: xvfb-run --auto-servernum --server-args='-screen 0 1280x1000x24' node --test tests/naver-system-chrome.test.mjs tests/naver-nodriver.integration.mjs
-        env:
-          NAVER_BROWSER_PYTHON: python
-          NAVER_CHROME_PATH: /usr/bin/google-chrome
-          NAVER_BROWSER_DIAGNOSTICS: '1'
+        run: |
+          if [[ "$RUNNER_OS" == "Linux" ]]; then
+            xvfb-run --auto-servernum --server-args='-screen 0 1280x1000x24' node --test tests/naver-system-chrome.test.mjs tests/naver-nodriver.integration.mjs
+          else
+            node --test tests/naver-system-chrome.test.mjs tests/naver-nodriver.integration.mjs
+          fi
       - name: Collect real sale listings by known ID and automatic search
-        run: xvfb-run --auto-servernum --server-args='-screen 0 1280x1000x24' node scripts/check-naver-live.mjs
+        run: |
+          if [[ "$RUNNER_OS" == "Linux" ]]; then
+            xvfb-run --auto-servernum --server-args='-screen 0 1280x1000x24' node scripts/check-naver-live.mjs
+          else
+            node scripts/check-naver-live.mjs
+          fi
         env:
           NAVER_LISTING_SOURCE: system-chrome
-          NAVER_BROWSER_PYTHON: python
-          NAVER_CHROME_PATH: /usr/bin/google-chrome
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: naver-live-validation
+          name: naver-live-validation-${{ runner.os }}
           path: local/data-validation/naver-live.json
           if-no-files-found: warn
           retention-days: 14
