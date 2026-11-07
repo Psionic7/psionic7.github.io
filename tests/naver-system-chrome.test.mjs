@@ -4,6 +4,8 @@ import {EventEmitter} from 'node:events';
 import {PassThrough,Writable} from 'node:stream';
 import {createSystemChromeListingSource} from '../server/naver-system-chrome.mjs';
 import {makeApartmentFavorite} from '../src/apartment-favorites.js';
+import {listingSnapshot} from '../src/naver-listings.mjs';
+import {createDailyListingSource} from '../server/naver-listing-source.mjs';
 
 const favorite=makeApartmentFavorite({apartment:'수지테스트',dong:'풍덕천동',jibun:'1191'},{region_code:'41465',region_name:'경기도 용인시 수지구'});
 const detail={complexDetail:{complexNo:'10959',complexName:'수지테스트',cortarAddress:'경기도 용인시 수지구 풍덕천동',detailAddress:'1191'}};
@@ -58,4 +60,43 @@ test('duplicate registrations reuse observation time while still checking every 
   const child=worker(()=>{requests++;return {complexNo:'10959',responses};});
   const source=await createSystemChromeListingSource({python:'test-python',connections:[{id:favorite.id,complexNo:'10959'}],spawnWorker:()=>child});
   try{const first=await source.collect({favorite});const second=await source.collect({favorite});assert.equal(requests,1);assert.equal(first.collectedAt,second.collectedAt);const wrong=makeApartmentFavorite({apartment:'다른단지',dong:'풍덕천동',jibun:'99'},{region_code:'41465',region_name:'경기도 용인시 수지구'});await assert.rejects(source.collect({favorite:wrong},{complexNo:'10959'}),e=>e.code==='address_mismatch');assert.equal(requests,1);}finally{await source.close();}
+});
+
+test('unmapped targets search automatically and verify names and parcel before returning complete sale ads',async()=>{
+  const requests=[];
+  const child=worker(request=>{requests.push(request);return request.discover?{candidates:[{complexNo:'10959',name:favorite.apartment}]}:{complexNo:'10959',responses};});
+  const source=await createDailyListingSource({python:'test-python',spawnWorker:()=>child});
+  try{
+    const group=await source.collect({favorite,query:'풍덕천동 수지테스트'});
+    assert.equal(group.coverage,'complete');assert.equal(group.tradeType,'A1');assert.equal(requests.length,2);
+    assert.equal(requests[0].discover,true);assert.deepEqual(requests[0].names,[favorite.apartment]);
+    assert.equal(requests[1].complexNo,'10959');
+  }finally{await source.close();}
+});
+
+test('daily source seeds verified snapshot connections but rechecks their address with a new browser observation',async()=>{
+  const original=await createSystemChromeListingSource({python:'test-python',spawnWorker:()=>worker(()=>({complexNo:'10959',responses}))});
+  let saved;try{saved=await original.collect({favorite},{complexNo:'10959'});}finally{await original.close();}
+  const requests=[],child=worker(request=>{requests.push(request);return {complexNo:'10959',responses};});
+  const source=await createDailyListingSource({python:'test-python',initialSnapshot:listingSnapshot([saved]),spawnWorker:()=>child});
+  try{assert.equal((await source.collect({favorite,query:'test'})).articles.length,1);assert.equal(requests.length,1);assert.equal(requests[0].discover,undefined);assert.equal(requests[0].complexNo,'10959');}
+  finally{await source.close();}
+});
+
+test('wrong names, mismatched parcels and ambiguous same-address search results never become successful connections',async()=>{
+  for(const mode of ['name','parcel','ambiguous']){
+    let navigations=0;
+    const source=await createDailyListingSource({python:'test-python',spawnWorker:()=>worker(request=>{
+      if(request.discover)return {candidates:[{complexNo:'10959',name:mode==='name'?'다른아파트':favorite.apartment},...(mode==='ambiguous'?[{complexNo:'10960',name:favorite.apartment}]:[])]};
+      navigations++;
+      return {complexNo:request.complexNo,responses:responses.map((r,i)=>({...r,url:r.url.replaceAll('10959',request.complexNo),...(i===0?{payload:{complexDetail:{...detail.complexDetail,complexNo:request.complexNo,detailAddress:mode==='parcel'?'99':'1191'}}}:{})}))};
+    })});
+    try{await assert.rejects(source.collect({favorite,query:'풍덕천동 수지테스트'}),e=>e.code==='unmatched');assert.equal(navigations,mode==='name'?0:mode==='ambiguous'?2:1);}finally{await source.close();}
+  }
+});
+
+test('cancelling an automatic search kills its worker without saving a connection',async()=>{
+  const controller=new AbortController(),child=worker(()=>undefined);
+  const source=await createDailyListingSource({python:'test-python',spawnWorker:()=>child});
+  try{const pending=source.collect({favorite,query:'test'},{signal:controller.signal});controller.abort();await assert.rejects(pending,e=>e.name==='AbortError');assert.equal(child.killed,true);}finally{await source.close();}
 });

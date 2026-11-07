@@ -59,6 +59,15 @@ test('a legacy mixed-type attempt does not skip the new sale-only collection on 
   assert.equal(resumed.alreadyCollected,true);
 });
 
+test('switching a failed old browser source to system Chrome retries the same day and then resumes without duplicates',async t=>{
+  const db=fixture(t),options={now:()=>Date.parse('2026-11-06T00:00:00.000Z'),browserSource:'playwright',sourceFactory:async()=>({close:async()=>{},collect:async()=>{throw new BrowserListingError('site_unavailable');}})};
+  const old=await collectDailyListings(db,config,options);assert.equal(old.status,'failed');
+  const calls=[];
+  const next={...options,browserSource:'system-chrome',sourceFactory:async()=>source({onCollect:target=>calls.push(target.favorite.id)})};
+  const report=await collectDailyListings(db,config,next);assert.equal(report.status,'complete');assert.equal(report.browserSource,'system-chrome');assert.equal(calls.length,2);
+  assert.equal((await collectDailyListings(db,config,next)).alreadyCollected,true);assert.equal(calls.length,2);
+});
+
 test('daily persistence refuses a rental mixed into a source claiming sale-only coverage',async t=>{
   const db=fixture(t),browser=source(),collect=browser.collect;
   browser.collect=async(...args)=>({...await collect(...args),articles:[{id:'123',tradeType:'B1'}]});

@@ -1,0 +1,51 @@
+name: Verify unattended Naver sale collection
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/naver-listings-smoke.yml'
+      - 'scripts/naver-system-chrome.py'
+      - 'scripts/check-naver-live.mjs'
+      - 'scripts/requirements-naver-browser.txt'
+      - 'server/naver-system-chrome.mjs'
+      - 'server/naver-listing-source.mjs'
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: scripts/requirements-naver-browser.txt
+      - run: python -m pip install -r scripts/requirements-naver-browser.txt
+      - name: Verify Chrome and virtual display
+        run: |
+          google-chrome --version
+          command -v xvfb-run
+      - name: Test Python IPC, browser search and every-page coverage
+        run: xvfb-run --auto-servernum --server-args='-screen 0 1280x1000x24' node --test tests/naver-system-chrome.test.mjs tests/naver-nodriver.integration.mjs
+        env:
+          NAVER_BROWSER_PYTHON: python
+          NAVER_CHROME_PATH: /usr/bin/google-chrome
+      - name: Collect real sale listings by known ID and automatic search
+        run: xvfb-run --auto-servernum --server-args='-screen 0 1280x1000x24' node scripts/check-naver-live.mjs
+        env:
+          NAVER_LISTING_SOURCE: system-chrome
+          NAVER_BROWSER_PYTHON: python
+          NAVER_CHROME_PATH: /usr/bin/google-chrome
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: naver-live-validation
+          path: local/data-validation/naver-live.json
+          if-no-files-found: warn
+          retention-days: 14

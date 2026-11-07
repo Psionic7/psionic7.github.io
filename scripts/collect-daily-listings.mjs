@@ -5,11 +5,10 @@ import {ROOT,paths,connect,readJson,atomicWrite} from '../server/storage.mjs';
 import {validateConfig} from '../automation/config.mjs';
 import {collectDailyListings,dailyListingTargets,listingExport} from '../server/daily-naver-listings.mjs';
 import {writeListingSnapshot} from '../server/naver-listings.mjs';
-import {createBrowserListingSource} from '../server/naver-browser-collector.mjs';
-import {createSystemChromeListingSource} from '../server/naver-system-chrome.mjs';
+import {createDailyListingSource} from '../server/naver-listing-source.mjs';
 
 try {
-  const {values}=parseArgs({options:{plan:{type:'boolean'},force:{type:'boolean'},headed:{type:'boolean'},help:{type:'boolean'},database:{type:'string'},output:{type:'string'},'region-code':{type:'string'},source:{type:'string',default:'playwright'},python:{type:'string'},connections:{type:'string'}}});
+  const {values}=parseArgs({options:{plan:{type:'boolean'},force:{type:'boolean'},headed:{type:'boolean'},help:{type:'boolean'},database:{type:'string'},output:{type:'string'},'region-code':{type:'string'},source:{type:'string',default:'system-chrome'},python:{type:'string'},connections:{type:'string'}}});
   if(values.help)console.log('pnpm listings:daily [--plan] [--force] [--headed] [--region-code <시군구 5자리>] [--source playwright|system-chrome] [--python <nodriver 설치 Python>] [--connections <브라우저 검색 JSON>] [--database <SQLite>] [--output <JSON>]\n저장된 수집 지역의 전체 아파트의 매매 매물을 한국 날짜별 하루 한 번 수집합니다. --plan은 조회만 수행합니다.');
   else {
     const config=validateConfig(readJson(path.join(ROOT,'automation/config.json'))),db=connect(values.database?path.resolve(values.database):paths.db,values.plan===true);
@@ -27,8 +26,8 @@ try {
         if(path.extname(filename).toLowerCase()!=='.json')throw new Error('매물 출력은 JSON 파일을 지정하세요.');
         const initialSnapshot=fs.existsSync(filename)?readJson(filename):undefined;
         const connections=values.connections?readJson(path.resolve(values.connections)):[];
-        const sourceFactory=()=>values.source==='system-chrome'?createSystemChromeListingSource({python:values.python,connections}):createBrowserListingSource({headless:!values.headed});
-        const report=await collectDailyListings(db,config,{force:values.force,sourceFactory,initialSnapshot,onProgress:console.log});
+        const sourceFactory=()=>createDailyListingSource({source:values.source,python:values.python,connections,initialSnapshot,headless:values.source==='playwright'&&!values.headed});
+        const report=await collectDailyListings(db,config,{force:values.force,browserSource:values.source,sourceFactory,initialSnapshot,onProgress:console.log});
         const snapshot=listingExport(db,{initialSnapshot});
         writeListingSnapshot(filename,snapshot);
         if(filename===path.join(ROOT,'public/listings/snapshot.json'))atomicWrite(path.join(ROOT,'public/listings/collection.json'),JSON.stringify({version:1,source:'naver-land',collection:snapshot.collection||null})+'\n');

@@ -37,7 +37,7 @@ JUSO_ADDRESS_SEARCH_KEY=<주소정보누리집 주소 검색 승인키>
 
 브라우저가 네이버 화면을 열고 검색·주소 대조·목록 스크롤을 수행하며, 화면이 실제로 받은 목록 응답을 페이지별로 검증합니다. 마지막 페이지까지 확인한 결과만 전체 수집으로 저장합니다. 한국 날짜별 단지 시도 기록, 네이버 단지 연결, 마지막 성공 매물은 작업 SQLite에 저장해 기존 암호화 DB 보관·복원과 함께 유지합니다. 같은 날 실거래 수집을 다시 실행해도 이미 시도한 단지는 재수집하지 않습니다. 매물 외부 연결 실패는 별도 미완료 상태로 기록하고 정상 실거래의 추출·검사·배포를 계속합니다. DB 저장·자료 형식 오류는 실패로 처리합니다.
 
-GitHub Actions는 고정 버전 Playwright와 Chromium을 설치합니다. 새 PC에서 일일 매물 명령을 실행하기 전에는 `pnpm install --frozen-lockfile`과 `pnpm exec playwright install chromium`이 필요합니다.
+일일 매물 수집은 insane-search에서 확인한 **nodriver + 시스템 Chrome** 방식으로 실행합니다. GitHub Actions는 Python 3.12와 고정 버전 nodriver를 설치하고 Xvfb 가상 화면에서 일반 Chrome을 실행합니다. 저장한 단지 연결을 재검증하며, 연결이 없는 대상은 검색 후 지도 표식의 단지 번호를 읽고 주소를 검증합니다. 새 PC에서는 별도 Python 환경에 `scripts/requirements-naver-browser.txt`를 설치하고 `NAVER_BROWSER_PYTHON`을 지정하세요. 실행 방법과 검증 기록은 [무인 수집 문서](project-notes/unattended-naver-listings.md)에 있습니다. Playwright Chromium은 기존 수집기의 회귀 테스트에 사용합니다.
 
 ```powershell
 pnpm listings:daily --plan  # DB를 바꾸지 않고 지역 전체 대상 확인
@@ -48,7 +48,7 @@ pnpm test:listings          # 일일 상태·DB 보존·실제 Chromium 동작 �
 
 로컬 수집 관리자의 실거래 수집에도 같은 일일 작업이 연결됩니다. 완료 후 **공개 데이터 내보내기**에서 매물 스냅샷과 상태를 내보냅니다. 공개 화면은 지역 전체의 성공·실패·단지 연결 미확정·미시도 수를 표시하며, 즐겨찾기에서는 일치하는 단지의 저장 매물을 조회합니다. 상세 구현·검증 기록은 [일일 매물 수집 계획](project-notes/daily-naver-listings-plan.md)에 있습니다.
 
-**실제 네이버 무인 일일 수집 검증은 미완료입니다.** 시스템 Chrome을 사용한 별도 수집으로 실제 매물 자료를 확보했지만, 기본 예약 수집기의 새 Chromium에서는 404 안내 화면으로 이동했습니다. 로컬 테스트 페이지의 자동 검색·스크롤·전체 페이지 검증을 실제 네이버 일일 수집 성공으로 간주하지 않습니다. 이 접속 문제가 해결되기 전에는 자동 작업이 매물 수집 미완료로 기록될 수 있습니다. 현재 매매 전용 변경과 검증 범위는 [매매 일일 수집 기록](project-notes/sale-listings-schedule.md)을 확인하세요.
+실제 네이버에서 단지 번호 지정과 자동 검색으로 래미안수지이스트파크의 매매 광고 36건·2페이지 전체 수집을 확인했습니다. `node scripts/check-naver-live.mjs`와 별도 GitHub Actions 검증 작업으로 재확인할 수 있습니다. 이 단지 검증을 기본 수집 지역 전체의 완료로 간주하지 않습니다. 접속·단지 연결·페이지 검증 실패는 미완료로 기록하고 이전 매매 자료를 보존합니다.
 
 ## 즐겨찾기 아파트의 네이버 매물 조회
 

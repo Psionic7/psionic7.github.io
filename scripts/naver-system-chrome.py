@@ -6,8 +6,10 @@ JSON lines on stdin/stdout; no credentials, request headers or profiles exported
 from __future__ import annotations
 
 import asyncio
+import argparse
 import base64
 import json
+import os
 import re
 import sys
 import time
@@ -19,14 +21,16 @@ API = re.compile(r"^/api/(?:complexes|articles/complex)/([1-9]\d*)$")
 
 
 class Collector:
-    def __init__(self, browser, tab):
+    def __init__(self, browser, tab, base_url='https://new.land.naver.com'):
         self.browser, self.tab = browser, tab
+        self.base_url = base_url
+        self.host = urlsplit(base_url).netloc
         self.responses, self.requests = [], {}
         self.error = None
 
     async def response(self, event):
         parsed = urlsplit(event.response.url)
-        if parsed.netloc == "new.land.naver.com" and API.fullmatch(parsed.path):
+        if parsed.netloc == self.host and API.fullmatch(parsed.path):
             self.requests[event.request_id] = (event.response.url, int(event.response.status))
 
     async def finished(self, event):
@@ -85,7 +89,7 @@ class Collector:
         complex_no = request.get("complexNo")
         if not complex_no or not re.fullmatch(r"[1-9]\d{0,11}", complex_no):
             return {"errorCode": "unmatched"}
-        await self.tab.send(uc.cdp.page.navigate(f"https://new.land.naver.com/complexes/{complex_no}?a=APT&b=A1&e=RETAIL"))
+        await self.tab.send(uc.cdp.page.navigate(f"{self.base_url}/complexes/{complex_no}?a=APT&b=A1&e=RETAIL"))
         started = time.monotonic()
         deadline = started + request.get("timeoutSeconds", 45)
         selected = False
@@ -107,8 +111,7 @@ class Collector:
                         return {"errorCode": "address_mismatch"}
                     return {"complexNo": complex_no, "complexDetail": detail, "responses": self.responses}
                 if not request.get('firstPageOnly',False):
-                    await self.tab.evaluate("document.querySelectorAll('#articleListArea,.item_list--article').forEach(e=>{e.scrollTop=e.scrollHeight})")
-                    await self.tab.send(uc.cdp.input_.dispatch_mouse_event('mouseWheel',x=200,y=400,delta_y=1000,delta_x=0))
+                    await self.tab.evaluate("(()=>{for(let e=document.querySelector('#articleListArea');e;e=e.parentElement){if(e.scrollHeight>e.clientHeight){e.scrollTop=e.scrollHeight;e.dispatchEvent(new Event('scroll',{bubbles:true}));}}})()")
             text = await self.tab.evaluate("document.body?.innerText || ''")
             if re.search(r"자동입력\s*방지|비정상적인\s*접근|접근이?\s*제한|Too Many Requests|captcha", text, re.I):
                 return {"errorCode": "blocked"}
@@ -118,13 +121,72 @@ class Collector:
         print(json.dumps({"captured":[{"path":urlsplit(r['url']).path,"query":urlsplit(r['url']).query,"more":r['payload'].get('isMoreData')} for r in self.responses]}),file=sys.stderr,flush=True)
         return {"errorCode": "incomplete" if complex_no else "unmatched"}
 
+    async def search(self, query):
+        await self.tab.send(uc.cdp.page.navigate(self.base_url+'/'))
+        for _ in range(30):
+            opened=await self.tab.evaluate("(()=>{const b=Array.from(document.querySelectorAll('button')).find(b=>b.textContent.trim()==='단지, 지역검색');if(!b)return false;b.click();return true})()")
+            if opened:break
+            await asyncio.sleep(0.3)
+        field=await self.tab.select('#land_search',timeout=10)
+        await field.apply('(element)=>element.focus()')
+        await self.tab.send(uc.cdp.input_.insert_text(query))
+        for _ in range(30):
+            choices=json.loads(await self.tab.evaluate("JSON.stringify(Array.from(document.querySelectorAll('li.search_item button.search_button')).map(b=>b.getClientRects().length?b.innerText.trim():''))"))
+            if any(choices):return choices
+            text=await self.tab.evaluate("document.body?.innerText||''")
+            if re.search(r'captcha|접근.*제한|비정상적인.*접근',text,re.I):
+                raise PermissionError('blocked')
+            if '/404' in (await self.tab.evaluate('location.href')):
+                raise ConnectionError('site_unavailable')
+            await asyncio.sleep(0.3)
+        return []
+
+    async def discover(self, request):
+        query=request.get('query','')
+        names=request.get('names',[])
+        if not isinstance(query,str) or not 0<len(query)<=300 or not isinstance(names,list) or not names or len(names)>100:
+            return {'errorCode':'unmatched'}
+        normalize=lambda value:re.sub(r'[\s()[\]·.,_-]|아파트','',value).lower()
+        names=[normalize(name) for name in names if isinstance(name,str) and len(name)<=300]
+        choices=await self.search(query)
+        selected=[(index,label) for index,label in enumerate(choices) if any(name and (name==normalize(label) or len(name)>=4 and name in normalize(label)) for name in names)]
+        if os.environ.get('NAVER_BROWSER_DIAGNOSTICS')=='1':
+            print(json.dumps({'stage':'search','choices':len(choices),'matched':len(selected)}),file=sys.stderr,flush=True)
+        if not selected or len(selected)>8:return {'candidates':[]}
+        candidates=[]
+        for number,(index,label) in enumerate(selected):
+            if number:
+                current=await self.search(query)
+                if index>=len(current) or current[index]!=label:return {'errorCode':'unmatched'}
+            buttons=await self.tab.select_all('li.search_item button.search_button')
+            if index>=len(buttons):return {'errorCode':'unmatched'}
+            await buttons[index].apply("element=>element.dispatchEvent(new MouseEvent('mousedown',{bubbles:true,cancelable:true,button:0}))")
+            for _ in range(40):
+                current=await self.tab.evaluate('location.href')
+                match=re.fullmatch(r'/complexes/([1-9]\d{0,11})/?',urlsplit(current).path)
+                name=await self.tab.evaluate("document.querySelector('#complexTitle')?.innerText||''")
+                if match and name:
+                    candidates.append({'complexNo':match.group(1),'name':name.strip()})
+                    break
+                markers=json.loads(await self.tab.evaluate("JSON.stringify(Array.from(document.querySelectorAll('a[id$=COMPLEX]')).map(e=>({complexNo:e.id.replace(/COMPLEX$/,''),name:e.querySelector('.complex_title')?.textContent.trim()||''})))"))
+                matched=[marker for marker in markers if re.fullmatch(r'[1-9]\d{0,11}',marker['complexNo']) and any(expected and (expected==normalize(marker['name']) or len(expected)>=4 and expected in normalize(marker['name'])) for expected in names)]
+                if matched:
+                    candidates.extend(matched)
+                    break
+                await asyncio.sleep(0.25)
+        unique={candidate['complexNo']:candidate for candidate in candidates}
+        return {'candidates':list(unique.values())} if len(unique)<=8 else {'errorCode':'unmatched'}
+
 
 async def main():
-    browser = await uc.start(headless=False)
+    parser=argparse.ArgumentParser()
+    parser.add_argument('--base-url',default='https://new.land.naver.com')
+    args=parser.parse_args()
+    browser = await uc.start(headless=os.environ.get('NAVER_CHROME_HEADLESS')=='1',browser_executable_path=os.environ.get('NAVER_CHROME_PATH') or None,browser_args=['--lang=ko-KR','--window-size=1280,1000'])
     try:
-        tab = await browser.get("https://new.land.naver.com/")
+        tab = await browser.get(args.base_url+'/')
         await asyncio.sleep(3)
-        collector = Collector(browser, tab)
+        collector = Collector(browser, tab,args.base_url)
         tab.add_handler(uc.cdp.network.ResponseReceived, collector.response)
         tab.add_handler(uc.cdp.network.LoadingFinished, collector.finished)
         await tab.send(uc.cdp.network.enable(max_total_buffer_size=64000000, max_resource_buffer_size=8000000, enable_durable_messages=True))
@@ -134,7 +196,14 @@ async def main():
             if request.get("close"):
                 break
             try:
-                result = await asyncio.wait_for(collector.collect(request),timeout=request.get('timeoutSeconds',45))
+                operation=collector.discover(request) if request.get('discover') else collector.collect(request)
+                result = await asyncio.wait_for(operation,timeout=request.get('timeoutSeconds',45))
+            except asyncio.TimeoutError:
+                result = {"errorCode": "timeout"}
+            except PermissionError:
+                result = {"errorCode": "blocked"}
+            except ConnectionError:
+                result = {"errorCode": "site_unavailable"}
             except Exception as error:
                 print(type(error).__name__+": "+str(error)[:180], file=sys.stderr, flush=True)
                 result = {"errorCode": "unavailable"}

@@ -25,7 +25,7 @@ permissions:
 
 jobs:
   prepare:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 360
     permissions:
       contents: write
@@ -38,12 +38,27 @@ jobs:
         with:
           version: '11.25.0'
       - run: pnpm install --frozen-lockfile
+      - uses: actions/setup-python@v6
+        if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.collect)
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: scripts/requirements-naver-browser.txt
+      - name: Install system Chrome collection dependencies
+        if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.collect)
+        run: |
+          python -m pip install -r scripts/requirements-naver-browser.txt
+          google-chrome --version
+          command -v xvfb-run
       - name: Install Chromium for daily apartment sale listings
         if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.collect)
         run: pnpm exec playwright install --with-deps chromium
       - name: Test daily sale listing schedule and browser collection
         if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.collect)
-        run: pnpm test:listings
+        run: xvfb-run --auto-servernum --server-args='-screen 0 1280x1000x24' pnpm test:listings
+        env:
+          NAVER_BROWSER_PYTHON: python
+          NAVER_CHROME_PATH: /usr/bin/google-chrome
       - name: Restore encrypted working database
         run: node scripts/automation.mjs restore
         env:
@@ -56,8 +71,11 @@ jobs:
           MOLIT_SERVICE_KEY: ${{ secrets.MOLIT_SERVICE_KEY }}
       - name: Collect trades, addresses and regional apartment sale listings
         if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.collect)
-        run: node --dns-result-order=ipv4first scripts/automation.mjs collect
+        run: xvfb-run --auto-servernum --server-args='-screen 0 1280x1000x24' node --dns-result-order=ipv4first scripts/automation.mjs collect
         env:
+          NAVER_LISTING_SOURCE: system-chrome
+          NAVER_BROWSER_PYTHON: python
+          NAVER_CHROME_PATH: /usr/bin/google-chrome
           MOLIT_SERVICE_KEY: ${{ secrets.MOLIT_SERVICE_KEY }}
           JUSO_ADDRESS_SEARCH_KEY: ${{ secrets.JUSO_ADDRESS_SEARCH_KEY }}
           INPUT_RECENT_MONTHS: ${{ inputs.recent_months }}
