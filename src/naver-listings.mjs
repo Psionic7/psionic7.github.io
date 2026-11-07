@@ -1,0 +1,72 @@
+import {validApartmentFavorites,sameApartmentFavorite} from './apartment-favorites.js';
+
+export const LISTING_SOURCE='naver-land';
+export const TRADE_TYPES={A1:'매매',B1:'전세',B2:'월세'};
+export const LISTING_ERRORS={
+  rate_limited:'네이버 요청 제한으로 수집을 중단했습니다. 잠시 후 다시 시도하세요.',
+  unauthorized:'네이버에서 접근을 허용하지 않았습니다. 수집 서버의 인증 설정을 확인하세요.',
+  unavailable:'네이버에 연결하지 못했습니다. 연결 상태를 확인하고 다시 시도하세요.',
+  invalid_response:'네이버 응답 형식을 확인할 수 없어 수집하지 않았습니다.',
+  address_mismatch:'네이버 단지 주소가 즐겨찾기 주소와 일치하지 않습니다. 단지 번호를 확인하세요.',
+  incomplete:'전체 매물 페이지를 확인하지 못해 이전 수집 결과를 유지합니다.',
+  unmatched:'주소가 일치하는 네이버 단지를 확인하지 못했습니다.',
+  browser_unavailable:'매물 수집 브라우저를 실행하지 못했습니다.',
+  blocked:'네이버에서 접근 제한 또는 보안 확인 화면을 표시해 수집을 중단했습니다.',
+  timeout:'매물 수집 제한 시간 안에 전체 목록을 확인하지 못했습니다.',
+  budget_exceeded:'이번 실행의 매물 수집 시간이 끝나 남은 단지는 수집하지 않았습니다.',
+  inventory_unavailable:'수집 지역의 전체 아파트 목록을 확인하지 못했습니다. 단지 대장 수집 상태를 확인하세요.',
+  site_unavailable:'네이버 웹 수집 화면에 접속하지 못해 이번 매물 수집을 중단했습니다.',
+};
+const object=value=>value!==null&&typeof value==='object'&&!Array.isArray(value);
+const text=(value,max=1000)=>typeof value==='string'&&value.length<=max;
+const timestamp=value=>typeof value==='string'&&Number.isFinite(Date.parse(value))&&new Date(value).toISOString()===value;
+const number=value=>typeof value==='number'&&Number.isFinite(value)&&value>0&&value<=100000;
+const date=value=>/^\d{4}-\d{2}-\d{2}$/.test(value)&&Number.isFinite(Date.parse(value+'T00:00:00Z'))&&new Date(value+'T00:00:00Z').toISOString().slice(0,10)===value;
+export const validComplexNo=value=>typeof value==='string'&&/^[1-9]\d{0,11}$/.test(value);
+
+export function parseComplexNo(value) {
+  if(typeof value!=='string')return '';
+  const input=value.trim();
+  if(validComplexNo(input))return input;
+  try {
+    const url=new URL(input);
+    if(url.protocol!=='https:'||url.hostname!=='new.land.naver.com'||url.port||url.username||url.password)return '';
+    const id=url.pathname.match(/^\/complexes\/([1-9]\d{0,11})\/?$/)?.[1];
+    return id||'';
+  }catch{return '';}
+}
+export const complexUrl=id=>`https://new.land.naver.com/complexes/${id}`;
+export const articleUrl=id=>`https://fin.land.naver.com/articles/${id}`;
+export const listingSearchUrl=favorite=>`https://m.land.naver.com/search/result/${encodeURIComponent(`${favorite.region_name} ${favorite.dong} ${favorite.apartment}`)}`;
+export function validConnections(value) {
+  return Array.isArray(value)&&value.length<=1000&&new Set(value.map(item=>item?.favoriteId)).size===value.length&&value.every(item=>object(item)&&text(item.favoriteId,2000)&&item.favoriteId.length>0&&validComplexNo(item.complexNo));
+}
+export function validTargets(value) {
+  return object(value)&&value.version===1&&validApartmentFavorites(value.favorites)&&validConnections(value.connections)&&value.connections.every(item=>value.favorites.some(f=>f.id===item.favoriteId));
+}
+export function validArticle(value) {
+  return object(value)&&validComplexNo(value.id)&&Object.hasOwn(TRADE_TYPES,value.tradeType)&&text(value.name)&&text(value.priceText,100)&&value.priceText.length>0&&text(value.rentText,100)&&Number.isSafeInteger(value.priceMan)&&value.priceMan>=0&&Number.isSafeInteger(value.rentMan)&&value.rentMan>=0&&number(value.areaM2)&&(value.supplyAreaM2===null||number(value.supplyAreaM2))&&['floor','building','direction','description','realtor'].every(key=>text(value[key]))&&text(value.confirmedOn,10)&&(!value.confirmedOn||date(value.confirmedOn));
+}
+export function validListingGroup(group) {
+  return object(group)&&validApartmentFavorites([group.favorite])&&validComplexNo(group.complexNo)&&text(group.complexName)&&timestamp(group.attemptedAt)&&['ready','failed'].includes(group.status)&&Array.isArray(group.articles)&&group.articles.length<=20000&&new Set(group.articles.map(a=>a?.id)).size===group.articles.length&&group.articles.every(validArticle)&&(group.collectedAt===null?group.articles.length===0&&group.status==='failed':timestamp(group.collectedAt)&&group.collectedAt<=group.attemptedAt)&&(group.status==='ready'?group.collectedAt!==null&&group.errorCode===null:Object.hasOwn(LISTING_ERRORS,group.errorCode))&&(group.collectionMethod===undefined?group.coverage===undefined:group.collectionMethod==='browser'&&(group.coverage==='partial'?group.articles.length>0:group.coverage==='complete'&&Number.isInteger(group.pageCount)&&group.pageCount>0&&group.pageCount<=2000)&&typeof group.sourceUrl==='string'&&group.sourceUrl.startsWith('https://')&&parseComplexNo(group.sourceUrl)===group.complexNo);
+}
+export const kstListingDay=(value=new Date())=>new Date(new Date(value).getTime()+9*60*60*1000).toISOString().slice(0,10);
+export function validListingCollection(value) {
+  if(!object(value)||!date(value.dayKst)||!timestamp(value.startedAt)||!(value.finishedAt===null||timestamp(value.finishedAt))||!['running','complete','partial','failed'].includes(value.status)||!Array.isArray(value.regionIds)||value.regionIds.length>5000||value.regionIds.some(id=>typeof id!=='string'||!/^dong_\d{8}$/.test(id)&&!/^custom_\d{5}_[a-f0-9]{12}$/.test(id))||new Set(value.regionIds).size!==value.regionIds.length||!Array.isArray(value.results)||value.results.length>1000)return false;
+  if(!['targetCount','successCount','failureCount','unmatchedCount','notAttemptedCount'].every(key=>Number.isInteger(value[key])&&value[key]>=0&&value[key]<=1000)||value.targetCount!==value.results.length||value.successCount+value.failureCount+value.unmatchedCount+value.notAttemptedCount!==value.targetCount)return false;
+  if(new Set(value.results.map(r=>r?.favoriteId)).size!==value.results.length||!value.results.every(r=>object(r)&&text(r.favoriteId,2000)&&r.favoriteId&&(r.favorite===undefined||validApartmentFavorites([r.favorite])&&r.favorite.id===r.favoriteId)&&['ready','failed','unmatched','not_attempted'].includes(r.status)&&(r.errorCode===null||Object.hasOwn(LISTING_ERRORS,r.errorCode))&&(r.status==='not_attempted'?r.attemptedAt===null:timestamp(r.attemptedAt))&&(r.status==='ready'?r.errorCode===null:r.status==='failed'||r.status==='unmatched'?Object.hasOwn(LISTING_ERRORS,r.errorCode):true)))return false;
+  const counts=status=>value.results.filter(r=>r.status===status).length;
+  return counts('ready')===value.successCount&&counts('failed')===value.failureCount&&counts('unmatched')===value.unmatchedCount&&counts('not_attempted')===value.notAttemptedCount&&(value.status==='running'?value.finishedAt===null:value.finishedAt!==null)&&(value.status!=='complete'||value.targetCount>0&&value.successCount===value.targetCount)&&(value.status!=='partial'||value.successCount>0&&value.successCount<value.targetCount)&&(value.status!=='failed'||value.successCount===0)&&(!value.errorCode||Object.hasOwn(LISTING_ERRORS,value.errorCode));
+}
+export function validListingSnapshot(value) {
+  return object(value)&&value.version===1&&value.source===LISTING_SOURCE&&timestamp(value.generatedAt)&&Array.isArray(value.groups)&&value.groups.length<=1000&&new Set(value.groups.map(g=>g?.favorite?.id)).size===value.groups.length&&value.groups.every(validListingGroup)&&(value.collection===undefined||validListingCollection(value.collection));
+}
+export const listingSnapshot=(groups,now=new Date().toISOString())=>({version:1,source:LISTING_SOURCE,generatedAt:now,groups});
+export function listingGroupForFavorite(groups,favorite,complexNo) {
+  const candidates=groups.filter(group=>(!complexNo||group.complexNo===complexNo)&&sameApartmentFavorite(group.favorite,favorite));
+  return candidates.find(group=>group.favorite.id===favorite.id)||(candidates.length===1?candidates[0]:null);
+}
+export const listingIsStale=(group,now=Date.now())=>!group?.collectedAt||now-Date.parse(group.collectedAt)>24*60*60*1000||Date.parse(group.collectedAt)>now+60000;
+export function selectArticles(articles,{tradeType='',minArea='',maxArea='',sort='priceAsc'}={}) {
+  return articles.filter(a=>(!tradeType||a.tradeType===tradeType)&&(minArea===''||a.areaM2>=Number(minArea))&&(maxArea===''||a.areaM2<=Number(maxArea))).sort((a,b)=>sort==='latest'?b.confirmedOn.localeCompare(a.confirmedOn)||b.id.localeCompare(a.id):sort==='areaAsc'?a.areaM2-b.areaM2:(sort==='priceDesc'?-1:1)*(a.priceMan-b.priceMan||a.rentMan-b.rentMan)||a.id.localeCompare(b.id));
+}

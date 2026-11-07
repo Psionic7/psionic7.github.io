@@ -10,6 +10,8 @@ import {sha256} from '../server/export.mjs';
 import {validateApartmentMap} from '../src/apartment-map-data.js';
 import {validBounds} from '../src/map-bounds.mjs';
 import {checkBrowserData} from '../server/browser-export.mjs';
+import {validListingSnapshot,validListingCollection} from '../src/naver-listings.mjs';
+import {validRegionalListingReport} from '../src/naver-listing-report.mjs';
 const privateName=name=>name.split('/').some(p=>['local','admin-dist','.venv','.streamlit'].includes(p)) || /(^|\/)(\.env[^/]*|collection_regions\.json|my_real_estate\.sqlite3|secrets\.toml)$/.test(name);
 export function checkPublic(root=ROOT,secretsFile=paths.env,{checkIndex=true}={}) {
   const secrets=secretValues(secretsFile);
@@ -51,6 +53,18 @@ export function checkPublic(root=ROOT,secretsFile=paths.env,{checkIndex=true}={}
       if(count!==manifest.count||count!==db.prepare('SELECT count(*) AS n FROM trades').get().n||Object.values(db.prepare('PRAGMA integrity_check').get())[0]!=='ok')throw new Error('공개 DB 건수 / 무결성 오류');
     }finally{db?.close();if(temporary&&fs.existsSync(temporary))fs.unlinkSync(temporary);}
   }
+  const listingFiles=new Set(['snapshot.json','collection.json']);
+  for(const sub of ['public/listings','docs/listings']) {
+    const directory=path.join(root,sub),snapshot=readJson(path.join(directory,'snapshot.json')),status=readJson(path.join(directory,'collection.json'));
+    if(!validListingSnapshot(snapshot)||status.version!==1||status.source!=='naver-land'||status.collection!==null&&!validListingCollection(status.collection)||JSON.stringify(status.collection)!==JSON.stringify(snapshot.collection||null))throw new Error('공개 매물 스냅샷 / 일일 수집 상태 불일치');
+    for(const file of fs.readdirSync(directory)){
+      if(['snapshot.json','collection.json'].includes(file))continue;
+      const match=file.match(/^region-(\d{5})-report\.json$/);
+      if(!match||!validRegionalListingReport(readJson(path.join(directory,file)),snapshot,match[1]))throw new Error('공개 지역별 매물 보고서의 경로 / 집계 / 관찰 정보가 일치하지 않습니다.');
+      listingFiles.add(file);
+    }
+  }
+  for(const file of listingFiles)if(!fs.readFileSync(path.join(root,'public/listings',file)).equals(fs.readFileSync(path.join(root,'docs/listings',file))))throw new Error('매물을 내보낸 뒤 공개 빌드를 다시 실행하세요.');
   for(const sub of ['public/apartment-map','docs/apartment-map']) {
     const folder=path.join(root,sub);if(!fs.existsSync(folder))continue;
     const info=readJson(path.join(folder,'manifest.json'));

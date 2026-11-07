@@ -10,8 +10,10 @@ import {cloudGithub} from '../server/cloud-github.mjs';
 import {validateConfig, CONFIG_PATH} from '../automation/config.mjs';
 import {refreshPlan, repairTradeData} from '../server/trade-refresh.mjs';
 import {linkMasterTrades} from '../server/apartment-master.mjs';
+import {collectDailyListings,listingExport} from '../server/daily-naver-listings.mjs';
+import {writeListingSnapshot} from '../server/naver-listings.mjs';
 
-export async function collectConfigured(db, config, {now, tradeKey = serviceKey(), jusoKey = addressKey(), collector = collectMonth, addressCollector = collectAddresses, onProgress = console.log} = {}) {
+export async function collectConfigured(db, config, {now, tradeKey = serviceKey(), jusoKey = addressKey(), collector = collectMonth, addressCollector = collectAddresses, listingCollector=collectDailyListings,listingOptions={},onProgress = console.log} = {}) {
   const catalog = regions(db), settings = validateConfig(config, catalog);
   if (!tradeKey || !jusoKey) throw new Error('실거래 API 키와 도로명주소 API 키를 설정하세요.');
   const selected = catalog.filter(r => settings.region_ids.includes(r.region_id));
@@ -24,6 +26,7 @@ export async function collectConfigured(db, config, {now, tradeKey = serviceKey(
     onProgress(`${task.name} ${task.month}: ${n}건`);
   }
   const addresses = await addressCollector(db, jusoKey, {limit: settings.address_limit});
+  const listings=await listingCollector(db,settings,{...listingOptions,now:now?()=>new Date(now).getTime():()=>Date.now(),onProgress});
   if (plan.history.length) db.prepare('INSERT OR REPLACE INTO metadata VALUES(?,?)').run('historical_refresh_cursor', plan.history.at(-1));
   db.prepare('INSERT OR REPLACE INTO metadata VALUES(?,?)').run('last_refresh', JSON.stringify({finished_at: new Date().toISOString(), recent_months: plan.recent, historical_months: plan.history}));
   // Keep three recent source responses for each district/month in cloud state.
@@ -36,7 +39,7 @@ export async function collectConfigured(db, config, {now, tradeKey = serviceKey(
       SELECT id FROM (SELECT id, ROW_NUMBER() OVER (PARTITION BY region_code,deal_month ORDER BY id DESC) AS n FROM collection_runs) WHERE n>3
     );
     COMMIT;`);
-  return {tasks: tasks.length, rows: count, addresses};
+  return {tasks: tasks.length, rows: count, addresses,listings};
 }
 
 export async function runAutomation(action) {
@@ -70,15 +73,29 @@ export async function runAutomation(action) {
     const settings = {...config};
     if (process.env.INPUT_RECENT_MONTHS) settings.recent_months = Number(process.env.INPUT_RECENT_MONTHS);
     const db = connect();
-    try {const result = await collectConfigured(db, settings); console.log(`수집 완료: ${result.tasks}개 지역·월, ${result.rows}건, 새 주소 ${result.addresses.completed}건`);}
+    try {
+      const initialFile=path.join(ROOT,'public/listings/snapshot.json');
+      const result = await collectConfigured(db, settings,{listingOptions:{initialSnapshot:fs.existsSync(initialFile)?readJson(initialFile):undefined}});
+      console.log(`실거래 수집 완료: ${result.tasks}개 지역·월, ${result.rows}건, 새 주소 ${result.addresses.completed}건`);
+      const listings=result.listings;
+      atomicWrite(path.join(ROOT,'local/data-validation/listings.json'),JSON.stringify(listings,null,2)+'\n');
+      console.log(`매물 일일 수집: ${listings.dayKst} · 성공 ${listings.successCount}/${listings.targetCount}곳 · 실패 ${listings.failureCount} · 미확정 ${listings.unmatchedCount} · 미시도 ${listings.notAttemptedCount}`);
+      if(listings.status!=='complete')console.log('::warning title=매물 수집 미완료::일부 또는 전체 매물을 확인하지 못했습니다. 이전 자료와 실패 상태를 보존합니다.');
+      if(process.env.GITHUB_STEP_SUMMARY)fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY,`\n### 매물 일일 수집 (${listings.dayKst} KST)\n\n대상 ${listings.targetCount}곳 · 성공 ${listings.successCount} · 실패 ${listings.failureCount} · 미확정 ${listings.unmatchedCount} · 미시도 ${listings.notAttemptedCount}\n\n상태: ${listings.status}${listings.alreadyCollected?' (당일 시도한 단지는 재수집하지 않음)':''}\n`);
+    }
     finally {db.close();}
   } else if (action === 'export') {
     const db = connect();
+    let listings;
     try {
       if (db.prepare("SELECT name FROM sqlite_master WHERE name='apartment_complexes'").get() && db.prepare('SELECT 1 FROM apartment_complexes WHERE active=1 LIMIT 1').get()) linkMasterTrades(db);
+      const initialFile=path.join(ROOT,'public/listings/snapshot.json');
+      listings=listingExport(db,{initialSnapshot:fs.existsSync(initialFile)?readJson(initialFile):undefined});
     } finally {db.close();}
     const manifest = exportData();
-    const status = {prepared_at: new Date().toISOString(), published_at: manifest.published_at, count: manifest.count, run_url: process.env.GITHUB_SERVER_URL && `${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}`};
+    writeListingSnapshot(path.join(ROOT,'public/listings/snapshot.json'),listings);
+    atomicWrite(path.join(ROOT,'public/listings/collection.json'),JSON.stringify({version:1,source:'naver-land',collection:listings.collection||null})+'\n');
+    const status = {prepared_at: new Date().toISOString(), published_at: manifest.published_at, count: manifest.count,listings:listings.collection||null, run_url: process.env.GITHUB_SERVER_URL && `${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}`};
     atomicWrite(path.join(ROOT, 'public/automation-status.json'), JSON.stringify(status) + '\n');
     console.log(`공개 데이터 ${manifest.count}건 추출·누락 검증 완료`);
   } else if (action === 'save') {

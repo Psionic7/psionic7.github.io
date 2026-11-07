@@ -32,7 +32,7 @@ export function savePreferences(scope,value) {
   try {
     const document=readDocument(true);
     const entries=Object.entries(document.scopes).filter(([key,item])=>key!==scope && object(item));
-    const persistent=new Set(['viewer','explorer','display','weekly','favoriteDashboard','apartmentMap','regionMap','apartmentTransactions','apartmentSearch','overview']);
+    const persistent=new Set(['viewer','explorer','display','weekly','favoriteDashboard','apartmentMap','regionMap','apartmentTransactions','apartmentSearch','overview','naverListings']);
     const retained=entries.filter(([key])=>persistent.has(key));
     const scopes=[...retained,...entries.filter(([key])=>!persistent.has(key)).slice(-(79-retained.length))];
     scopes.push([scope,value]);

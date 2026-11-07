@@ -193,3 +193,16 @@ test('local job deduplicates districts, rejects overlapping work and supports ca
   let final;for(let i=0;i<20;i++){final=await(await fetch(base+'/api/state')).json();if(final.job.status!=='running')break;await new Promise(r=>setTimeout(r,10));}
   assert.equal(final.job.status,'cancelled');assert.equal(requested,1);assert.equal(final.stats.count,0);
 });
+
+test('local trade collection invokes the same regional listing job after completing saved districts',async t=>{
+  const {files,catalog}=fixture(t);saveFavorites(catalog.map(r=>r.region_id),files.favorites,catalog);const listingCalls=[];
+  const server=createAdminServer({files,fetcher:async()=>({total:1,items:[raw],xml:xml([raw])}),dailyListingCollector:async(db,settings,{signal})=>{
+    listingCalls.push(settings.region_ids);assert.equal(db.prepare('SELECT count(*) AS n FROM trades').get().n,1);assert(signal instanceof AbortSignal);
+    return {status:'complete',dayKst:'2026-11-06',targetCount:2,successCount:2,failureCount:0,unmatchedCount:0,notAttemptedCount:0};
+  }});
+  server.listen(0,'127.0.0.1');await once(server,'listening');t.after(()=>new Promise(resolve=>server.close(resolve)));
+  const base=`http://127.0.0.1:${server.address().port}`,state=await(await fetch(base+'/api/state')).json();
+  const started=await fetch(base+'/api/collect',{method:'POST',headers:{'Content-Type':'application/json','X-Admin-CSRF':state.csrf},body:JSON.stringify({start:'202601',end:'202601'})});assert.equal(started.status,202);
+  let final;for(let i=0;i<30;i++){final=await(await fetch(base+'/api/state')).json();if(final.job.status!=='running')break;await new Promise(resolve=>setTimeout(resolve,10));}
+  assert.equal(final.job.status,'completed');assert.deepEqual(listingCalls,[catalog.map(r=>r.region_id)]);assert.equal(final.job.listings.successCount,2);
+});

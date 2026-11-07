@@ -1,0 +1,2 @@
+# Optional system-Chrome collector, also used by the verified insane-search runtime.
+nodriver==0.50.99

@@ -5,6 +5,7 @@ import {DatabaseSync, backup} from 'node:sqlite';
 import {parseEnv} from 'node:util';
 import {randomUUID} from 'node:crypto';
 import {APARTMENT_MASTER_SCHEMA} from './apartment-master-schema.mjs';
+import {NAVER_LISTING_SCHEMA} from './naver-listing-schema.mjs';
 
 export const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 export const paths = {db:path.join(ROOT,'local/my_real_estate.sqlite3'), favorites:path.join(ROOT,'local/collection_regions.json'), env:path.join(ROOT,'.env')};
@@ -41,7 +42,7 @@ export function readJson(filename) {return JSON.parse(fs.readFileSync(filename,'
 export function localEnv(filename=paths.env) {return fs.existsSync(filename)?parseEnv(fs.readFileSync(filename,'utf8').replace(/^\uFEFF/,'')):{};}
 export function serviceKey(filename=paths.env) {return process.env.MOLIT_SERVICE_KEY || localEnv(filename).MOLIT_SERVICE_KEY || '';}
 export function secretValues(filename=paths.env) {
-  const values=Object.entries({...localEnv(filename),...process.env}).filter(([k,v])=>/(SERVICE_KEY|API_KEY|STATE_KEY|SEARCH_KEY|TOKEN|SECRET|PASSWORD)$/i.test(k)&&v?.length>=12).map(([,v])=>v);
+  const values=Object.entries({...localEnv(filename),...process.env}).filter(([k,v])=>/(SERVICE_KEY|API_KEY|STATE_KEY|SEARCH_KEY|TOKEN|SECRET|PASSWORD|AUTHORIZATION)$/i.test(k)&&v?.length>=12).map(([,v])=>v);
   return [...new Set(values.flatMap(v=>{let decoded=v;try{decoded=decodeURIComponent(v);}catch{}return [v,decoded,encodeURIComponent(decoded)];}))];
 }
 export function checkedBytes(value,secrets=secretValues(),{maxBytes=95*1024*1024}={}) {
@@ -84,7 +85,7 @@ export async function initialize({db=paths.db,favorites=paths.favorites,env=path
   if(firstRun) for(const [target,source] of [[favorites,path.join(legacy,'data/collection_regions.json')],[env,path.join(legacy,'.env')]]) if(!fs.existsSync(target)&&fs.existsSync(source)) atomicWrite(target,fs.readFileSync(source));
   const connection=connect(db);
   try {
-    connection.exec(PUBLIC_SCHEMA+LOCAL_SCHEMA+APARTMENT_MASTER_SCHEMA);
+    connection.exec(PUBLIC_SCHEMA+LOCAL_SCHEMA+APARTMENT_MASTER_SCHEMA+NAVER_LISTING_SCHEMA);
     const boundary=readJson(path.join(ROOT,'admin/assets/dong_boundaries.geojson'));
     const insert=connection.prepare('INSERT OR IGNORE INTO regions VALUES (?,?,?,?,?,?,?)');
     connection.exec('BEGIN');

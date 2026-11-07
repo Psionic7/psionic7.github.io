@@ -4,7 +4,7 @@ import http from 'node:http';
 import {randomBytes,timingSafeEqual} from 'node:crypto';
 import {spawn} from 'node:child_process';
 import {pathToFileURL} from 'node:url';
-import {ROOT,paths,initialize,connect,regions,savedIds,saveFavorites,serviceKey} from './storage.mjs';
+import {ROOT,paths,initialize,connect,regions,savedIds,saveFavorites,serviceKey,atomicWrite} from './storage.mjs';
 import {collectMonth,monthsBetween,collectionTasks,currentMonth} from './collector.mjs';
 import {addressKey,collectAddresses,pendingAddresses} from './addresses.mjs';
 import {coordinateKey,collectCoordinates,pendingCoordinates,coordinateStats,coordinatePoints} from './coordinates.mjs';
@@ -16,8 +16,10 @@ import {vworldKey} from './apartment-master-enrichment.mjs';
 import {checkPublic} from '../scripts/check-public.mjs';
 import {runDatabaseJob} from './job-runner.mjs';
 import {buildCatalog} from '../src/domain.mjs';
+import {collectDailyListings,listingExport} from './daily-naver-listings.mjs';
+import {writeListingSnapshot} from './naver-listings.mjs';
 
-export function createAdminServer({files=paths,staticRoot=path.join(ROOT,'admin-dist'),fetcher,addressFetcher,coordinateFetcher,masterCollector=collectApartmentMaster,spawnBuild=spawn,checkBuild=checkPublic}={}) {
+export function createAdminServer({files=paths,staticRoot=path.join(ROOT,'admin-dist'),fetcher,addressFetcher,coordinateFetcher,masterCollector=collectApartmentMaster,dailyListingCollector=collectDailyListings,spawnBuild=spawn,checkBuild=checkPublic}={}) {
   const token=randomBytes(32).toString('hex');
   let job={status:'idle',completed:0,total:0,rows:0},controller;
   const busy=()=>job.status==='running'||withDb(masterCollectionRunning);
@@ -87,7 +89,10 @@ export function createAdminServer({files=paths,staticRoot=path.join(ROOT,'admin-
             run: async(db,job,signal) => {
               // Each completed month is committed atomically by collectMonth.
               for(const task of tasks){signal.throwIfAborted();job.message=`${task.name} · ${task.month}`;const n=await collectMonth(db,key,task.code,task.month,task.name,{signal,fetcher});job.completed++;job.rows+=n;}
-              job.status='completed';job.message='수집 완료. 공개 데이터 내보내기를 실행하세요.';
+              signal.throwIfAborted();job.message='저장 지역의 전체 아파트 매물을 확인합니다.';
+              const listings=await dailyListingCollector(db,{region_ids:selected.map(r=>r.region_id)},{signal,onProgress:message=>{job.message=message;}});
+              job.listings={status:listings.status,dayKst:listings.dayKst,targetCount:listings.targetCount,successCount:listings.successCount,failureCount:listings.failureCount,unmatchedCount:listings.unmatchedCount,notAttemptedCount:listings.notAttemptedCount};
+              job.status='completed';job.message=`실거래 수집 완료 · 매물 ${listings.successCount}/${listings.targetCount}곳 ${listings.status==='complete'?'확인':'수집 미완료, 이전 자료 유지'}. 공개 데이터 내보내기를 실행하세요.`;
             },
             failureMessage:e=>/^(데이터 검증 실패:|API |공공 API |수집 중 |거래 필드)/.test(e.message)?e.message:'수집 실패. API 승인, 연결 및 응답을 확인하세요.',
             cancelledMessage:'수집을 중단했습니다. 완료한 월은 보존됩니다.',
@@ -142,6 +147,10 @@ export function createAdminServer({files=paths,staticRoot=path.join(ROOT,'admin-
         }
         if(pathname==='/api/export') {
           const result=exportData({source:files.db,favorites:files.favorites,secretsFile:files.env});
+          const filename=path.join(ROOT,'public/listings/snapshot.json');
+          const listings=withDb(db=>listingExport(db,{initialSnapshot:fs.existsSync(filename)?JSON.parse(fs.readFileSync(filename,'utf8')):undefined}));
+          writeListingSnapshot(filename,listings);
+          atomicWrite(path.join(ROOT,'public/listings/collection.json'),JSON.stringify({version:1,source:'naver-land',collection:listings.collection||null})+'\n');
           return json(res,200,{count:result.count,favorites:result.favorite_region_ids.length});
         }
         if(pathname==='/api/build') {

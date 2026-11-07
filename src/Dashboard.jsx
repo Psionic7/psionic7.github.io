@@ -5,6 +5,7 @@ import {useDistrictDatasets} from './weekly/useDistrictDatasets.js';
 import {buildOverview,overviewDurations} from './dashboard/model.mjs';
 import {FavoriteOverview,OverviewMetrics,OverviewTrend,RecentOverview,shortDate} from './dashboard/OverviewWidgets.jsx';
 import './dashboard/dashboard.css';
+import FavoriteListings from './FavoriteListings.jsx';
 export default function Dashboard({manifest,regions,apartments,days,onDaysChange,districtLoader,onOpenDong,onOpenApartment,onManageDongs,onManageApartments,onSearch}) {
   const [retry,setRetry]=useState(0);
   const codes=useMemo(()=>[...new Set([...regions,...apartments].map(item=>item.region_code))].sort(),[regions,apartments]);
@@ -24,5 +25,6 @@ export default function Dashboard({manifest,regions,apartments,days,onDaysChange
       <div className="overview-insights"><OverviewTrend model={model}/><RecentOverview model={model} regions={regions} apartments={apartments} onOpenDong={onOpenDong} onOpenApartment={onOpenApartment}/></div>
       <p className="small-note overview-footnote">요약·흐름은 해제 거래를 제외합니다. 이전 기간 비교는 두 기간의 계약월 자료가 모두 있는 경우에만 표시합니다. 최근 계약은 신고 지연과 정정에 따라 추가·변경될 수 있습니다.</p>
     </>}
+    <FavoriteListings apartments={apartments}/>
   </div>;
 }

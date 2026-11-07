@@ -61,7 +61,7 @@ export default function CloudAdmin({clientFactory = adminClient, fetcher = fetch
   const visible = matches.slice(0, 100);
   const toggle = id => {if (!busy) setConfig(c => ({...c, region_ids: c.region_ids.includes(id) ? c.region_ids.filter(v => v !== id) : [...c.region_ids, id]}));};
   return <main className="cloud-admin">
-    <header className="page-header"><div><a href="/">집의 기록</a><h1>데이터 수집 관리자</h1><p>매일 예약 수집과 수동 실행을 관리합니다.</p></div>{client && <button disabled={busy} onClick={logout}>{user} · 로그아웃</button>}</header>
+    <header className="page-header"><div><a href="/">집의 기록</a><h1>데이터 수집 관리자</h1><p>매일 실거래가와 수집 지역 전체 아파트의 매물을 함께 수집합니다.</p></div>{client && <button disabled={busy} onClick={logout}>{user} · 로그아웃</button>}</header>
     {error && <p role="alert" className="notice error">{error}</p>}{message && <p role="status" className="notice">{message}</p>}
     {published && <p className="small-note">공개 자료 업데이트: {time(published.published_at)} KST · {published.count.toLocaleString('ko-KR')}건</p>}
     {!client ? <section className="panel">
@@ -89,13 +89,13 @@ export default function CloudAdmin({clientFactory = adminClient, fetcher = fetch
         <p className="small-note">검색 결과는 최대 100곳까지 표시합니다. 같은 시군구의 여러 동은 API를 한 번만 요청합니다.</p>
         <button className="primary" disabled={busy || !dirty || activeRun || pending || !config.region_ids.length} onClick={() => operation(async () => {const saved = await client.save(config, loaded, catalog); setLoaded(saved); setConfig(saved.config); setMessage('예약 시간과 수집 지역을 저장했습니다. 사이트도 최신 저장 DB로 다시 배포됩니다.');})}>설정 저장</button>
       </section>
-      <section className="panel"><h2>지금 수집</h2><p>저장한 지역을 수집하고 도로명주소 조회·검사·사이트 배포까지 실행합니다.</p>
+      <section className="panel"><h2>지금 수집</h2><p>저장한 지역의 실거래가·도로명주소·전체 아파트 매물을 수집하고 검사·사이트 배포까지 실행합니다. 매물은 한국 날짜별 하루 한 번 시도하며 같은 날 실행하면 이미 시도한 단지는 재수집하지 않습니다.</p>
         <div className="cloud-fields"><label>이번 실행의 수집 기간<select value={months} onChange={e => setMonths(e.target.value)}><option value="">저장 설정 사용 (최근 {loaded.config.recent_months}개월)</option>{Array.from({length: 12}, (_, i) => <option key={i} value={i + 1}>최근 {i + 1}개월</option>)}</select></label>
         <button className="primary" disabled={busy || dirty || activeRun || pending} onClick={() => operation(async () => {requestedAfter.current = new Set(runs.map(r => r.id)); await client.dispatch(months); setPending(true); setMessage('수집 실행을 요청했습니다. 아래 실행 기록에 나타나기까지 잠시 걸릴 수 있습니다.'); setRuns(await client.runs());})}>{pending ? '실행 요청됨' : activeRun ? '작업 실행 중' : '수집하고 배포'}</button></div>
         {dirty && <p className="small-note">변경한 설정을 저장하거나 다시 불러온 뒤 실행하세요.</p>}
       </section>
       <section className="panel"><div className="section-title"><h2>최근 실행 기록</h2><a href={`https://github.com/${REPOSITORY}/actions/workflows/refresh-data.yml`} target="_blank" rel="noreferrer">GitHub에서 상세 로그·중단</a></div>
-        <p className="small-note">15초마다 갱신합니다. 성공은 수집·검사·배포 완료를 의미하며, 실패하면 기존 공개 사이트가 유지됩니다.</p>
+        <p className="small-note">15초마다 갱신합니다. 성공은 실거래 처리·검사·배포 완료를 의미합니다. 매물의 부분 실패 여부는 관심 목록의 매물 일일 수집 상태와 상세 로그에서 확인하세요. 배포 실패 시 기존 공개 사이트가 유지됩니다.</p>
         {runs.length ? <ul className="cloud-runs">{runs.map(r => <li key={r.id}><a href={r.html_url} target="_blank" rel="noreferrer">{time(r.created_at)} KST</a><span>{({schedule: '예약 수집', workflow_dispatch: '수동 실행', push: '사이트 갱신'}[r.event] || r.event)}</span><strong>{statusName(r)}</strong></li>)}</ul> : <p>실행 기록이 없습니다.</p>}
       </section>
     </>}
