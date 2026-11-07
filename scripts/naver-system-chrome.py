@@ -182,7 +182,18 @@ async def main():
     parser=argparse.ArgumentParser()
     parser.add_argument('--base-url',default='https://new.land.naver.com')
     args=parser.parse_args()
-    browser = await uc.start(headless=os.environ.get('NAVER_CHROME_HEADLESS')=='1',browser_executable_path=os.environ.get('NAVER_CHROME_PATH') or None,browser_args=['--lang=ko-KR','--window-size=1280,1000'])
+    try:
+        browser = await uc.start(headless=os.environ.get('NAVER_CHROME_HEADLESS')=='1',browser_executable_path=os.environ.get('NAVER_CHROME_PATH') or None,browser_args=['--lang=ko-KR','--window-size=1280,1000'])
+    except Exception:
+        for instance in list(uc.util.get_registered_instances()):
+            process=getattr(instance,'_process',None)
+            if process and process.stderr and os.environ.get('NAVER_BROWSER_DIAGNOSTICS')=='1':
+                try:
+                    error=await asyncio.wait_for(process.stderr.read(4096),timeout=1)
+                    print(error.decode('utf-8',errors='replace'),file=sys.stderr,flush=True)
+                except asyncio.TimeoutError:pass
+            instance.stop()
+        raise
     try:
         tab = await browser.get(args.base_url+'/')
         await asyncio.sleep(3)
