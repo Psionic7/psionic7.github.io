@@ -32,8 +32,9 @@ test('real Python/nodriver Chrome searches a visible suggestion and reads sale p
       </body></html>`);
   });
   server.listen(0,'127.0.0.1');await once(server,'listening');
-  const source=await createDailyListingSource({baseUrl:`http://127.0.0.1:${server.address().port}`,python:process.env.NAVER_BROWSER_PYTHON,timeoutMs:45000});
-  t.after(async()=>{await source.close();server.closeAllConnections();await new Promise(resolve=>server.close(resolve));});
+  let source;
+  t.after(async()=>{await source?.close();server.closeAllConnections();await new Promise(resolve=>server.close(resolve));});
+  source=await createDailyListingSource({baseUrl:`http://127.0.0.1:${server.address().port}`,python:process.env.NAVER_BROWSER_PYTHON,timeoutMs:45000});
   const group=await source.collect({favorite,query:'풍덕천동 무인테스트단지'});
   assert.equal(group.tradeType,'A1');assert.equal(group.coverage,'complete');assert.equal(group.pageCount,2);
   assert.deepEqual(group.articles.map(a=>a.id),['2660000001','2660000003']);

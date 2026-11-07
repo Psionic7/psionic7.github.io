@@ -36,6 +36,7 @@ jobs:
         env:
           NAVER_BROWSER_PYTHON: python
           NAVER_CHROME_PATH: /usr/bin/google-chrome
+          NAVER_BROWSER_DIAGNOSTICS: '1'
       - name: Collect real sale listings by known ID and automatic search
         run: xvfb-run --auto-servernum --server-args='-screen 0 1280x1000x24' node scripts/check-naver-live.mjs
         env:
