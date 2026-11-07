@@ -40,7 +40,7 @@ export async function loadApartmentMap() {
 }
 export const mapVisibleApartments=(apartments,{regionCode='',dong='',query='',favoriteOnly=false},favorites=[])=>{
   const saved=new Set(favorites.map(p=>p.id)),text=searchName(query);
-  return apartments.filter(p=>(!regionCode||p.region_code===regionCode)&&(!dong||p.dong===dong)&&(!favoriteOnly||favorites.some(f=>sameApartmentFavorite(f,p)))&&(!text||[p.apartment,p.road_address,p.region_name,p.dong,...(p.name_aliases||[])].some(s=>searchName(s).includes(text))));
+  return apartments.filter(p=>(!regionCode||p.region_code===regionCode)&&(!dong||p.dong===dong)&&(!favoriteOnly||favorites.some(f=>sameApartmentFavorite(f,p)))&&(!text||[p.apartment,p.road_address,p.region_name,p.dong,p.jibun,p.postal_code,...(p.name_aliases||[])].some(s=>searchName(s).includes(text))));
 };
 
 export function mapCollectedApartments(apartments,manifest){

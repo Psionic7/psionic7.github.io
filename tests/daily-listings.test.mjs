@@ -148,6 +148,12 @@ test('ambiguous generic official names use verified trade aliases for search',t=
   assert.equal(dailyListingTargets(db,config)[0].query,'정자동 정든마을(2단지)(동아)');
 });
 
+test('a generic official name uses the numbered phase from its verified trade alias in the search query',t=>{
+  const db=fixture(t);db.prepare("UPDATE apartment_complexes SET name='삼성아파트' WHERE apartment_id='hub:a'").run();
+  db.prepare('INSERT INTO apartment_trade_links VALUES(?,?,?,?,?,?,?,?,?)').run('41135','정자동','1','삼성1','hub:a','matched','address','[]','2026-11-06Z');
+  assert.equal(dailyListingTargets(db,config)[0].query,'정자동 삼성1차');
+});
+
 test('encrypted working DB restore retains daily attempts, connections and snapshots',async t=>{
   const db=fixture(t),options={now:()=>Date.parse('2026-11-06T00:00:00.000Z'),sourceFactory:async()=>source()};await collectDailyListings(db,config,options);
   const folder=fs.mkdtempSync(path.join(os.tmpdir(),'daily-listing-state-'));t.after(()=>{const absolute=path.resolve(folder);assert(absolute.startsWith(path.resolve(os.tmpdir())+path.sep)&&path.basename(absolute).startsWith('daily-listing-state-'));fs.rmSync(absolute,{recursive:true,force:true});});

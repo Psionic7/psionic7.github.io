@@ -1,5 +1,16 @@
 # Codex 작업 지침
 
+## 사용자 작업 규칙: 아파트 식별 정보
+
+- 아파트를 찾거나 실거래·매물·지도·주소 데이터를 연결하기 전에 `server/apartment-identity.mjs`의 `apartmentInformation`, `searchApartmentInformation`, `resolveApartmentIdentity`를 사용하세요. `apartment_identity`와 기존 `apartment_aliases`, `apartment_identity_addresses`가 공통 아파트 정보입니다.
+- 기본키는 기존 `apartment_complexes.apartment_id`입니다. 단지명이 다르다는 이유로 새 ID를 만들거나, 이름·부분 일치·우편번호만으로 단지를 병합하지 마세요. 같은 이름이나 주소에 후보가 여러 개면 자동 연결하지 말고 미확정 상태를 보존하세요.
+- 별칭은 건축물대장, 같은 지번을 확인한 주소 API, 연결이 검증된 실거래, 주소 검증을 통과한 네이버 관찰에서만 등록하세요. 수집 실패나 검색 결과의 이름 유사도를 연결 근거로 사용하지 마세요.
+- 사용자가 확인한 대표 이름·별칭은 `automation/apartment-aliases.json`에 기존 ID와 행정구역·법정동·지번, 근거를 함께 기록하세요. 수집기나 화면 코드에 단지별 예외를 하드코딩하지 마세요. 네이버 번호를 재사용해도 실제 주소 검증을 생략하지 마세요.
+- 공식 주소 응답의 건물관리번호와 여러 도로명주소를 보존하세요. 확인되지 않은 우편번호는 NULL로 두세요. 같은 우편번호라는 이유로 주소나 단지가 같다고 판단하지 마세요.
+- 대장·주소·별칭·매물 연결을 갱신한 뒤 `pnpm data:identities`로 정보를 갱신하고, `pnpm data:export`의 필수 검증을 통해 검색·지도 데이터를 생성하세요. `public/apartment-identity/catalog.json`을 직접 편집하지 마세요.
+- 연결 규칙 변경 시 `tests/apartment-identity.test.mjs`의 삼성1차 명칭 차이, 동명이인 단지·다른 지번·우편번호 단독 연결 금지와 재실행 검증을 유지하세요. `pnpm test:data`, `pnpm data:verify`, `pnpm build`, `pnpm check:publish`를 통과해야 완료로 보고하세요.
+- 스키마와 사용 방법은 [아파트 식별 정보 통합](project-notes/apartment-identity.md)을 참조하세요.
+
 ## 사용자 작업 규칙: 커밋과 푸시
 
 - 기본 작업 범위는 요청한 파일 수정과 필요한 테스트까지입니다. 완료 후 수정 사항과 테스트 결과를 보고하고 변경 내용을 커밋하지 않은 상태로 남겨 두세요.

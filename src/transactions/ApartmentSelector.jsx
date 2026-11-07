@@ -9,6 +9,7 @@ import FilterGroup from '../weekly/FilterGroup.jsx';
 import './apartment-selector.css';
 import {normalizeSearch} from '../HomeSearch.jsx';
 import {hasTradeCoverage} from '../coverage.js';
+import {identityForApartment} from '../apartment-identity.mjs';
 const emptyRows=[];
 const unique=values=>[...new Set(values)].sort((a,b)=>a.localeCompare(b,'ko'));
 const emptyFilters={province:'',city:'',district:'',search:''};
@@ -18,7 +19,7 @@ function ApartmentOptions({items,selected,onToggle,favorites,onToggleFavorite,la
     <ApartmentFavoriteButton apartment={item} region={item} favorites={favorites} onToggle={onToggleFavorite} compact/>
   </div>)}</div>;
 }
-export default function ApartmentSelector({manifest,catalog,favorites,favoriteRegions,selected,onToggle,onClear,searchRegion,onSearchRegionChange,filters,setFilters,dataset,onRetry,onToggleFavorite}) {
+export default function ApartmentSelector({manifest,catalog,favorites,favoriteRegions,selected,onToggle,onClear,searchRegion,onSearchRegionChange,filters,setFilters,dataset,onRetry,onToggleFavorite,information=[]}) {
   const [query,setQuery]=useStoredState('apartmentSearch','query',()=>readPreferences('apartments:'+searchRegion?.region_id).search||'',textPreference);
   const [limit,setLimit]=useState(100);
   const [showUnavailable,setShowUnavailable]=useState(false);
@@ -33,11 +34,11 @@ export default function ApartmentSelector({manifest,catalog,favorites,favoriteRe
   const update=patch=>setFilters(previous=>({...previous,...patch}));
   const chooseRegion=id=>{onSearchRegionChange(id);setQuery('');};
   const rows=dataset?.catalog||dataset?.rows||emptyRows;
-  const candidates=useMemo(()=>searchRegion?apartmentSummary(scopeRows(rows,searchRegion)).map(item=>makeApartmentFavorite(item,searchRegion)):[],[rows,searchRegion]);
+  const candidates=useMemo(()=>searchRegion?apartmentSummary(scopeRows(rows,searchRegion)).map(item=>{const favorite=makeApartmentFavorite(item,searchRegion);return identityForApartment(information,favorite)||favorite;}):[],[rows,searchRegion,information]);
   const apartments=useMemo(()=>candidates.map(candidate=>favorites.find(saved=>sameApartmentFavorite(saved,candidate))||selected.find(saved=>sameApartmentFavorite(saved,candidate))||candidate),[candidates,favorites,selected]);
   const uniqueApartments=useMemo(()=>[...new Map(apartments.map(item=>[item.id,item])).values()].sort((a,b)=>a.apartment.localeCompare(b.apartment,'ko')||a.dong.localeCompare(b.dong,'ko')||a.jibun.localeCompare(b.jibun,'ko')),[apartments]);
   const needle=normalizeSearch(query);
-  const matches=uniqueApartments.filter(item=>normalizeSearch(item.apartment+' '+apartmentAddress(item,item.region_name)+' '+item.dong+' '+item.jibun).includes(needle));
+  const matches=uniqueApartments.filter(item=>normalizeSearch([item.apartment,apartmentAddress(item,item.region_name),item.dong,item.jibun,item.postal_code,...(item.name_aliases||[])].join(' ')).includes(needle));
   return <FilterGroup number="01" title="조회할 아파트" label="조회 아파트 설정" icon={Building2} className="region-card" actions={<button className="text-button" disabled={!selected.length} onClick={onClear}>선택 모두 해제</button>}>
     <div className="apartment-search-controls"><label>조회 지역<select value={searchRegion?.region_id||''} onChange={event=>chooseRegion(event.target.value)}><option value="">지역 선택 ({formatNumber(choices.length)}곳)</option>{searchRegion&&!choices.some(item=>item.region_id===searchRegion.region_id)&&<option value={searchRegion.region_id}>{searchRegion.label}</option>}{choices.map(item=><option value={item.region_id} key={item.region_id}>{item.label}{manifest.districts[item.region_code]?'':' · 미수집'}</option>)}</select></label>
       <label className="search-input"><span>아파트 검색</span><Search size={16}/><input type="search" placeholder="아파트명 · 도로명주소 · 법정동 · 지번" value={query} onChange={event=>setQuery(event.target.value)}/></label>

@@ -83,6 +83,21 @@ test('daily source seeds verified snapshot connections but rechecks their addres
   finally{await source.close();}
 });
 
+test('a short registered trade name discovers its numbered Naver phase and still verifies the exact parcel',async()=>{
+  const registered=makeApartmentFavorite({...favorite,apartment:'삼성아파트',master_id:'hub:registered',trade_keys:[JSON.stringify([favorite.dong,favorite.jibun,'삼성1'])]},favorite);
+  for(const wrongParcel of [false,true]){
+    const source=await createDailyListingSource({python:'test-python',spawnWorker:()=>worker(request=>{
+      if(request.discover)return {candidates:request.names.includes('삼성1차')?[{complexNo:'10959',name:'삼성1차'}]:[]};
+      return {complexNo:'10959',responses:responses.map((response,index)=>index===0?{...response,payload:{complexDetail:{...detail.complexDetail,complexName:'삼성1차',detailAddress:wrongParcel?'99':favorite.jibun}}}:response)};
+    })});
+    try{
+      const collect=()=>source.collect({favorite:registered,query:'풍덕천동 삼성1'});
+      if(wrongParcel)await assert.rejects(collect,e=>e.code==='unmatched');
+      else {const group=await collect();assert.equal(group.complexName,'삼성1차');assert.equal(group.favorite.id,registered.id);assert.equal(group.coverage,'complete');assert.equal(group.articles.length,1);}
+    }finally{await source.close();}
+  }
+});
+
 test('wrong names, mismatched parcels and ambiguous same-address search results never become successful connections',async()=>{
   for(const mode of ['name','parcel','ambiguous']){
     let navigations=0;

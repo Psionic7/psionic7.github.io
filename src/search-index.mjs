@@ -11,7 +11,7 @@ export function buildSearchIndex(groups,regions,masters=[]){
       const master=links.get(code+'|'+apartmentKey(row));
       const favorite=makeApartmentFavorite(master||row,region);
       let item=items.get(favorite.id);
-      if(!item){item={...favorite,name_aliases:[...(master?.name_aliases||[])],last_deal_date:row.deal_date};items.set(item.id,item);}
+      if(!item){item={...favorite,name_aliases:[...(master?.name_aliases||[])],postal_code:master?.postal_code||null,last_deal_date:row.deal_date};items.set(item.id,item);}
       if(!item.name_aliases.includes(row.apartment)&&row.apartment!==item.apartment)item.name_aliases.push(row.apartment);
       if(row.deal_date>item.last_deal_date)item.last_deal_date=row.deal_date;
     }

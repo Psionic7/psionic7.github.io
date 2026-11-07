@@ -37,6 +37,14 @@ function updateIndex(f,change) {
   registry.districts['11110']={...meta,source_sha256:manifest.districts['11110'].sha256};
   write(path.join(f.target,'manifest.json'),manifest);write(path.join(f.queries,'manifest.json'),registry);
 }
+
+test('an older cloud trade DB preserves the independently collected apartment identity catalog',async t=>{
+  const f=await fixture(t);f.export();
+  const file=path.join(path.dirname(f.target),'apartment-identity/catalog.json');
+  const apartment={...makeApartmentFavorite({apartment:'공식단지',dong:'청운동',jibun:'001-2',master_id:'hub:retained',trade_keys:[]},{region_code:'11110',region_name:'서울특별시 종로구'}),name_aliases:['예전단지명'],postal_code:'03000',addresses:[]};
+  const catalog={version:1,apartments:[apartment]};write(file,catalog);
+  f.export();assert.deepEqual(read(file),catalog);f.verify();
+});
 function addSearch(f,masters=[]) {
   const manifest=read(path.join(f.target,'manifest.json')),rows=read(path.join(f.target,manifest.districts['11110'].file));
   const folder=path.join(f.root,'public/apartment-map');fs.mkdirSync(folder,{recursive:true});

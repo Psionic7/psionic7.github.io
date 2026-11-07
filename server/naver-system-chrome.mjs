@@ -4,6 +4,7 @@ import {fileURLToPath} from 'node:url';
 import {BrowserListingError,BrowserListingPages} from './naver-browser-collector.mjs';
 import {LISTING_ERRORS,validComplexNo} from '../src/naver-listings.mjs';
 import {browserCaptureGroup} from './naver-browser-capture.mjs';
+import {listingSearchNames} from './naver-listing-names.mjs';
 
 export async function createSystemChromeListingSource({python=process.env.NAVER_BROWSER_PYTHON,connections=[],firstPageOnly=false,discover=false,headless=false,baseUrl='https://new.land.naver.com',spawnWorker=spawn,timeoutMs=90000}={}) {
   const origin=new URL(baseUrl).origin;
@@ -61,12 +62,12 @@ export async function createSystemChromeListingSource({python=process.env.NAVER_
   }
   return {
     async collect(target,{complexNo,signal}={}) {
-      complexNo??=byFavorite.get(target.favorite.id);
+      complexNo??=target.complexNo||byFavorite.get(target.favorite.id);
       if(complexNo)return collectKnown(target,complexNo,signal);
       if(!discover)throw new BrowserListingError('unmatched');
       signal?.throwIfAborted();
       if(typeof target.query!=='string'||!target.query.trim()||target.query.length>300)throw new BrowserListingError('unmatched');
-      const names=[target.favorite.apartment,...(target.favorite.trade_keys||[]).map(key=>JSON.parse(key)[2])];
+      const names=listingSearchNames(target.favorite);
       const abort=()=>child.kill();signal?.addEventListener('abort',abort,{once:true});
       let result;
       try{result=await request({discover:true,query:target.query,names});}

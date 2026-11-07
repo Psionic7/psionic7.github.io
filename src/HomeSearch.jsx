@@ -3,6 +3,7 @@ import {Search,ArrowUpRight,MapPin,Building2} from 'lucide-react';
 import {cachedJson,loadDistrict} from './data.js';
 import {buildSearchIndex} from './search-index.mjs';
 import {hasTradeCoverage} from './coverage.js';
+import {loadApartmentInformation} from './useApartmentInformation.js';
 
 export const normalizeSearch=value=>String(value||'').toLocaleLowerCase().replace(/[\s·()_-]/g,'');
 export async function loadSearchIndex(manifest){
@@ -13,7 +14,8 @@ export async function loadSearchIndex(manifest){
   }
   // Compatibility for a newly published manifest while an older page is still open.
   const groups=await Promise.all(Object.keys(manifest.districts).map(async code=>[code,(await loadDistrict(manifest,code,{catalogOnly:true})).catalog||[]]));
-  return buildSearchIndex(new Map(groups),manifest.regions);
+  const information=await loadApartmentInformation();
+  return buildSearchIndex(new Map(groups),manifest.regions,information);
 }
 export default function HomeSearch({manifest,catalog,onApartment,onRegion,loader=loadSearchIndex}){
   const [query,setQuery]=useState(''),[items,setItems]=useState(null),[failed,setFailed]=useState(false),[retry,setRetry]=useState(0),[limit,setLimit]=useState(12);
@@ -23,7 +25,7 @@ export default function HomeSearch({manifest,catalog,onApartment,onRegion,loader
   useEffect(()=>setLimit(12),[query]);
   const covered=catalog.filter(region=>hasTradeCoverage(manifest,region));
   const districts=covered.filter(region=>!region.dongs.length);
-  const matches=useMemo(()=>(items||[]).filter(item=>hasTradeCoverage(manifest,{...item,dongs:[item.dong]})&&normalizeSearch([item.apartment,item.region_name,item.dong,item.road_address,...(item.name_aliases||[])].join(' ')).includes(needle)),[items,manifest,needle]);
+  const matches=useMemo(()=>(items||[]).filter(item=>hasTradeCoverage(manifest,{...item,dongs:[item.dong]})&&normalizeSearch([item.apartment,item.region_name,item.dong,item.jibun,item.road_address,item.postal_code,...(item.name_aliases||[])].join(' ')).includes(needle)),[items,manifest,needle]);
   const regionMatches=searching?covered.filter(region=>region.dongs.length&&normalizeSearch(region.label).includes(needle)).slice(0,6):[];
   return <section className="home-search" aria-label="단지·동네 통합 검색">
     <label htmlFor="home-search-input">어느 아파트가 궁금하세요?</label>

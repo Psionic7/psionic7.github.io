@@ -2,6 +2,8 @@ import {makeApartmentFavorite,validApartmentFavorites,sameApartmentFavorite} fro
 import {LISTING_ERRORS,LISTING_TRADE_TYPE,saleListingGroup,kstListingDay,listingSnapshot,validListingCollection,validListingGroup,validListingSnapshot,listingGroupForFavorite} from '../src/naver-listings.mjs';
 import {NAVER_LISTING_SCHEMA} from './naver-listing-schema.mjs';
 import {createDailyListingSource} from './naver-listing-source.mjs';
+import {listingQueryName} from './naver-listing-names.mjs';
+import {apartmentInformation,synchronizeApartmentIdentity} from './apartment-identity.mjs';
 
 const hasTable=(db,name)=>Boolean(db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name=?").get(name));
 const missingInventory=message=>{const error=new Error(message);error.code='inventory_unavailable';throw error;};
@@ -18,14 +20,16 @@ export function dailyListingTargets(db,config) {
   if(!rows.length)missingInventory('매물 수집 대상 아파트 목록이 비어 있습니다.');
   if(rows.length>1000)throw new Error('매물 수집 대상 아파트가 저장 한도 1,000개를 초과했습니다.');
   const nameCounts=new Map();for(const row of rows){const key=row.legal_code+'|'+row.name;nameCounts.set(key,(nameCounts.get(key)||0)+1);}
+  const information=new Map(apartmentInformation(db).map(row=>[row.apartment_id,row]));
   return rows.map(row=>{
-    const scope=byCode.get(row.legal_code),apartment=row.name?.trim()||`이름 미확인 아파트 (${row.dong} ${row.jibun||'지번 미확인'})`;
-    const trade_keys=hasTable(db,'apartment_trade_links')?db.prepare("SELECT dong,jibun,trade_name AS apartment FROM apartment_trade_links WHERE apartment_id=? AND status='matched'").all(row.apartment_id).map(r=>JSON.stringify([r.dong,r.jibun,r.apartment])):[];
-    const favorite=makeApartmentFavorite({...row,apartment,master_id:row.apartment_id,trade_keys:[...new Set(trade_keys)]},{region_code:row.region_code,region_name:scope.region_name});
+    const info=information.get(row.apartment_id);
+    const scope=byCode.get(row.legal_code),apartment=info?.canonical_name||row.name?.trim()||`이름 미확인 아파트 (${row.dong} ${row.jibun||'지번 미확인'})`;
+    const trade_keys=info?.trade_keys||(hasTable(db,'apartment_trade_links')?db.prepare("SELECT dong,jibun,trade_name AS apartment FROM apartment_trade_links WHERE apartment_id=? AND status='matched'").all(row.apartment_id).map(r=>JSON.stringify([r.dong,r.jibun,r.apartment])):[]);
+    const favorite={...makeApartmentFavorite({...row,apartment,master_id:row.apartment_id,trade_keys:[...new Set(trade_keys)]},{region_code:row.region_code,region_name:scope.region_name}),...(info?{name_aliases:info.name_aliases,postal_code:info.postal_code}:{} )};
     if(!validApartmentFavorites([favorite]))throw new Error('매물 수집 대상 아파트 식별자를 확인하세요.');
     const tradeNames=trade_keys.map(key=>JSON.parse(key)[2]).sort((a,b)=>b.length-a.length);
-    const queryName=row.name?.trim()&&nameCounts.get(row.legal_code+'|'+row.name)===1?row.name.trim():tradeNames[0]||row.name?.trim();
-    return {favorite,regionId:scope.region_id,query:queryName?`${row.dong} ${queryName}`:`${scope.region_name} ${row.dong} ${row.jibun}`};
+    const queryName=info?.naver_name||listingQueryName(favorite,info?.canonical_name||(row.name?.trim()&&nameCounts.get(row.legal_code+'|'+row.name)===1?row.name.trim():tradeNames[0]||row.name?.trim()));
+    return {favorite,regionId:scope.region_id,...(info?.naver_complex_no?{complexNo:info.naver_complex_no}:{}),query:queryName?`${row.dong} ${queryName}`:`${scope.region_name} ${row.dong} ${row.jibun}`};
   });
 }
 
@@ -61,6 +65,7 @@ export async function collectDailyListings(db,config,{browserSource=process.env.
   signal?.throwIfAborted();
   if(!['system-chrome','playwright'].includes(browserSource))throw Error('매물 브라우저 소스를 확인하세요.');
   db.exec(NAVER_LISTING_SCHEMA);
+  synchronizeApartmentIdentity(db,{snapshot:initialSnapshot});
   const started=now(),dayKst=kstListingDay(started),regionIds=[...config.region_ids].sort();let targets;
   try{targets=dailyListingTargets(db,config);}catch(error){
     if(error.code!=='inventory_unavailable')throw error;
@@ -84,7 +89,7 @@ export async function collectDailyListings(db,config,{browserSource=process.env.
       if(now()-started>=maxDurationMs)stoppedCode='budget_exceeded';
       if(stoppedCode){report.results[index]={favoriteId:target.favorite.id,favorite:target.favorite,status:'not_attempted',errorCode:stoppedCode,attemptedAt:null};continue;}
       const attemptedAt=new Date(now()).toISOString();
-      const connection=db.prepare('SELECT complex_no FROM naver_listing_connections WHERE apartment_id=?').get(target.favorite.id)?.complex_no;
+      const connection=target.complexNo||db.prepare('SELECT complex_no FROM naver_listing_connections WHERE apartment_id=?').get(target.favorite.id)?.complex_no;
       try {
         source??=await sourceFactory();
         const group=await source.collect(target,{complexNo:connection,signal});
@@ -94,6 +99,7 @@ export async function collectDailyListings(db,config,{browserSource=process.env.
         try{
           db.prepare('INSERT OR REPLACE INTO naver_listing_connections VALUES(?,?,?)').run(target.favorite.id,group.complexNo,group.collectedAt);
           db.prepare('INSERT OR REPLACE INTO naver_listing_snapshots VALUES(?,?,?)').run(target.favorite.id,group.collectedAt,JSON.stringify(group));
+          synchronizeApartmentIdentity(db,{snapshot:listingSnapshot([group]),apartmentIds:[target.favorite.id]});
           db.exec('COMMIT');
         }catch(error){db.exec('ROLLBACK');throw error;}
         report.results[index]={favoriteId:target.favorite.id,favorite:target.favorite,status:'ready',errorCode:null,attemptedAt};
@@ -101,7 +107,10 @@ export async function collectDailyListings(db,config,{browserSource=process.env.
       }catch(error) {
         if(!Object.hasOwn(LISTING_ERRORS,error.code))throw error;
         const code=error.code;
-        if(code==='address_mismatch'||code==='unmatched')db.prepare('DELETE FROM naver_listing_connections WHERE apartment_id=?').run(target.favorite.id);
+        if(code==='address_mismatch'||code==='unmatched'){
+          db.prepare('DELETE FROM naver_listing_connections WHERE apartment_id=?').run(target.favorite.id);
+          db.prepare('UPDATE apartment_identity SET naver_complex_no=NULL,naver_name=NULL,updated_at=? WHERE apartment_id=?').run(attemptedAt,target.favorite.id);
+        }
         report.results[index]={favoriteId:target.favorite.id,favorite:target.favorite,status:code==='unmatched'||code==='address_mismatch'?'unmatched':'failed',errorCode:code,attemptedAt};
         const previousRow=db.prepare('SELECT group_json FROM naver_listing_snapshots WHERE apartment_id=?').get(target.favorite.id);
         const stored=previousRow?JSON.parse(previousRow.group_json):initialSnapshot?listingGroupForFavorite(initialSnapshot.groups,target.favorite):null;

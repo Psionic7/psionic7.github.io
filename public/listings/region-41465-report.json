@@ -4,7 +4,7 @@
   "regionCode": "41465",
   "firstPageOnly": true,
   "startedAt": "2026-11-07T03:23:50.267Z",
-  "finishedAt": "2026-11-07T03:24:35.917Z",
+  "finishedAt": "2026-11-07T14:22:48.252Z",
   "results": [
     {
       "favoriteId": "hub:11161100268000",
@@ -263,8 +263,10 @@
     {
       "favoriteId": "hub:11161181462",
       "apartment": "삼성아파트",
-      "status": "unmatched",
-      "errorCode": "unmatched"
+      "complexNo": "2219",
+      "status": "complete",
+      "articleCount": 39,
+      "collectedAt": "2026-11-07T14:21:34.507Z"
     },
     {
       "favoriteId": "hub:11161181463",
@@ -1301,13 +1303,13 @@
   ],
   "summary": {
     "targetCount": 199,
-    "completeTargets": 12,
+    "completeTargets": 13,
     "partialTargets": 37,
-    "unmatchedTargets": 150,
+    "unmatchedTargets": 149,
     "failedTargets": 0,
     "notAttemptedTargets": 0,
-    "complexCount": 48,
-    "advertisementCount": 681
+    "complexCount": 49,
+    "advertisementCount": 720
   },
   "tradeType": "A1"
 }

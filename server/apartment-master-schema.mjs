@@ -1,3 +1,4 @@
+import {APARTMENT_IDENTITY_SCHEMA} from './apartment-identity-schema.mjs';
 export const BUILDING_INVENTORY_SCHEMA = `CREATE TABLE IF NOT EXISTS apartment_building_inventory (
  building_id TEXT PRIMARY KEY,region_id TEXT NOT NULL,legal_code TEXT NOT NULL,parent_id TEXT,classification TEXT NOT NULL CHECK(classification IN ('apartment','senior_housing','other','review')),record_json TEXT NOT NULL,active INTEGER NOT NULL DEFAULT 1,run_id INTEGER NOT NULL);`;
 export const APARTMENT_MASTER_SCHEMA = `
@@ -34,4 +35,5 @@ CREATE INDEX IF NOT EXISTS master_complex_region ON apartment_complexes(legal_co
 CREATE INDEX IF NOT EXISTS master_building_complex ON apartment_buildings(apartment_id);
 CREATE INDEX IF NOT EXISTS master_parcel_pnu ON apartment_parcels(pnu);
 CREATE INDEX IF NOT EXISTS master_trade_complex ON apartment_trade_links(apartment_id,status);
+${APARTMENT_IDENTITY_SCHEMA}
 `;

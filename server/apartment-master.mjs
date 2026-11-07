@@ -4,6 +4,7 @@ import {APARTMENT_MASTER_SCHEMA,BUILDING_INVENTORY_SCHEMA} from './apartment-mas
 import {approvalDate,buildingClassification,isResidentialClassification,numeric,parcel,registryCoordinateCodes,text} from './building-registry.mjs';
 import {normalizeApartmentName} from './apartment-boundaries.mjs';
 import {makeApartmentFavorite} from '../src/apartment-favorites.js';
+import {apartmentInformation,resolveApartmentIdentity,synchronizeApartmentIdentity} from './apartment-identity.mjs';
 export function initializeApartmentMaster(db){db.exec(APARTMENT_MASTER_SCHEMA);migrateHousingClassification(db);const fields=db.prepare('PRAGMA table_info(apartment_inventory_runs)').all().map(p=>p.name);if(!fields.includes('owner_pid'))db.exec('ALTER TABLE apartment_inventory_runs ADD COLUMN owner_pid INTEGER');if(!fields.includes('owner_host'))db.exec('ALTER TABLE apartment_inventory_runs ADD COLUMN owner_host TEXT');const parcelFields=db.prepare('PRAGMA table_info(apartment_parcels)').all().map(p=>p.name);if(!parcelFields.includes('attributes_json'))db.exec('ALTER TABLE apartment_parcels ADD COLUMN attributes_json TEXT');if(!parcelFields.includes('spatial_status'))db.exec("ALTER TABLE apartment_parcels ADD COLUMN spatial_status TEXT NOT NULL DEFAULT 'pending'");if(!parcelFields.includes('spatial_fetched_at'))db.exec('ALTER TABLE apartment_parcels ADD COLUMN spatial_fetched_at TEXT');}
 // Extend the existing CHECK constraint transactionally; identifiers and raw rows
 // are copied unchanged. No table references the inventory through a foreign key.
@@ -91,16 +92,21 @@ export function masterStats(db,scopeIds){
  summary.readyToComplete=Boolean(regions.length)&&(!scopeIds||regions.length===scopeIds.length)&&regions.every(r=>r.status==='scanned')&&!issues.length&&['withName','withAddress','withLocation','withBoundary','withYear'].every(k=>summary[k]===summary.complexes)&&summary.vworldDataComplete;summary.complete=summary.readyToComplete&&summary.lastRunStatus==='complete';return summary;
 }
 export function linkMasterTrades(db,tradeDb=db){
+ synchronizeApartmentIdentity(db);
+ const information=apartmentInformation(db);
  if(!tradeDb.prepare("SELECT name FROM sqlite_master WHERE name='trades'").get())return {matched:0,ambiguous:0,unmatched:0};
  const complexes=db.prepare('SELECT * FROM apartment_complexes WHERE active=1').all(),byId=new Map(complexes.map(c=>[c.apartment_id,c])),aliases=new Map();for(const a of db.prepare('SELECT * FROM apartment_aliases').all()){if(!aliases.has(a.apartment_id))aliases.set(a.apartment_id,new Set());aliases.get(a.apartment_id).add(normalizeApartmentName(a.name));}
  const byParcel=new Map();for(const p of db.prepare('SELECT p.*,c.region_code FROM apartment_parcels p JOIN apartment_complexes c USING(apartment_id) WHERE c.active=1').all()){const key=JSON.stringify([p.legal_code.slice(0,5),p.legal_code.slice(0,8),p.jibun]);if(!byParcel.has(key))byParcel.set(key,new Set());byParcel.get(key).add(p.apartment_id);}
  const dongCodes=new Map(db.prepare('SELECT legal_code,dong FROM apartment_inventory_regions').all().map(r=>[r.legal_code.slice(0,5)+'|'+r.dong,r.legal_code.slice(0,8)])),rows=tradeDb.prepare('SELECT region_code,dong,jibun,apartment,min(build_year) AS year FROM trades GROUP BY region_code,dong,jibun,apartment').all();
  const insert=db.prepare('INSERT OR REPLACE INTO apartment_trade_links VALUES(?,?,?,?,?,?,?,?,?)'),counts={matched:0,ambiguous:0,unmatched:0},at=new Date().toISOString();db.exec('BEGIN');try{db.prepare('DELETE FROM apartment_trade_links').run();for(const t of rows){const ids=[...(byParcel.get(JSON.stringify([t.region_code,dongCodes.get(t.region_code+'|'+t.dong),t.jibun]))||[])];
- const resolved=resolveTradeCandidates(t,ids.map(id=>byId.get(id)),aliases),shared=resolved.method==='shared_registry_address';
+ const resolved=resolveTradeCandidates(t,ids.map(id=>byId.get(id)),aliases),identity=resolveApartmentIdentity(db,t,information);
+ if(resolved.ids.length===1&&identity.status==='matched'&&identity.apartment_id!==resolved.ids[0]){resolved.ids=[];resolved.method='review';}
+ const shared=resolved.method==='shared_registry_address';
  const status=resolved.ids.length===1||shared?'matched':resolved.ids.length?'ambiguous':'unmatched';
  counts[status]++;insert.run(t.region_code,t.dong,t.jibun,t.apartment,status==='matched'?resolved.ids[0]:null,status,resolved.method,JSON.stringify(resolved.ids),at);}db.exec('COMMIT');}catch(e){db.exec('ROLLBACK');throw e;}return counts;
 }
 export function masterMapData(db,catalog,scopeIds){
+ const identities=new Map(apartmentInformation(db).map(row=>[row.apartment_id,row]));
  const stats=masterStats(db,scopeIds),selected=new Set(stats.regions.map(r=>r.region_id));
  const memberships=db.prepare('SELECT b.apartment_id,i.region_id FROM apartment_buildings b JOIN apartment_building_inventory i USING(building_id) WHERE i.active=1').all();
  const scoped=new Set(memberships.filter(m=>selected.has(m.region_id)).map(m=>m.apartment_id));
@@ -111,13 +117,14 @@ export function masterMapData(db,catalog,scopeIds){
   const legalCode=e?.legal_code||c.legal_code,regionCode=legalCode.slice(0,5);
   const dong=stats.regions.find(r=>r.legal_code===legalCode)?.dong||c.dong;
   const regionName=catalog.find(r=>r.region_code===regionCode)?.region_name||'';
-  const displayName=c.name||'단지명 미확인 ('+dong+' '+(c.jibun||c.road_address||'주소 미확인')+')';
+  const info=identities.get(c.apartment_id);
+  const displayName=info?.canonical_name||c.name||'단지명 미확인 ('+dong+' '+(c.jibun||c.road_address||'주소 미확인')+')';
   const parcelInfo=db.prepare('SELECT attributes_json FROM apartment_parcels WHERE apartment_id=? AND attributes_json IS NOT NULL ORDER BY relation LIMIT 1').get(c.apartment_id);
   const parcelAttrs=parcelInfo?.attributes_json?JSON.parse(parcelInfo.attributes_json):{};
   const zoningNames=[...new Set(db.prepare('SELECT z.properties_json FROM apartment_zoning_links l JOIN apartment_zoning_features z USING(feature_id) WHERE l.apartment_id=?').all(c.apartment_id).map(z=>text(JSON.parse(z.properties_json).uname)).filter(Boolean))];
   const trades=db.prepare("SELECT region_code,dong,jibun,trade_name FROM apartment_trade_links WHERE region_code=? AND status='matched' AND (apartment_id=? OR (method='shared_registry_address' AND EXISTS(SELECT 1 FROM json_each(candidates_json) WHERE value=?)))").all(regionCode,c.apartment_id,c.apartment_id);
   const tradeKeys=trades.map(t=>JSON.stringify([t.dong,t.jibun,t.trade_name]));
-  const nameAliases=[...new Set([...db.prepare('SELECT name FROM apartment_aliases WHERE apartment_id=?').all(c.apartment_id).map(a=>a.name),...trades.map(t=>t.trade_name)].filter(Boolean))];
+  const nameAliases=[...new Set([...(info?.name_aliases||[]),...db.prepare('SELECT name FROM apartment_aliases WHERE apartment_id=?').all(c.apartment_id).map(a=>a.name),...trades.map(t=>t.trade_name)].filter(Boolean))];
   const favorite=makeApartmentFavorite({master_id:c.apartment_id,trade_keys:tradeKeys,apartment:displayName,dong,jibun:e?.jibun||c.jibun,road_address:e?.road_address||c.road_address},{region_code:regionCode,region_name:regionName});
   const housingRecords=db.prepare("SELECT i.classification,json_extract(i.record_json,'$.title.hoCnt') AS units FROM apartment_building_inventory i JOIN apartment_buildings b USING(building_id) WHERE b.apartment_id=? AND i.active=1").all(c.apartment_id);
   const classifications=housingRecords.map(r=>r.classification);
@@ -125,7 +132,7 @@ export function masterMapData(db,catalog,scopeIds){
   const seniorBuildings=housingRecords.filter(r=>r.classification==='senior_housing');
   const dwellingUnits=senior&&seniorBuildings.every(r=>numeric(r.units)!==null)?seniorBuildings.reduce((sum,r)=>sum+numeric(r.units),0):null;
   const p={...favorite,dwelling_unit_count:dwellingUnits,housing_type:senior?'senior_housing':'apartment',housing_type_label:senior?'노인복지주택':'아파트',official_name:c.name||null,name_status:c.name?'confirmed':'missing',name_aliases:nameAliases,location_status:e?'confirmed':'missing',latitude:e?.latitude??null,longitude:e?.longitude??null,build_year:c.build_year,approval_date:c.approval_date,household_count:c.household_count,building_count:c.building_count,max_floors:c.max_floors,structure:c.structure,source:c.source,position_source:e?.source||null,boundary_kind:'cadastral_parcels',land_price_per_m2:numeric(parcelAttrs.jiga),land_price_year:text(parcelAttrs.gosi_year),land_price_month:text(parcelAttrs.gosi_month),zoning_names:zoningNames,building_footprint_count:db.prepare('SELECT count(DISTINCT footprint_id) AS n FROM apartment_footprint_links WHERE apartment_id=?').get(c.apartment_id).n,fetched_at:c.fetched_at};
-  apartments.push(p);
+  apartments.push({...p,postal_code:info?.postal_code||null});
   for(const parcel of db.prepare("SELECT * FROM apartment_parcels WHERE apartment_id=? AND boundary_status='exact' AND geometry_json IS NOT NULL").all(c.apartment_id))features.push({type:'Feature',id:c.apartment_id+'/'+parcel.pnu,geometry:JSON.parse(parcel.geometry_json),properties:{name:displayName,source:'V-World 연속지적도',boundary_kind:'cadastral_parcels',pnu:parcel.pnu,apartment_ids:[p.id]}});
   for(const item of db.prepare('SELECT f.footprint_id,f.geometry_json,f.properties_json,l.pnu FROM apartment_footprint_links l JOIN apartment_building_footprints f USING(footprint_id) WHERE l.apartment_id=? GROUP BY f.footprint_id').all(c.apartment_id))features.push({type:'Feature',id:item.footprint_id,geometry:JSON.parse(item.geometry_json),properties:{name:text(JSON.parse(item.properties_json).bld_nm)||displayName,source:'V-World GIS 건물통합정보',boundary_kind:'building_footprint',pnu:item.pnu,building_attributes:JSON.parse(item.properties_json),apartment_ids:[p.id]}});
  }

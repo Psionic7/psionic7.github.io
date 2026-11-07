@@ -23,6 +23,15 @@ it('finds apartments across coverage without a region prerequisite or whitespace
  expect(screen.queryByText('e편한세상 수지 미수집')).toBeNull();
  await userEvent.setup().click(result);expect(open).toHaveBeenCalledWith(item);expect(loader).toHaveBeenCalledTimes(1);
 });
+it('finds the same canonical apartment by its verified alias, parcel, alternate spelling and postcode',async()=>{
+ const saved={...item,name_aliases:['삼성아파트','삼성1','삼성래미안1차아파트','수지삼성래미안1차'],postal_code:'16818',jibun:'693'};
+ const open=vi.fn();render(<HomeSearch manifest={manifest} catalog={catalog} onApartment={open} onRegion={()=>{}} loader={async()=>[saved]}/>);
+ for(const query of ['삼성1','수지 삼성래미안1차','16818','693']){
+   fireEvent.change(screen.getByLabelText('어느 아파트가 궁금하세요?'),{target:{value:query}});
+   const button=await screen.findByRole('button',{name:new RegExp('^'+item.apartment)});
+   fireEvent.click(button);expect(open).toHaveBeenLastCalledWith(saved);
+ }
+});
 it('coverage shortcuts search the district directly and a failed index can be retried',async()=>{
  const loader=vi.fn().mockRejectedValueOnce(new Error('offline')).mockResolvedValueOnce([item]);
  render(<HomeSearch manifest={manifest} catalog={catalog} onApartment={()=>{}} onRegion={()=>{}} loader={loader}/>);

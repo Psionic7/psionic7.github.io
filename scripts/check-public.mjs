@@ -12,9 +12,24 @@ import {validBounds} from '../src/map-bounds.mjs';
 import {checkBrowserData} from '../server/browser-export.mjs';
 import {validListingSnapshot,validListingCollection} from '../src/naver-listings.mjs';
 import {validRegionalListingReport} from '../src/naver-listing-report.mjs';
+import {validateApartmentInformation,validateIdentitySearch} from '../src/apartment-identity.mjs';
 const privateName=name=>name.split('/').some(p=>['local','admin-dist','.venv','.streamlit'].includes(p)) || /(^|\/)(\.env[^/]*|collection_regions\.json|my_real_estate\.sqlite3|secrets\.toml)$/.test(name);
 export function checkPublic(root=ROOT,secretsFile=paths.env,{checkIndex=true}={}) {
   const secrets=secretValues(secretsFile);
+  for(const sub of ['public','docs']){
+    const file=path.join(root,sub,'apartment-identity/catalog.json');
+    const mapFile=path.join(root,sub,'apartment-map/manifest.json');
+    if(fs.existsSync(mapFile)&&readJson(mapFile).version===2&&!fs.existsSync(file))throw Error('건축물대장 기반 조회에는 공통 아파트 식별 정보가 필요합니다.');
+    if(fs.existsSync(file)){
+      const information=validateApartmentInformation(readJson(file)),registryFile=path.join(root,sub,'query-data/manifest.json');
+      if(fs.existsSync(registryFile)){
+        const meta=readJson(registryFile).search;
+        if(meta)validateIdentitySearch(readJson(path.join(root,sub,'query-data',meta.file)),information);
+      }
+    }
+  }
+  const identityFile='apartment-identity/catalog.json';
+  if(fs.existsSync(path.join(root,'public',identityFile))&&(!fs.existsSync(path.join(root,'docs',identityFile))||!fs.readFileSync(path.join(root,'public',identityFile)).equals(fs.readFileSync(path.join(root,'docs',identityFile)))))throw Error('아파트 식별 정보를 내보낸 뒤 공개 빌드를 다시 실행하세요.');
   const git=(...args)=>execFileSync('git',['-c',`safe.directory=${root.replaceAll('\\','/')}`,'-C',root,...args],{maxBuffer:100*1024*1024});
   const tracked=git('ls-files','-z').toString().split('\0').filter(Boolean);
   if(checkIndex) for(const name of tracked) {if(privateName(name))throw new Error('Git 인덱스에 비공개 파일이 있습니다.');checkedBytes(git('show',':'+name),secrets);}

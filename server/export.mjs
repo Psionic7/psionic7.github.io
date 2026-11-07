@@ -5,6 +5,8 @@ import {readTradeSnapshot,verifyTradeExport} from './verify-trade-export.mjs';
 import {createHash,randomUUID} from 'node:crypto';
 import {gzipSync} from 'node:zlib';
 import {exportApartmentMap} from './export-apartment-map.mjs';
+import {publicApartmentInformation,synchronizeApartmentIdentity} from './apartment-identity.mjs';
+import {validateApartmentInformation} from '../src/apartment-identity.mjs';
 import {browserPayloads,writeBrowserPayloads,writeBrowserRegistry,cleanBrowserPayloads} from './browser-export.mjs';
 import {connect,PUBLIC_SCHEMA,TRADE_COLUMNS,REGION_COLUMNS,paths,ROOT,secretValues,checkedBytes,savedIds,atomicWrite} from './storage.mjs';
 export const sha256=data=>createHash('sha256').update(data).digest('hex');
@@ -71,6 +73,15 @@ function writeExportData({snapshot,target,favorites,secretsFile,compressAbove}) 
 export function exportData({source=paths.db,target=path.join(ROOT,'public/data'),favorites=paths.favorites,secretsFile=paths.env,compressAbove=95*1024*1024,reportFile}={}) {
   source=path.resolve(source);target=path.resolve(target);
   if(!fs.existsSync(source)||source===path.join(target,'public.sqlite3'))throw new Error('원본 작업 DB와 내보내기 경로를 확인하세요.');
+  const identityDb=connect(source);let identities;
+  try{
+    const listingFile=path.join(path.dirname(target),'listings/snapshot.json');
+    synchronizeApartmentIdentity(identityDb,{snapshot:fs.existsSync(listingFile)?JSON.parse(fs.readFileSync(listingFile,'utf8')):undefined});
+    identities=publicApartmentInformation(identityDb);
+    const inventory=identityDb.prepare("SELECT 1 FROM sqlite_master WHERE name='apartment_inventory_regions'").get();
+    const prior=path.join(path.dirname(target),'apartment-identity/catalog.json');
+    if((!inventory||!identityDb.prepare("SELECT 1 FROM apartment_inventory_regions WHERE status='scanned' LIMIT 1").get())&&fs.existsSync(prior))identities=validateApartmentInformation(JSON.parse(fs.readFileSync(prior,'utf8')));
+  }finally{identityDb.close();}
   reportFile??=target===path.join(ROOT,'public/data')?path.join(ROOT,'local/data-validation/export.json'):null;
   const stage=fs.mkdtempSync(path.join(os.tmpdir(),'home-records-export-')),stageData=path.join(stage,'data');
   try {
@@ -84,6 +95,7 @@ export function exportData({source=paths.db,target=path.join(ROOT,'public/data')
       const keep=new Set(fs.readdirSync(from));for(const name of fs.readdirSync(to))if(pattern.test(name)&&!keep.has(name))fs.unlinkSync(path.join(to,name));
     }
     exportApartmentMap({source,target:path.join(path.dirname(target),'apartment-map'),favorites,secretsFile});
+    atomicWrite(path.join(path.dirname(target),'apartment-identity/catalog.json'),checkedBytes(JSON.stringify(identities),secretValues(secretsFile)));
     if(reportFile)atomicWrite(reportFile,JSON.stringify(validation,null,2)+'\n');
     return manifest;
   } catch(error) {
