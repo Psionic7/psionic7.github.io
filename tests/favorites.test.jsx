@@ -71,9 +71,9 @@ describe('Personal apartment watchlist',()=>{
     expect(readPreferences('viewer').apartments).toHaveLength(1);
     first.unmount();fail=true;window.history.replaceState(null,'','/?tab=apartments');
     render(<App initialManifest={manifest} districtLoader={loader}/>);await openQueryControls();
-    await screen.findByRole('alert');
+    const tradeError=await screen.findByText('이 지역의 자료를 불러오지 못했습니다.');
     expect(readPreferences('viewer').apartments).toHaveLength(1);
-    fail=false;await user.click(screen.getByRole('button',{name:'다시 불러오기',exact:true}));
+    fail=false;await user.click(within(tradeError).getByRole('button',{name:'다시 불러오기',exact:true}));
     await screen.findByRole('region',{name:label(favorite)+' 주간 거래 내역'});
     await user.click(screen.getByRole('button',{name:'이전 주',exact:true}));
     expect(screen.getByText('이 주에 조회되는 거래가 없습니다.')).toBeTruthy();

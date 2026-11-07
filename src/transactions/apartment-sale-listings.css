@@ -1,0 +1,21 @@
+.transaction-table-label{font-size:13px;font-weight:600;line-height:1.5;margin:8px 0;color:var(--text)}
+.apartment-sale-listings{border-top:1px solid var(--border);margin-top:14px;padding-top:10px}
+.sale-listings-heading{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.sale-listing-note{font-size:11px;color:var(--muted);line-height:1.65;margin:6px 0 9px}
+.sale-listing-warning{color:#9c5927}
+.sale-listing-source a{display:inline-flex;align-items:center;gap:3px;margin-left:8px;font-size:11px;color:var(--accent)}
+.public-shell .weekly-dong.with-sale-listings .compact-trades td.sale-listing-source{white-space:normal}
+.sale-listing-source span{display:inline-block;white-space:nowrap}
+@media(min-width:651px){
+  .public-shell .weekly-dong.with-sale-listings .compact-trades .summary-table{table-layout:fixed}
+  .with-sale-listings .trade-date-column{width:10%}
+  .with-sale-listings .trade-name-column{width:28%}
+  .with-sale-listings .trade-area-column{width:12%}
+  .with-sale-listings .trade-floor-column{width:10%}
+  .with-sale-listings .trade-price-column{width:16%}
+  .with-sale-listings .trade-status-column{width:24%}
+}
+@media(max-width:650px){
+  .public-shell .weekly-dong.with-sale-listings .compact-trades .summary-table{min-width:460px}
+  .with-sale-listings .compact-trades .trade-floor-column{width:48px}
+}

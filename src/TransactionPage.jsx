@@ -21,7 +21,7 @@ const validAreaBands=value=>Array.isArray(value) && value.length<=areaBands.leng
 function useFilterPreference(scope,field,fallback,validate,initialFilters) {
   return useStoredState(scope,field,()=>{const previous=scope==='apartmentTransactions'?readPreferences('favoriteDashboard')[field]:undefined;return validate(previous)?previous:fallback;},validate,initialFilters?.[field]);
 }
-export default function TransactionPage({manifest,regions,day,onDayChange,period,onPeriodChange,districtLoader,apartmentView=false,searchRegionCode,renderSelection,filterScope='weekly',onQueryChange,renderResultActions,initialFilters}) {
+export default function TransactionPage({manifest,regions,day,onDayChange,period,onPeriodChange,districtLoader,apartmentView=false,searchRegionCode,renderSelection,filterScope='weekly',onQueryChange,renderResultActions,renderAfterTrades,initialFilters}) {
   const selected=regions;
   const [controlsOpen,setControlsOpen]=useState(!regions.length&&!!searchRegionCode);
   const [conditionOpen,setConditionOpen]=useState(false);
@@ -101,6 +101,6 @@ export default function TransactionPage({manifest,regions,day,onDayChange,period
     {invalidArea&&!conditionOpen&&<p role="alert" className="notice error">최소 면적이 최대 면적보다 큽니다.<button onClick={()=>setConditionOpen(true)}>면적 수정</button></p>}
     {!!selected.length&&week&&<div className="weekly-results-context" id="transaction-results" tabIndex={-1}><strong>조회 결과 · {selected.length}{apartmentView?'개 아파트':'개 동'}</strong><span>{countMode?`${apartmentView?'단지':'동네'}별 최근 ${recentCount}건 · 날짜 제한 없음`:`${week.start} — ${week.end}`}</span><small>{countMode?'건수 기준':period.mode==='week'?'주간':period.mode==='month'?'월간':'직접 지정'} · {includeCancelled?'해제 포함':'유효 거래만'}</small></div>}
     {!selected.length ? <section className="panel"><Empty title={apartmentView?'실거래가를 볼 아파트를 선택해 주세요.':'실거래가를 볼 동을 선택해 주세요.'}>{apartmentView?'단지명으로 검색하거나 지역별 목록에서 선택하면 거래가격을 바로 볼 수 있습니다.':'서로 다른 시·구의 동도 함께 선택할 수 있습니다.'}</Empty></section>
-      : week&&<div className="weekly-stack">{selected.map(region=><TransactionResults key={region.region_id} region={region} resultActions={renderResultActions?.(region)} areaUnit={areaUnit} week={week} dataset={datasets[region.region_code]} collected={hasTradeCoverage(manifest,region)} minArea={minArea} maxArea={maxArea} selectedBands={selectedBands} includeCancelled={includeCancelled} recentCount={recentCount} mode={countMode?'count':period.mode} onRetry={()=>setRetry(value=>value+1)}/>)}</div>}
+      : week&&<div className="weekly-stack">{selected.map(region=><TransactionResults key={region.region_id} region={region} resultActions={renderResultActions?.(region)} afterTrades={renderAfterTrades?.({region,areaUnit,minArea,maxArea,selectedBands})} areaUnit={areaUnit} week={week} dataset={datasets[region.region_code]} collected={hasTradeCoverage(manifest,region)} minArea={minArea} maxArea={maxArea} selectedBands={selectedBands} includeCancelled={includeCancelled} recentCount={recentCount} mode={countMode?'count':period.mode} onRetry={()=>setRetry(value=>value+1)}/>)}</div>}
   </div>;
 }
