@@ -30,6 +30,8 @@ class Collector:
 
     async def response(self, event):
         parsed = urlsplit(event.response.url)
+        if parsed.netloc==self.host and event.response.mime_type=='text/html' and os.environ.get('NAVER_BROWSER_DIAGNOSTICS')=='1':
+            print(json.dumps({'stage':'document-response','path':parsed.path,'status':int(event.response.status)}),file=sys.stderr,flush=True)
         if parsed.netloc == self.host and API.fullmatch(parsed.path):
             self.requests[event.request_id] = (event.response.url, int(event.response.status))
 
@@ -89,6 +91,8 @@ class Collector:
         complex_no = request.get("complexNo")
         if not complex_no or not re.fullmatch(r"[1-9]\d{0,11}", complex_no):
             return {"errorCode": "unmatched"}
+        if os.environ.get('NAVER_BROWSER_DIAGNOSTICS')=='1':
+            print(json.dumps({'stage':'navigate','complexNo':complex_no}),file=sys.stderr,flush=True)
         await self.tab.send(uc.cdp.page.navigate(f"{self.base_url}/complexes/{complex_no}?a=APT&b=A1&e=RETAIL"))
         started = time.monotonic()
         deadline = started + request.get("timeoutSeconds", 45)
@@ -198,7 +202,8 @@ async def main():
             if attempt==2:raise
             await asyncio.sleep(1)
     try:
-        tab = await browser.get('about:blank')
+        # Create the site target from the browser connection; do not wait for a cross-site Page.navigate acknowledgement.
+        tab = await asyncio.wait_for(browser.get(args.base_url+'/',new_tab=True),timeout=15)
         collector = Collector(browser, tab,args.base_url)
         tab.add_handler(uc.cdp.network.ResponseReceived, collector.response)
         tab.add_handler(uc.cdp.network.LoadingFinished, collector.finished)
