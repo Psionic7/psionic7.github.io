@@ -4,7 +4,8 @@ import {fileURLToPath} from 'node:url';
 import {BrowserListingError,BrowserListingPages} from './naver-browser-collector.mjs';
 import {LISTING_ERRORS,validComplexNo} from '../src/naver-listings.mjs';
 import {browserCaptureGroup} from './naver-browser-capture.mjs';
-import {listingSearchNames} from './naver-listing-names.mjs';
+import {listingSearchNames,listingFavoritePhase,listingPhaseMatches} from './naver-listing-names.mjs';
+import {verifyComplex} from './naver-listings.mjs';
 
 export async function createSystemChromeListingSource({python=process.env.NAVER_BROWSER_PYTHON,connections=[],firstPageOnly=false,discover=false,headless=false,baseUrl='https://new.land.naver.com',spawnWorker=spawn,timeoutMs=90000}={}) {
   const origin=new URL(baseUrl).origin;
@@ -12,6 +13,8 @@ export async function createSystemChromeListingSource({python=process.env.NAVER_
   if(!Array.isArray(connections)||connections.length>1000||new Set(connections.map(r=>r?.id)).size!==connections.length||connections.some(r=>typeof r?.id!=='string'||r.complexNo!==null&&!/^[1-9]\d{0,11}$/.test(r.complexNo)))throw new Error('매물 단지 연결 파일을 확인하세요.');
   const byFavorite=new Map(connections.filter(r=>r.complexNo).map(r=>[r.id,r.complexNo]));
   const observations=new Map();
+  const discoveries=new Map();
+  const details=new Map();
   if(!python)throw new BrowserListingError('browser_unavailable');
   const child=spawnWorker(python,['-u',fileURLToPath(new URL('../scripts/naver-system-chrome.py',import.meta.url)),'--base-url',baseUrl],{windowsHide:true,stdio:['pipe','pipe',process.env.NAVER_BROWSER_DIAGNOSTICS==='1'?'inherit':'ignore'],env:{...process.env,PYTHONUTF8:'1',PYTHONIOENCODING:'utf-8',NAVER_CHROME_HEADLESS:headless?'1':'0'}});
   const lines=createInterface({input:child.stdout});
@@ -68,22 +71,35 @@ export async function createSystemChromeListingSource({python=process.env.NAVER_
       signal?.throwIfAborted();
       if(typeof target.query!=='string'||!target.query.trim()||target.query.length>300)throw new BrowserListingError('unmatched');
       const names=listingSearchNames(target.favorite);
-      const abort=()=>child.kill();signal?.addEventListener('abort',abort,{once:true});
-      let result;
-      try{result=await request({discover:true,query:target.query,names});}
-      catch(error){signal?.throwIfAborted();throw error;}
-      finally{signal?.removeEventListener('abort',abort);}
-      if(!Array.isArray(result.candidates)||result.candidates.length>8||result.candidates.some(c=>!validComplexNo(c?.complexNo)||typeof c.name!=='string'||c.name.length>300))throw new BrowserListingError('invalid_response');
+      const phase=listingFavoritePhase(target.favorite);
       const normalize=name=>name.replace(/[\s()[\]·.,_-]|아파트/g,'').toLowerCase();
-      const candidates=[...new Map(result.candidates.filter(c=>names.map(normalize).some(name=>name===normalize(c.name)||name.length>=4&&normalize(c.name).includes(name))).map(c=>[c.complexNo,c])).values()];
-      const matches=[];
-      for(const candidate of candidates){
-        signal?.throwIfAborted();
-        try{matches.push(await collectKnown(target,candidate.complexNo,signal));}
-        catch(error){if(error.code!=='address_mismatch')throw error;}
+      const queries=[...new Map([target.query,...names.map(name=>`${target.favorite.dong} ${name.replace(/아파트|[()[\]]/g,'')}`)].filter(query=>query.trim()&&query.length<=300).map(query=>[query.replace(/\s/g,''),query])).values()].slice(0,4);
+      let searchError;
+      for(const query of queries){
+        const abort=()=>child.kill();signal?.addEventListener('abort',abort,{once:true});
+        let result;
+        try{const input={discover:true,query,names,dong:target.favorite.dong,phase},key=JSON.stringify(input);result=discoveries.get(key);if(!result){result=await request(input);discoveries.set(key,result);}}
+        catch(error){signal?.throwIfAborted();if(error.code==='unavailable'){searchError=error;continue;}throw error;}
+        finally{signal?.removeEventListener('abort',abort);}
+        if(!Array.isArray(result.candidates)||result.candidates.length>8||result.candidates.some(c=>!validComplexNo(c?.complexNo)||typeof c.name!=='string'||c.name.length>300))throw new BrowserListingError('invalid_response');
+        const candidates=[...new Map(result.candidates.filter(c=>listingPhaseMatches(phase,c.name)&&names.map(normalize).some(name=>name===normalize(c.name)||name.length>=4&&normalize(c.name).includes(name))).map(c=>[c.complexNo,c])).values()];
+        const matches=[];
+        for(const candidate of candidates){
+          signal?.throwIfAborted();
+          try{
+            let detail=details.get(candidate.complexNo);
+            if(!detail){const abort=()=>child.kill();signal?.addEventListener('abort',abort,{once:true});try{detail=await request({inspect:true,complexNo:candidate.complexNo});details.set(candidate.complexNo,detail);}finally{signal?.removeEventListener('abort',abort);}}
+            signal?.throwIfAborted();
+            verifyComplex(detail,target.favorite,candidate.complexNo);
+            matches.push(candidate.complexNo);
+          }
+          catch(error){signal?.throwIfAborted();if(error.code!=='address_mismatch')throw error;}
+        }
+        if(matches.length>1)throw new BrowserListingError('unmatched');
+        if(matches.length===1){const group=await collectKnown(target,matches[0],signal);byFavorite.set(target.favorite.id,group.complexNo);return group;}
       }
-      if(matches.length!==1)throw new BrowserListingError('unmatched');
-      byFavorite.set(target.favorite.id,matches[0].complexNo);return matches[0];
+      if(searchError)throw searchError;
+      throw new BrowserListingError('unmatched');
     },
     async close(){if(closed)return;closed=true;lines.close();if(!dead){child.stdin.end(JSON.stringify({close:true})+'\n');const timer=setTimeout(()=>child.kill(),3000);timer.unref();child.once('exit',()=>clearTimeout(timer));}}
   };

@@ -1,0 +1,60 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import assert from 'node:assert/strict';
+import {parseArgs} from 'node:util';
+import {connect,paths,ROOT,readJson,atomicWrite,checkedBytes,secretValues} from '../server/storage.mjs';
+import {apartmentInformation,resolveApartmentIdentity} from '../server/apartment-identity.mjs';
+import {listingExport,readListingCollection,dailyListingTargets} from '../server/daily-naver-listings.mjs';
+import {normalizeRoadAddress,normalizeParcel} from '../src/address-identity.mjs';
+
+const {values}=parseArgs({options:{database:{type:'string'},output:{type:'string'},before:{type:'string'}}});
+const db=connect(values.database||paths.db,true);
+try{
+ const config=readJson(path.join(ROOT,'automation/config.json')),regions=db.prepare('SELECT * FROM regions').all();
+ const scopes=regions.filter(row=>config.region_ids.includes(row.region_id)).map(row=>({...row,dongs:JSON.parse(row.dongs_json)}));
+ const inScope=row=>scopes.some(scope=>scope.region_code===row.region_code&&(!scope.dongs.length||scope.dongs.includes(row.dong)));
+ const identities=apartmentInformation(db),byId=new Map(identities.map(row=>[row.apartment_id,row]));
+ const complexes=db.prepare('SELECT * FROM apartment_complexes WHERE active=1').all();
+ const report=readListingCollection(db),snapshotFile=path.join(ROOT,'public/listings/snapshot.json');
+ const snapshot=listingExport(db,{initialSnapshot:fs.existsSync(snapshotFile)?readJson(snapshotFile):undefined});
+ const targets=dailyListingTargets(db,config),targetById=new Map(targets.map(row=>[row.favorite.id,row.favorite]));
+ const trades=db.prepare('SELECT region_code,dong,jibun,apartment,count(*) trade_rows,min(build_year) build_year,min(deal_date) first_trade,max(deal_date) last_trade FROM trades GROUP BY region_code,dong,jibun,apartment').all();
+ const key=row=>JSON.stringify([row.region_code,row.dong,row.jibun,row.trade_name||row.apartment]);
+ const links=new Map(db.prepare('SELECT * FROM apartment_trade_links').all().map(row=>[key(row),row]));
+ const roads=new Map(db.prepare('SELECT * FROM road_addresses').all().map(row=>[JSON.stringify([row.region_code,row.dong,normalizeParcel(row.jibun)]),row.road_address]));
+ const tradeUnresolved=trades.filter(row=>links.get(key(row))?.status!=='matched').map(row=>{
+  const link=links.get(key(row)),address=roads.get(JSON.stringify([row.region_code,row.dong,normalizeParcel(row.jibun)]))||'';
+  const candidates=complexes.filter(c=>c.region_code===row.region_code&&(c.dong===row.dong&&normalizeParcel(row.jibun)&&normalizeParcel(c.jibun)===normalizeParcel(row.jibun)||address&&[c.road_address,...(byId.get(c.apartment_id)?.addresses||[]).map(a=>a.road_address)].some(value=>normalizeRoadAddress(value)===normalizeRoadAddress(address))));
+  let reason=!inScope(row)?'대장 수집 범위 밖':!normalizeParcel(row.jibun)&&!address?'원본 지번이 유효하지 않고 도로명주소 없음':!candidates.length?'현재 대장에 대응하는 지번·도로명주소 후보 없음':link?.method==='road_name_conflict'?'도로명주소 후보와 검증된 명칭·단지번호 충돌':link?.method==='road_address_conflict'?'검증된 도로명주소가 모순되거나 복수임':link?.status==='ambiguous'?'단지 후보 여러 개: 자동 연결 보류':candidates.length===1&&row.build_year&&candidates[0].build_year&&row.build_year!==candidates[0].build_year?`준공연도 불일치: 거래 ${row.build_year}, 대장 ${candidates[0].build_year}`:'주소·명칭·준공연도 추가 검증 필요';
+  return {...row,region_name:regions.find(r=>r.region_code===row.region_code)?.region_name||row.region_code,in_collection_scope:inScope(row),road_address:address,status:link?.status||'missing',method:link?.method||null,reason,candidates:candidates.map(c=>({id:c.apartment_id,name:byId.get(c.apartment_id)?.canonical_name||c.name,jibun:c.jibun,road_address:c.road_address,build_year:c.build_year,verified_names:db.prepare("SELECT name FROM apartment_aliases WHERE apartment_id=? AND source NOT LIKE '국토교통부 실거래%'").all(c.apartment_id).map(a=>a.name)}))};
+ });
+ const listingUnresolved=(report?.results||[]).filter(row=>row.status!=='ready').map(row=>{
+  const favorite=targetById.get(row.favoriteId)||row.favorite,info=byId.get(row.favoriteId),old=snapshot.groups.find(group=>group.favorite.id===row.favoriteId);
+  return {id:row.favoriteId,region_code:favorite.region_code,region_name:favorite.region_name,dong:favorite.dong,name:favorite.apartment,jibun:favorite.jibun,road_address:favorite.road_address,postal_code:info?.postal_code||null,status:row.status,error_code:row.errorCode,last_attempt_at:row.attemptedAt,previous_collected_at:old?.collectedAt||null,previous_ads:old?.articles.length||0,aliases:info?.name_aliases||[],reason:row.status==='unmatched'?'이번 브라우저 검색에서 주소가 검증되는 단지 하나를 확정하지 못함':row.status==='not_attempted'?'수집 중단 이후 미시도':'수집 오류로 매물·주소 판정을 완료하지 못함'};
+ });
+ const unresolvedListingIdentities=snapshot.groups.filter(group=>resolveApartmentIdentity(db,{...group.favorite,road_address:''},identities).status!=='matched').map(group=>({name:group.favorite.apartment,dong:group.favorite.dong,jibun:group.favorite.jibun,road_address:group.favorite.road_address,complex_no:group.complexNo,ads:group.articles.length,observed_at:group.collectedAt}));
+ const before=values.before?readJson(path.resolve(values.before)):[];
+ const old=new Map(before.map(row=>[key(row),row])),allLinks=[...links.values()];
+ const newlyMatched=allLinks.filter(row=>row.status==='matched'&&old.has(key(row))&&old.get(key(row)).status!=='matched');
+ const newlyHeld=allLinks.filter(row=>row.status!=='matched'&&old.get(key(row))?.status==='matched');
+ const bindingIds=row=>row.apartment_id?[row.apartment_id]:JSON.parse(row.candidates_json||'[]').sort();
+ const reassignedMatched=allLinks.filter(row=>row.status==='matched'&&old.get(key(row))?.status==='matched'&&JSON.stringify(bindingIds(row))!==JSON.stringify(bindingIds(old.get(key(row)))));
+ const regionStats=[...new Set(targets.map(row=>row.favorite.region_code))].map(code=>({region:regions.find(row=>row.region_code===code)?.region_name,targets:targets.filter(row=>row.favorite.region_code===code).length,ready:report?.results.filter(row=>row.favorite.region_code===code&&row.status==='ready').length||0,failed:listingUnresolved.filter(row=>row.region_code===code&&row.status==='failed').length,unmatched:listingUnresolved.filter(row=>row.region_code===code&&row.status==='unmatched').length,not_attempted:listingUnresolved.filter(row=>row.region_code===code&&row.status==='not_attempted').length}));
+ const readyIds=new Set((report?.results||[]).filter(row=>row.status==='ready').map(row=>row.favoriteId));
+ const readyGroups=snapshot.groups.filter(group=>readyIds.has(group.favorite.id));
+ if(report)assert.equal(readyGroups.length,report.successCount);
+ const summary={listing_ready_with_ads:readyGroups.filter(group=>group.articles.length>0).length,listing_ready_zero:readyGroups.filter(group=>!group.articles.length).length,listing_unique_complexes:new Set(readyGroups.map(group=>group.complexNo)).size,listing_unique_ads:new Set(readyGroups.flatMap(group=>group.articles.map(article=>article.id))).size,trade_rows:db.prepare('SELECT count(*) n FROM trades').get().n,trade_identity_groups:trades.length,trade_matched:trades.length-tradeUnresolved.length,trade_unresolved_in_scope:tradeUnresolved.filter(inScope).length,trade_unresolved_outside_scope:tradeUnresolved.filter(row=>!inScope(row)).length,newly_matched:newlyMatched.map(row=>({name:row.trade_name,dong:row.dong,jibun:row.jibun,method:row.method})),newly_held:newlyHeld.map(row=>({name:row.trade_name,dong:row.dong,jibun:row.jibun,method:row.method})),listing_status:report?.status||'unknown',listing_day:report?.dayKst||null,listing_targets:report?.targetCount||0,listing_ready:report?.successCount||0,listing_failed:report?.failureCount||0,listing_unmatched:report?.unmatchedCount||0,listing_not_attempted:report?.notAttemptedCount||0,region_stats:regionStats,listing_identity_unresolved:unresolvedListingIdentities.length};
+ Object.assign(summary,{previously_matched:before.filter(row=>row.status==='matched').length,reassigned_matched:reassignedMatched.map(row=>({name:row.trade_name,dong:row.dong,jibun:row.jibun,before:bindingIds(old.get(key(row))),after:bindingIds(row)}))});
+ if(report)assert.equal(report.targetCount,report.successCount+listingUnresolved.length);
+ assert.equal(trades.length,summary.trade_matched+summary.trade_unresolved_in_scope+summary.trade_unresolved_outside_scope);
+ const result={generated_at:new Date().toISOString(),collection_started_at:report?.startedAt,collection_finished_at:report?.finishedAt,summary,trade_unresolved:tradeUnresolved,listing_unresolved:listingUnresolved,listing_identity_unresolved:unresolvedListingIdentities};
+ const target=path.resolve(values.output||path.join(ROOT,'local/data-validation/apartment-matches.json'));
+ atomicWrite(target,checkedBytes(JSON.stringify(result,null,2)+'\n',secretValues(paths.env)));
+ const cell=v=>String(v??'—').replaceAll('|','\\|').replaceAll('\n',' ');
+ const table=(heads,rows)=>['| '+heads.join(' | ')+' |','| '+heads.map(()=>'---').join(' | ')+' |',...rows.map(row=>'| '+row.map(cell).join(' | ')+' |')].join('\n');
+ const lines=['# 재수집 후 아파트 연결 검사','',`작성: ${result.generated_at}`,`매물 수집: ${report?.startedAt||'—'} — ${report?.finishedAt||'미완료'}`,'','## 결과','',table(['지역','매물 대상','이번 전체 수집 성공','수집 오류','단지 미확정','미시도'],regionStats.map(row=>[row.region,row.targets,row.ready,row.failed,row.unmatched,row.not_attempted])),'',`실거래 ${summary.trade_identity_groups}개 이름·주소 조합 중 연결 ${summary.trade_matched}개, 수집 범위 안 미연결 ${summary.trade_unresolved_in_scope}개, 범위 밖 ${summary.trade_unresolved_outside_scope}개. 실제 물리적 단지 수와 구분한다.`,`이번에 새로 연결: ${newlyMatched.map(row=>row.trade_name).join(', ')||'없음'}. 새 보류: ${newlyHeld.map(row=>row.trade_name).join(', ')||'없음'}.`,'','## 실거래 미연결: 수집 범위 안','',table(['지역','동','이름','지번','도로명주소','거래 행 수','사유','대장 후보·검증 이름'],tradeUnresolved.filter(inScope).map(row=>[row.region_name,row.dong,row.apartment,row.jibun,row.road_address,row.trade_rows,row.reason,row.candidates.map(c=>`${c.name} (${c.id}, ${c.build_year}); ${c.verified_names.join(', ')}`).join('; ')])),'','## 매매 매물: 단지 연결 미확정','', '검색 미확정은 매물이 없다는 뜻이 아니다. 수집 오류와 분리하며 이전 광고는 관찰 시각을 유지해 보존한다.','',table(['지역','동','이름','지번','도로명주소','우편번호','코드','이전 광고 수','이전 수집 시각'],listingUnresolved.filter(row=>row.status==='unmatched').map(row=>[row.region_name,row.dong,row.name,row.jibun,row.road_address,row.postal_code,row.error_code,row.previous_ads,row.previous_collected_at])),'','## 매매 매물: 수집 오류·미시도','',table(['지역','동','이름','지번','도로명주소','상태','코드','이전 광고 수'],listingUnresolved.filter(row=>row.status!=='unmatched').map(row=>[row.region_name,row.dong,row.name,row.jibun,row.road_address,row.status,row.error_code,row.previous_ads])),'','## 저장 매물의 공통 단지 정보 연결 미확정','',table(['이름','동','지번','도로명주소','네이버 번호','광고 수','관찰 시각'],unresolvedListingIdentities.map(row=>[row.name,row.dong,row.jibun,row.road_address,row.complex_no,row.ads,row.observed_at])),'','## 실거래 미연결: 수집 범위 밖','',table(['지역','동','이름','지번','도로명주소'],tradeUnresolved.filter(row=>!inScope(row)).map(row=>[row.region_name,row.dong,row.apartment,row.jibun,row.road_address]))];
+ lines.splice(lines.indexOf('## 실거래 미연결: 수집 범위 안'),0,'성공 대상 중 광고 있음 '+summary.listing_ready_with_ads+'개, 0건 확인 '+summary.listing_ready_zero+'개. 네이버 단지 번호 기준 '+summary.listing_unique_complexes+'개, 광고 번호 기준 '+summary.listing_unique_ads+'건이다. 건축물대장 ID가 여러 개이거나 중개사별 광고가 중복될 수 있다.','');
+ lines.splice(lines.indexOf('## 실거래 미연결: 수집 범위 안'),0,'비교 자료의 기존 연결 '+summary.previously_matched+'개 중 연결 ID 변경 '+summary.reassigned_matched.length+'개, 새 보류 '+summary.newly_held.length+'개다.','');
+ atomicWrite(target.replace(/\.json$/i,'')+'.md',checkedBytes(lines.join('\n')+'\n',secretValues(paths.env)));
+ console.log(JSON.stringify(summary,null,2));
+}finally{db.close();}

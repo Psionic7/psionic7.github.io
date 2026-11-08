@@ -6,27 +6,35 @@ import {createDailyListingSource} from '../server/naver-listing-source.mjs';
 import {makeApartmentFavorite} from '../src/apartment-favorites.js';
 
 test('real Python/nodriver Chrome searches a visible suggestion and reads sale pages through the nested scroll event', {skip:!process.env.NAVER_BROWSER_PYTHON},async t=>{
-  const favorite=makeApartmentFavorite({apartment:'무인테스트단지',dong:'풍덕천동',jibun:'1191'},{region_code:'41465',region_name:'경기도 용인시 수지구'}),requests=[];
+  const favorite=makeApartmentFavorite({apartment:'무인테스트단지',dong:'풍덕천동',jibun:'1190',road_address:'경기도 용인시 수지구 테스트로 1 (풍덕천동)'},{region_code:'41465',region_name:'경기도 용인시 수지구'}),requests=[];
+  favorite.name_aliases=['무인테스트단지8단지'];
   const detail={complexDetail:{complexNo:'10959',complexName:favorite.apartment,cortarAddress:'경기도 용인시 수지구 풍덕천동',detailAddress:'1191'}};
   const raw=(id,trade='A1')=>({articleNo:id,articleName:favorite.apartment,realEstateTypeCode:'APT',tradeTypeCode:trade,dealOrWarrantPrc:'13억',area1:112,area2:84,rentPrc:trade==='B2'?'100':undefined});
+  let homeLoads=0,denied=false;
   const server=http.createServer((req,res)=>{
     const url=new URL(req.url,'http://127.0.0.1');requests.push(url.pathname+url.search);
+    const complexNo=url.pathname.match(/^\/complexes\/(10959|10960)$/)?.[1];
+    if(denied&&complexNo){res.writeHead(200,{'content-type':'text/html; charset=utf-8'});res.end('<!doctype html><html><body>자동입력 방지</body></html>');return;}
     if(url.pathname.startsWith('/api/')){
       res.writeHead(200,{'content-type':'application/json'});
       const page=Number(url.searchParams.get('page'));
-      res.end(JSON.stringify(url.pathname.startsWith('/api/complexes/')?detail:{articleList:page===1?[raw('2660000001'),raw('2660000002','B1')]:[raw('2660000003')],isMoreData:page===1}));return;
+      const id=url.pathname.split('/').pop();
+      res.end(JSON.stringify(url.pathname.startsWith('/api/complexes/')?{complexDetail:{...detail.complexDetail,complexNo:id,...(id==='10960'?{detailAddress:'1192',complexName:'무인테스트단지별동'}:{})}}:{articleList:page===1?[raw('2660000001'),raw('2660000002','B1')]:[raw('2660000003')],isMoreData:page===1}));return;
     }
+    if(url.pathname==='/')homeLoads++;
+    const suggestions=['풍덕천동 무인테스트단지','풍덕천동 무인테스트단지별동','풍덕천동 무인테스트단지7단지'];if(homeLoads%2) suggestions.reverse();
     res.writeHead(200,{'content-type':'text/html; charset=utf-8'});
     res.end(`<!doctype html><html lang="ko"><body>
       <button onclick="document.querySelector('#land_search').hidden=false">단지, 지역검색</button>
-      <input id="land_search" hidden oninput="document.querySelector('.search_item').hidden=false">
-      <ul><li class="search_item" hidden><button class="search_button" onmousedown="document.querySelector('#markers').hidden=false">풍덕천동 무인테스트단지</button></li></ul>
-      <div id="markers" hidden><a id="10959COMPLEX"><span class="complex_title">무인테스트단지</span></a></div>
-      ${url.pathname.endsWith('/10959')?`<h3 id="complexTitle">무인테스트단지</h3><input id="address_group2" type="checkbox">
+      <input id="land_search" value="이전 검색어" hidden oninput="document.querySelectorAll('.search_item').forEach(el=>el.hidden=this.value!=='풍덕천동 무인테스트단지')">
+      <ul><li class="search_item type_recent"><button class="search_button" onmousedown="location.href='/recent-error'">풍덕천동 무인테스트단지</button></li>${suggestions.map(label=>`<li class="search_item" hidden><button class="search_button" onmousedown="${label.endsWith('7단지')?"location.href='/wrong-phase'":"document.querySelector('#markers').hidden=false"}">${label}</button></li>`).join('')}</ul>
+      <div id="markers" hidden><a id="10959COMPLEX"><span class="complex_title">무인테스트단지</span></a><a id="10960COMPLEX"><span class="complex_title">무인테스트단지별동</span></a></div>
+      ${complexNo?`<h3 id="complexTitle">${complexNo==='10960'?'무인테스트단지별동':'무인테스트단지'}</h3><input id="address_group2" type="checkbox">
+      <table><tr><th>주소</th><td><p class="address">경기도 용인시 수지구 풍덕천동 ${complexNo==='10960'?'1192':'1191'}</p><p class="address"><i class="icon_roadname" aria-label="도로명"></i>경기도 용인시 수지구 테스트로 ${complexNo==='10960'?'2':'1'}</p></td></tr></table>
       <div class="item_list--article" style="height:100px;overflow:auto"><div id="articleListArea" style="height:600px"></div></div>
       <script>
-        fetch('/api/complexes/10959');let page=1,busy=false,more=true;
-        async function load(){if(busy||!more)return;busy=true;const r=await fetch('/api/articles/complex/10959?realEstateType=APT&tradeType='+new URLSearchParams(location.search).get('b')+'&sameAddressGroup=false&page='+page++);const data=await r.json();more=data.isMoreData;busy=false;}
+        ${complexNo==='10960'?`fetch('/api/complexes/${complexNo}');`:''}let page=1,busy=false,more=true;
+        async function load(){if(busy||!more)return;busy=true;const r=await fetch('/api/articles/complex/${complexNo}?realEstateType=APT&tradeType='+new URLSearchParams(location.search).get('b')+'&sameAddressGroup=false&page='+page++);const data=await r.json();more=data.isMoreData;busy=false;}
         load();document.querySelector('.item_list--article').addEventListener('scroll',load);
       </script>`:''}
       </body></html>`);
@@ -40,4 +48,8 @@ test('real Python/nodriver Chrome searches a visible suggestion and reads sale p
   assert.deepEqual(group.articles.map(a=>a.id),['2660000001','2660000003']);
   assert(requests.some(url=>url.includes('tradeType=A1')&&url.includes('page=2')));
   assert(requests.includes('/complexes/10959?a=APT&b=A1&e=RETAIL'));
+  assert(!requests.some(url=>url.startsWith('/wrong-phase')));
+  await source.close();denied=true;
+  source=await createDailyListingSource({baseUrl:`http://127.0.0.1:${server.address().port}`,python:process.env.NAVER_BROWSER_PYTHON,timeoutMs:45000});
+  await assert.rejects(source.collect({favorite,query:'풍덕천동 무인테스트단지'}),error=>error.code==='blocked');
 });

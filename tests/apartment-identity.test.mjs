@@ -9,6 +9,7 @@ import {listingSnapshot} from '../src/naver-listings.mjs';
 import {identityForApartment,validateApartmentInformation,validateIdentitySearch} from '../src/apartment-identity.mjs';
 import {buildSearchIndex} from '../src/search-index.mjs';
 import {dailyListingTargets} from '../server/daily-naver-listings.mjs';
+import {NAVER_LISTING_SCHEMA} from '../server/naver-listing-schema.mjs';
 
 function fixture(t){
   const db=new DatabaseSync(':memory:');t.after(()=>db.close());db.exec(PUBLIC_SCHEMA+LOCAL_SCHEMA+APARTMENT_MASTER_SCHEMA);
@@ -87,4 +88,13 @@ test('the publication gate rejects a search index that loses the canonical table
   assert.equal(validateIdentitySearch(search,catalog).length,1);
   assert.throws(()=>validateIdentitySearch(search.map(item=>({...item,name_aliases:['삼성1']})),catalog),/검색 목록/);
   assert.throws(()=>validateIdentitySearch(search.map(item=>({...item,postal_code:'99999'})),catalog),/검색 목록/);
+});
+
+test('a newer rejected recollection cannot be replaced by an older published successful connection',t=>{
+ const {db,options,group}=fixture(t);db.exec(NAVER_LISTING_SCHEMA);synchronizeApartmentIdentity(db,options);
+ db.prepare("UPDATE apartment_identity SET naver_complex_no=NULL,naver_name=NULL WHERE apartment_id='hub:samsung'").run();
+ const rejected={...group,status:'failed',errorCode:'address_mismatch',attemptedAt:'2026-11-08T00:00:00.000Z'};
+ db.prepare('INSERT INTO naver_listing_snapshots VALUES(?,?,?)').run(group.favorite.id,group.collectedAt,JSON.stringify(rejected));
+ synchronizeApartmentIdentity(db,{...options,now:'2026-11-08T01:00:00.000Z'});
+ assert.equal(apartmentInformation(db).find(row=>row.apartment_id===group.favorite.id).naver_complex_no,null);
 });

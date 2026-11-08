@@ -7,6 +7,7 @@ import http from 'node:http';
 import {once} from 'node:events';
 import {spawnSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
+import {regionalListingFixture} from './fixtures/regional-listings.mjs';
 import {secretValues,checkedBytes} from '../server/storage.mjs';
 import {createListingCollector,normalizeArticle,priceMan,writeListingSnapshot,verifyComplex} from '../server/naver-listings.mjs';
 import {listingMiddleware} from '../server/naver-listings-api.mjs';
@@ -15,8 +16,22 @@ import {makeApartmentFavorite} from '../src/apartment-favorites.js';
 
 const favorite=makeApartmentFavorite({apartment:'관심아파트',dong:'풍덕천동',jibun:'1112'}, {region_code:'41465',region_name:'경기도 용인시 수지구'});
 const detail={complexDetail:{complexNo:'12345',complexName:'관심아파트',cortarNo:'4146510100',cortarAddress:'경기도 용인시 수지구 풍덕천동',detailAddress:'1112'}};
+
+test('a different numbered phase cannot use the same parcel as proof of identity',()=>{
+ const registered={...favorite,name_aliases:['관심8단지']};
+ assert.throws(()=>verifyComplex({complexDetail:{...detail.complexDetail,complexName:'관심7단지'}},registered,'12345'),error=>error.code==='address_mismatch');
+ assert.equal(verifyComplex({complexDetail:{...detail.complexDetail,complexName:'관심8단지'}},registered,'12345'),'관심8단지');
+});
 const raw=(id='26000000001',extra={})=>({articleNo:id,articleName:'관심아파트',realEstateTypeCode:'APT',articleStatus:'R0',tradeTypeCode:'A1',dealOrWarrantPrc:'13억 5,000',area1:112.3,area2:84.9,floorInfo:'10/20',buildingName:'101동',direction:'남향',articleConfirmYmd:'20261105',articleFeatureDesc:'채광 좋은 집',realtorName:'공인중개사',...extra});
 const json=(data,status=200,headers={})=>new Response(JSON.stringify(data),{status,headers:{'Content-Type':'application/json',...headers}});
+
+test('road address verification ignores spaces and reference names but rejects a conflicting complex name or building number',()=>{
+ const input={...favorite,jibun:'1112-1',road_address:'경기도 용인시 수지구 수풍로 89 (풍덕천동, 관심아파트)'};
+ const payload={complexDetail:{...detail.complexDetail,roadAddressPrefix:'경기도 용인시 수지구',roadAddress:'수풍로89'}};
+ assert.equal(verifyComplex(payload,input,'12345'),detail.complexDetail.complexName);
+ assert.throws(()=>verifyComplex({complexDetail:{...payload.complexDetail,complexName:'다른아파트'}},input,'12345'),/주소/);
+ assert.throws(()=>verifyComplex({complexDetail:{...payload.complexDetail,roadAddress:'수풍로89-1'}},input,'12345'),/주소/);
+});
 const targets=(f=favorite)=>({version:1,favorites:[f],connections:[{favoriteId:f.id,complexNo:'12345'}]});
 function fixture(t,options={}) {
   const folder=fs.mkdtempSync(path.join(os.tmpdir(),'naver-listings-'));
@@ -138,9 +153,9 @@ test('legacy cache and partial samples expose only sales without inventing an em
 });
 
 test('new snapshots remove superseded regional reports so a later daily export can still publish',async t=>{
-  const f=fixture(t),snapshot=JSON.parse(fs.readFileSync(new URL('../public/listings/snapshot.json',import.meta.url),'utf8'));
+  const f=fixture(t),{snapshot,report}=regionalListingFixture();
   const reportFile=path.join(f.folder,'region-41465-report.json');
-  fs.copyFileSync(new URL('../public/listings/region-41465-report.json',import.meta.url),reportFile);
+  fs.writeFileSync(reportFile,JSON.stringify(report));
   writeListingSnapshot(f.settings.stateFile,snapshot);assert.equal(fs.existsSync(reportFile),true);
   const group=snapshot.groups.find(g=>g.favorite.region_code==='41465'&&g.articles.length);group.articles.pop();
   writeListingSnapshot(f.settings.stateFile,snapshot);assert.equal(fs.existsSync(reportFile),false);

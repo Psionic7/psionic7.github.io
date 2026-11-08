@@ -1,9 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
 import {validRegionalListingReport} from '../src/naver-listing-report.mjs';
-const snapshot=JSON.parse(fs.readFileSync(new URL('../public/listings/snapshot.json',import.meta.url),'utf8'));
-const report=JSON.parse(fs.readFileSync(new URL('../public/listings/region-41465-report.json',import.meta.url),'utf8'));
+import {regionalListingFixture} from './fixtures/regional-listings.mjs';
+const {snapshot,report}=regionalListingFixture();
 test('published regional counts reconcile with actual saved advertisements and distinguish partial coverage',()=>{
   assert.equal(validRegionalListingReport(report,snapshot,'41465'),true);
   const changed=structuredClone(report);changed.summary.advertisementCount++;

@@ -7,6 +7,8 @@
 - 별칭은 건축물대장, 같은 지번을 확인한 주소 API, 연결이 검증된 실거래, 주소 검증을 통과한 네이버 관찰에서만 등록하세요. 수집 실패나 검색 결과의 이름 유사도를 연결 근거로 사용하지 마세요.
 - 사용자가 확인한 대표 이름·별칭은 `automation/apartment-aliases.json`에 기존 ID와 행정구역·법정동·지번, 근거를 함께 기록하세요. 수집기나 화면 코드에 단지별 예외를 하드코딩하지 마세요. 네이버 번호를 재사용해도 실제 주소 검증을 생략하지 마세요.
 - 공식 주소 응답의 건물관리번호와 여러 도로명주소를 보존하세요. 확인되지 않은 우편번호는 NULL로 두세요. 같은 우편번호라는 이유로 주소나 단지가 같다고 판단하지 마세요.
+- 주소 비교에는 `src/address-identity.mjs`를 사용하세요. 도로명주소의 공백·끝 괄호 참고항목과 지번의 공백·숫자 표기를 통일하되 산 지번과 건물 본번·부번을 구분하세요. 도로명주소만으로 연결하지 말고 검증된 별칭·기존 주지번·준공연도와 충돌하는지 확인하세요.
+- 연결 규칙이나 수집기를 바꾼 뒤 `pnpm audit:matches --output local/data-validation/apartment-matches.json`으로 범위 안·밖의 실거래 미연결, 매물 검색 미확정, 수집 오류, 저장 매물의 공통 ID 미연결을 따로 검사하세요. 검색 미확정을 매물 0건으로 보고하지 마세요.
 - 대장·주소·별칭·매물 연결을 갱신한 뒤 `pnpm data:identities`로 정보를 갱신하고, `pnpm data:export`의 필수 검증을 통해 검색·지도 데이터를 생성하세요. `public/apartment-identity/catalog.json`을 직접 편집하지 마세요.
 - 연결 규칙 변경 시 `tests/apartment-identity.test.mjs`의 삼성1차 명칭 차이, 동명이인 단지·다른 지번·우편번호 단독 연결 금지와 재실행 검증을 유지하세요. `pnpm test:data`, `pnpm data:verify`, `pnpm build`, `pnpm check:publish`를 통과해야 완료로 보고하세요.
 - 스키마와 사용 방법은 [아파트 식별 정보 통합](project-notes/apartment-identity.md)을 참조하세요.

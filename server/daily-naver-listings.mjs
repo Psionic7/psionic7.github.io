@@ -61,7 +61,7 @@ export function listingExport(db,{initialSnapshot,now=new Date()}={}) {
   if(!validListingSnapshot(snapshot))throw new Error('공개 매물 스냅샷 검증 실패');return snapshot;
 }
 
-export async function collectDailyListings(db,config,{browserSource=process.env.NAVER_LISTING_SOURCE||'system-chrome',sourceFactory=()=>createDailyListingSource({initialSnapshot,source:browserSource}),now=()=>Date.now(),force=false,maxDurationMs=3*60*60*1000,onProgress=()=>{},initialSnapshot,signal}={}) {
+export async function collectDailyListings(db,config,{browserSource=process.env.NAVER_LISTING_SOURCE||'system-chrome',sourceFactory=()=>createDailyListingSource({initialSnapshot,source:browserSource}),now=()=>Date.now(),force=false,retryUnresolved=false,maxDurationMs=3*60*60*1000,onProgress=()=>{},initialSnapshot,signal}={}) {
   signal?.throwIfAborted();
   if(!['system-chrome','playwright'].includes(browserSource))throw Error('매물 브라우저 소스를 확인하세요.');
   db.exec(NAVER_LISTING_SCHEMA);
@@ -74,14 +74,14 @@ export async function collectDailyListings(db,config,{browserSource=process.env.
   }
   const saved=force?null:readListingCollection(db,dayKst);
   const previous=saved?.tradeType===LISTING_TRADE_TYPE&&saved.browserSource===browserSource?saved:null;
-  const byPrevious=new Map((previous?.results||[]).filter(r=>r.attemptedAt!==null).map(r=>[r.favoriteId,r]));
+  const byPrevious=new Map((previous?.results||[]).filter(r=>r.attemptedAt!==null&&(!retryUnresolved||r.status==='ready'||['blocked','rate_limited','unauthorized','site_unavailable'].includes(r.errorCode))).map(r=>[r.favoriteId,r]));
   let report=summarize({dayKst,tradeType:LISTING_TRADE_TYPE,browserSource,status:'running',startedAt:previous?.startedAt||new Date(started).toISOString(),finishedAt:null,regionIds,results:targets.map(({favorite})=>({...byPrevious.get(favorite.id),favorite,favoriteId:favorite.id,...(byPrevious.has(favorite.id)?{}:{status:'not_attempted',errorCode:null,attemptedAt:null})}))});
   if(report.results.every(r=>r.attemptedAt!==null)&&previous){
     const finished={...report,finishedAt:previous.finishedAt||new Date(now()).toISOString(),status:report.successCount===report.targetCount?'complete':report.successCount?'partial':'failed'};
     saveReport(db,finished);return {...finished,alreadyCollected:true};
   }
   saveReport(db,report);
-  let source,stoppedCode=null;
+  let source,stoppedCode=retryUnresolved?previous?.results.find(row=>['blocked','rate_limited','unauthorized','site_unavailable'].includes(row.errorCode))?.errorCode||null:null;
   try {
     for(let index=0;index<targets.length;index++) {
       signal?.throwIfAborted();

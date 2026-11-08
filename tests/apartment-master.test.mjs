@@ -60,6 +60,17 @@ test('separate trade links match verified parcels and retain renamed/historical 
  const db=fixture();try{populate(db);db.exec('CREATE TABLE trades(region_code TEXT,dong TEXT,jibun TEXT,apartment TEXT,build_year INTEGER)');const insert=db.prepare('INSERT INTO trades VALUES(?,?,?,?,?)');insert.run('41117','원천동','1','거래없는아파트',2000);insert.run('41117','원천동','2','독립단지',2000);insert.run('41117','원천동','1','철거된옛단지',1980);const r=linkMasterTrades(db);assert.equal(r.matched,2);assert.equal(r.unmatched,1);assert.equal(db.prepare('SELECT count(*) AS n FROM apartment_complexes WHERE active=1').get().n,1);}finally{db.close();}
 });
 
+test('equivalent road observations do not create an address conflict',()=>{
+ const db=fixture();try{
+  populate(db);db.exec('CREATE TABLE trades(region_code TEXT,dong TEXT,jibun TEXT,apartment TEXT,build_year INTEGER); CREATE TABLE road_addresses(region_code TEXT,dong TEXT,jibun TEXT,road_address TEXT)');
+  db.prepare('INSERT INTO trades VALUES(?,?,?,?,?)').run(scope.region_code,scope.dong,'1','거래없는아파트',2000);
+  const insert=db.prepare('INSERT INTO road_addresses VALUES(?,?,?,?)');
+  insert.run(scope.region_code,scope.dong,'1','경기도 수원시 영통구 시험로 1 (원천동)');
+  insert.run(scope.region_code,scope.dong,'01','경기도수원시영통구시험로1');
+  assert.deepEqual(linkMasterTrades(db),{matched:1,ambiguous:0,unmatched:0});
+ }finally{db.close();}
+});
+
 test('master export links duplicate building roots without merging IDs or assigning attached neighbours their trades',()=>{
  const db=fixture();try{
   populate(db,snapshot([title('b1','주공'),title('b2','주공'),title('b3','주공',{bun:'0002',newPlatPlc:'경기도 수원시 영통구 이웃로 2'})],[],[],[{mgmBldrgstPk:'b3',atchSigunguCd:'41117',atchBjdongCd:'10200',atchPlatGbCd:'0',atchBun:'0001',atchJi:'0000'}]));
@@ -208,6 +219,18 @@ test('cached senior records rebuild into a labeled map entry without reclassifyi
   assert.equal(db.prepare("SELECT classification FROM apartment_building_inventory WHERE building_id='mixed'").get().classification,'apartment');
   assert.equal(data.apartments.length,2);
   assert.deepEqual(item.trade_keys,[]);
+ }finally{db.close();}
+});
+
+test('apartment-type factories are excluded while actual apartment floors in mixed buildings remain',()=>{
+ const db=fixture();try{
+  const factory=title('factory','분당테크노파크',{mainPurpsCd:'17000',mainPurpsCdNm:'공장',etcPurps:'아파트형공장'});
+  const broad=title('broad','공장건물',{mainPurpsCd:'02000',mainPurpsCdNm:'공동주택',etcPurps:'아파트형 공장',bun:'0002'});
+  const mixed=title('mixed','복합주거',{mainPurpsCd:'17000',mainPurpsCdNm:'공장',etcPurps:'아파트형공장',bun:'0003'});
+  populate(db,snapshot([factory,broad,mixed],[],[],[],[{mgmBldrgstPk:'mixed',mainPurpsCd:'02001',mainPurpsCdNm:'아파트'}]));
+  db.prepare("UPDATE apartment_building_inventory SET classification='apartment' WHERE building_id IN ('factory','broad')").run();
+  rebuildApartmentMaster(db);
+  assert.deepEqual(db.prepare('SELECT apartment_id FROM apartment_complexes WHERE active=1 ORDER BY apartment_id').all().map(row=>row.apartment_id),['hub:mixed']);
  }finally{db.close();}
 });
 

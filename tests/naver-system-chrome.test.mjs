@@ -13,7 +13,7 @@ const article={articleNo:'2660123456',articleName:'수지테스트',realEstateTy
 const responses=[{url:'https://new.land.naver.com/api/complexes/10959',status:200,payload:detail},{url:'https://new.land.naver.com/api/articles/complex/10959?sameAddressGroup=false&realEstateType=APT&tradeType=A1&page=1',status:200,payload:{articleList:[article],isMoreData:false}}];
 function worker(reply){
   const child=new EventEmitter();child.stdout=new PassThrough();child.kill=()=>{child.killed=true;child.emit('exit',1);};
-  child.stdin=new Writable({write(chunk,encoding,done){const request=JSON.parse(String(chunk));if(request.close)child.emit('exit',0);else {child.request=request;const value=reply(request);if(value!==undefined)queueMicrotask(()=>child.stdout.write(JSON.stringify(value)+'\n'));}done();}});
+  child.stdin=new Writable({write(chunk,encoding,done){const request=JSON.parse(String(chunk));if(request.close)child.emit('exit',0);else {child.request=request;let value=reply(request);if(request.inspect&&value?.responses)value={complexNo:value.complexNo,complexDetail:value.responses.find(r=>r.payload?.complexDetail)?.payload.complexDetail};if(value!==undefined)queueMicrotask(()=>child.stdout.write(JSON.stringify(value)+'\n'));}done();}});
   setImmediate(()=>child.stdout.write('{"ready":true}\n'));return child;
 }
 test('system Chrome responses produce a sanitized complete snapshot with address and every page validated',async()=>{
@@ -68,10 +68,32 @@ test('unmapped targets search automatically and verify names and parcel before r
   const source=await createDailyListingSource({python:'test-python',spawnWorker:()=>child});
   try{
     const group=await source.collect({favorite,query:'풍덕천동 수지테스트'});
-    assert.equal(group.coverage,'complete');assert.equal(group.tradeType,'A1');assert.equal(requests.length,2);
+    assert.equal(group.coverage,'complete');assert.equal(group.tradeType,'A1');assert.equal(requests.length,3);
     assert.equal(requests[0].discover,true);assert.deepEqual(requests[0].names,[favorite.apartment]);
-    assert.equal(requests[1].complexNo,'10959');
+    assert.equal(requests[1].complexNo,'10959');assert.equal(requests[1].inspect,true);assert.equal(requests[2].inspect,undefined);
   }finally{await source.close();}
+});
+
+test('a failed canonical query tries a registered alias and keeps parcel checks',async()=>{
+ const targetFavorite={...favorite,name_aliases:['수지테스트']},queries=[];
+ const source=await createDailyListingSource({python:'test-python',spawnWorker:()=>worker(request=>{
+  if(request.discover){queries.push(request.query);return {candidates:queries.length===1?[]:[{complexNo:'10959',name:favorite.apartment}]};}
+  return {complexNo:'10959',responses};
+ })});
+ try{
+  const group=await source.collect({favorite:targetFavorite,query:'풍덕천동 대장에만 있는 긴 이름'});
+  assert.equal(group.complexNo,'10959');assert.deepEqual(queries,['풍덕천동 대장에만 있는 긴 이름','풍덕천동 수지테스트']);
+ }finally{await source.close();}
+});
+
+test('identical discovery is reused within one run while each master address is verified',async()=>{
+ let searches=0;
+ const source=await createDailyListingSource({python:'test-python',spawnWorker:()=>worker(request=>request.discover?(searches++,{candidates:[{complexNo:'10959',name:favorite.apartment}]}):{complexNo:'10959',responses})});
+ try{
+  await source.collect({favorite,query:'풍덕천동 수지테스트'});
+  await assert.rejects(source.collect({favorite:{...favorite,id:'other-master',jibun:'1192'},query:'풍덕천동 수지테스트'}),error=>error.code==='unmatched');
+  assert.equal(searches,1);
+ }finally{await source.close();}
 });
 
 test('daily source seeds verified snapshot connections but rechecks their address with a new browser observation',async()=>{
@@ -100,13 +122,14 @@ test('a short registered trade name discovers its numbered Naver phase and still
 
 test('wrong names, mismatched parcels and ambiguous same-address search results never become successful connections',async()=>{
   for(const mode of ['name','parcel','ambiguous']){
-    let navigations=0;
+    let navigations=0,fullCollections=0;
     const source=await createDailyListingSource({python:'test-python',spawnWorker:()=>worker(request=>{
       if(request.discover)return {candidates:[{complexNo:'10959',name:mode==='name'?'다른아파트':favorite.apartment},...(mode==='ambiguous'?[{complexNo:'10960',name:favorite.apartment}]:[])]};
       navigations++;
+      if(!request.inspect)fullCollections++;
       return {complexNo:request.complexNo,responses:responses.map((r,i)=>({...r,url:r.url.replaceAll('10959',request.complexNo),...(i===0?{payload:{complexDetail:{...detail.complexDetail,complexNo:request.complexNo,detailAddress:mode==='parcel'?'99':'1191'}}}:{})}))};
     })});
-    try{await assert.rejects(source.collect({favorite,query:'풍덕천동 수지테스트'}),e=>e.code==='unmatched');assert.equal(navigations,mode==='name'?0:mode==='ambiguous'?2:1);}finally{await source.close();}
+    try{await assert.rejects(source.collect({favorite,query:'풍덕천동 수지테스트'}),e=>e.code==='unmatched');assert.equal(navigations,mode==='name'?0:mode==='ambiguous'?2:1);assert.equal(fullCollections,0);}finally{await source.close();}
   }
 });
 

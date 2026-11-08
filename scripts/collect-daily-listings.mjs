@@ -8,8 +8,8 @@ import {writeListingSnapshot} from '../server/naver-listings.mjs';
 import {createDailyListingSource} from '../server/naver-listing-source.mjs';
 
 try {
-  const {values}=parseArgs({options:{plan:{type:'boolean'},force:{type:'boolean'},headed:{type:'boolean'},help:{type:'boolean'},database:{type:'string'},output:{type:'string'},'region-code':{type:'string'},source:{type:'string',default:'system-chrome'},python:{type:'string'},connections:{type:'string'}}});
-  if(values.help)console.log('pnpm listings:daily [--plan] [--force] [--headed] [--region-code <시군구 5자리>] [--source playwright|system-chrome] [--python <nodriver 설치 Python>] [--connections <브라우저 검색 JSON>] [--database <SQLite>] [--output <JSON>]\n저장된 수집 지역의 전체 아파트의 매매 매물을 한국 날짜별 하루 한 번 수집합니다. --plan은 조회만 수행합니다.');
+  const {values}=parseArgs({options:{plan:{type:'boolean'},force:{type:'boolean'},'retry-unresolved':{type:'boolean'},headed:{type:'boolean'},help:{type:'boolean'},database:{type:'string'},output:{type:'string'},'region-code':{type:'string'},source:{type:'string',default:'system-chrome'},python:{type:'string'},connections:{type:'string'}}});
+  if(values.help)console.log('pnpm listings:daily [--plan] [--force] [--retry-unresolved] [--headed] [--region-code <시군구 5자리>] [--source playwright|system-chrome] [--python <nodriver 설치 Python>] [--connections <브라우저 검색 JSON>] [--database <SQLite>] [--output <JSON>]\n저장된 수집 지역의 전체 아파트의 매매 매물을 한국 날짜별 하루 한 번 수집합니다. --plan은 조회만 수행합니다. --retry-unresolved는 같은 날 성공 자료를 유지하고 미확정·일시 오류만 재시도합니다. 명시적 접근 제한은 재시도하지 않습니다.');
   else {
     const config=validateConfig(readJson(path.join(ROOT,'automation/config.json'))),db=connect(values.database?path.resolve(values.database):paths.db,values.plan===true);
     try {
@@ -27,7 +27,7 @@ try {
         const initialSnapshot=fs.existsSync(filename)?readJson(filename):undefined;
         const connections=values.connections?readJson(path.resolve(values.connections)):[];
         const sourceFactory=()=>createDailyListingSource({source:values.source,python:values.python,connections,initialSnapshot,headless:values.source==='playwright'&&!values.headed});
-        const report=await collectDailyListings(db,config,{force:values.force,browserSource:values.source,sourceFactory,initialSnapshot,onProgress:console.log});
+        const report=await collectDailyListings(db,config,{force:values.force,retryUnresolved:values['retry-unresolved'],browserSource:values.source,sourceFactory,initialSnapshot,onProgress:console.log});
         const snapshot=listingExport(db,{initialSnapshot});
         writeListingSnapshot(filename,snapshot);
         if(filename===path.join(ROOT,'public/listings/snapshot.json'))atomicWrite(path.join(ROOT,'public/listings/collection.json'),JSON.stringify({version:1,source:'naver-land',collection:snapshot.collection||null})+'\n');

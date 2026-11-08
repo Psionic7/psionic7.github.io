@@ -14,6 +14,7 @@
     "admin": "pnpm admin:build && node server/index.mjs",
     "data:export": "node scripts/export-data.mjs",
     "data:identities": "node scripts/rebuild-apartment-identity.mjs",
+    "audit:matches": "node scripts/audit-apartment-matches.mjs",
     "listings:collect": "node scripts/collect-naver-listings.mjs",
     "listings:import-browser": "node scripts/import-naver-browser-capture.mjs",
     "listings:daily": "node scripts/collect-daily-listings.mjs",

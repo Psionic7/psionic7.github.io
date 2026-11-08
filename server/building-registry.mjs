@@ -61,7 +61,7 @@ export function buildingClassification(row,floors=[]){
  if(text(row.mainAtchGbCd)==='1')return 'other'; // Ancillary guardhouses/garages remain linked buildings, not apartment dwellings.
  const rows=[row,...floors],uses=rows.map(p=>[p.mainPurpsCdNm,p.etcPurps].map(text).join(' '));
  if(uses.some(s=>/노인복지주택/.test(s)))return 'senior_housing';
- if(rows.some(p=>text(p.mainPurpsCd)==='02001')||uses.some(s=>/아파트/.test(s)))return 'apartment';
+ if(rows.some(p=>text(p.mainPurpsCd)==='02001')||uses.some(s=>/아파트(?!\s*형\s*공장)/.test(s)))return 'apartment';
  if(uses.some(s=>/공동주택/.test(s))&&!uses.some(s=>/연립|다세대|기숙사/.test(s)))return 'review';
  return 'other';
 }

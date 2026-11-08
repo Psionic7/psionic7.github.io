@@ -84,6 +84,17 @@ test('known per-apartment failures do not stop other apartments; previous succes
   const snapshot=listingExport(db);assert(validListingSnapshot(snapshot));const previous=snapshot.groups.find(g=>g.favorite.id==='hub:a');assert.equal(previous.status,'failed');assert.equal(previous.collectedAt,before[0].collectedAt);assert.equal(previous.errorCode,'timeout');
 });
 
+test('retrying unresolved targets keeps successful observations and does not retry explicit access restrictions',async t=>{
+ const db=fixture(t),options={now:()=>Date.parse('2026-11-08T00:00:00.000Z')},first=source();
+ const collect=first.collect;first.collect=async target=>{if(target.favorite.id==='hub:b')throw new BrowserListingError('unmatched');return collect(target);};
+ const before=await collectDailyListings(db,config,{...options,sourceFactory:async()=>first});assert.equal(before.successCount,1);
+ const calls=[];const after=await collectDailyListings(db,config,{...options,retryUnresolved:true,sourceFactory:async()=>source({onCollect:target=>calls.push(target.favorite.id)})});
+ assert.deepEqual(calls,['hub:b']);assert.equal(after.status,'complete');assert.equal(after.results[0].attemptedAt,before.results[0].attemptedAt);
+ const blocked=await collectDailyListings(db,config,{...options,force:true,sourceFactory:async()=>({close:async()=>{},collect:async()=>{throw new BrowserListingError('blocked');}})});
+ let attempted=false;const resumed=await collectDailyListings(db,config,{...options,retryUnresolved:true,sourceFactory:async()=>({close:async()=>{},collect:async()=>{attempted=true;throw new BrowserListingError('blocked');}})});
+ assert.equal(resumed.failureCount,blocked.failureCount);assert.equal(attempted,false);
+});
+
 test('request limits stop remaining targets, remain distinct from zero ads, and force explicitly retries a completed day',async t=>{
   const db=fixture(t);let calls=0;
   const options={now:()=>Date.parse('2026-11-06T00:00:00.000Z'),sourceFactory:async()=>({close:async()=>{},collect:async()=>{calls++;throw new BrowserListingError('rate_limited');}})};
@@ -145,7 +156,7 @@ test('cancellation does not save a result returned after cancellation or silentl
 test('ambiguous generic official names use verified trade aliases for search',t=>{
   const db=fixture(t);db.prepare("UPDATE apartment_complexes SET name='정든마을' WHERE apartment_id IN ('hub:a','hub:b')").run();
   db.prepare('INSERT INTO apartment_trade_links VALUES(?,?,?,?,?,?,?,?,?)').run('41135','정자동','1','정든마을(2단지)(동아)','hub:a','matched','address','[]','2026-11-06Z');
-  assert.equal(dailyListingTargets(db,config)[0].query,'정자동 정든마을(2단지)(동아)');
+  assert.equal(dailyListingTargets(db,config)[0].query,'정자동 정든마을2단지');
 });
 
 test('a generic official name uses the numbered phase from its verified trade alias in the search query',t=>{

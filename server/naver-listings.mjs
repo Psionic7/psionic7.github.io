@@ -1,6 +1,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import {randomUUID} from 'node:crypto';
+import {normalizeRoadAddress,normalizeParcel} from '../src/address-identity.mjs';
+import {listingSearchNames,normalizeListingName,listingFavoritePhase,listingPhaseMatches} from './naver-listing-names.mjs';
 import {setTimeout as sleep} from 'node:timers/promises';
 import {validApartmentFavorites} from '../src/apartment-favorites.js';
 import {validRegionalListingReport} from '../src/naver-listing-report.mjs';
@@ -10,10 +12,7 @@ class ListingError extends Error {constructor(code){super(LISTING_ERRORS[code]);
 const fail=code=>{throw new ListingError(code);};
 const clean=(value,max=1000)=>typeof value==='string'?value.replace(/<[^>]*>/g,'').trim().slice(0,max):'';
 const compact=value=>String(value||'').replace(/\s/g,'');
-const lot=value=>{
-  const match=String(value||'').trim().match(/^(산)?\s*(\d+)(?:-(\d+))?$/);
-  return match?`${match[1]||''}${Number(match[2])}${Number(match[3])?'-'+Number(match[3]):''}`:null;
-};
+const lot=normalizeParcel;
 
 export function priceMan(value) {
   if(typeof value!=='string'&&typeof value!=='number')fail('invalid_response');
@@ -45,12 +44,14 @@ export function normalizeArticle(raw) {
 export function verifyComplex(payload,favorite,complexNo) {
   const detail=payload?.complexDetail;
   if(!detail||String(detail.complexNo)!==complexNo||!clean(detail.complexName))fail('invalid_response');
+  if(!listingPhaseMatches(listingFavoritePhase(favorite),clean(detail.complexName)))fail('address_mismatch');
   const address=compact(detail.cortarAddress||detail.address),code=String(detail.cortarNo||'');
   const region=code?/^\d{10}$/.test(code)&&code.slice(0,5)===favorite.region_code:address.includes(compact(favorite.region_name));
   const expectedLot=lot(favorite.jibun);
   const parcel=region&&address.endsWith(compact(favorite.dong))&&expectedLot!==null&&lot(detail.detailAddress)===expectedLot;
-  const road=compact([detail.roadAddressPrefix,detail.roadAddress].filter(Boolean).join(' '));
-  if(!parcel&&!(region&&favorite.road_address&&road===compact(favorite.road_address)))fail('address_mismatch');
+  const road=normalizeRoadAddress([detail.roadAddressPrefix,detail.roadAddress].filter(Boolean).join(' '));
+  const named=listingSearchNames(favorite).some(name=>normalizeListingName(name)===normalizeListingName(clean(detail.complexName)));
+  if(!parcel&&!(region&&road&&road===normalizeRoadAddress(favorite.road_address)&&named))fail('address_mismatch');
   return clean(detail.complexName);
 }
 

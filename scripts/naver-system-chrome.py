@@ -69,22 +69,49 @@ class Collector:
         return all(i in pages for i in range(1, last + 1)) and pages[last].get("isMoreData") is False
 
     async def detail(self, complex_no):
+        observed=None
         for record in self.responses:
             if urlsplit(record["url"]).path == f"/api/complexes/{complex_no}" and record["payload"].get("complexDetail"):
-                return record["payload"]["complexDetail"]
+                observed=record["payload"]["complexDetail"]
+                if observed.get('roadAddress'):return observed
         # Initial complex information is server-rendered and need not generate
         # an API response. Read the address table actually displayed by the UI.
         await self.tab.evaluate("Array.from(document.querySelectorAll('button')).find(b=>['단지정보','단지정보 더보기'].includes(b.textContent.trim()))?.click()")
         for _ in range(20):
-            visible = json.loads(await self.tab.evaluate("JSON.stringify((()=>{const th=Array.from(document.querySelectorAll('th')).find(t=>t.textContent.trim()==='주소');return th?{address:th.nextElementSibling.innerText,title:document.querySelector('#complexTitle')?.innerText}:null})())"))
+            visible = json.loads(await self.tab.evaluate("JSON.stringify((()=>{const th=Array.from(document.querySelectorAll('th')).find(t=>t.textContent.trim()==='주소');return th?{address:th.nextElementSibling.innerText,road:th.nextElementSibling.querySelector('.icon_roadname')?.closest('p')?.innerText.trim(),title:document.querySelector('#complexTitle')?.innerText}:null})())"))
             if visible and visible.get("address"):
                 parcel = next((line.strip() for line in visible["address"].splitlines() if line.strip()), "")
                 match = re.fullmatch(r"(.*(?:동|읍|면))\s+(산?\s*\d+(?:-\d+)?)", parcel)
                 if match and visible.get("title"):
-                    return {"complexNo": complex_no, "complexName": visible["title"], "cortarAddress": match.group(1), "detailAddress": match.group(2)}
-                return None
+                    if observed:
+                        compact=lambda value:re.sub(r'\s','',str(value or ''))
+                        if compact(observed.get('cortarAddress') or observed.get('address'))!=compact(match.group(1)) or compact(observed.get('detailAddress'))!=compact(match.group(2)):return observed
+                    return {**(observed or {}),"complexNo": complex_no, "complexName": visible["title"], "cortarAddress": match.group(1), "detailAddress": match.group(2),**({'roadAddressPrefix':'','roadAddress':visible['road']} if visible.get('road') else {})}
+                return observed
             await asyncio.sleep(0.5)
-        return None
+        return observed
+
+    async def inspect(self, request):
+        self.responses,self.requests,self.error=[],{},None
+        complex_no=request.get('complexNo','')
+        if not re.fullmatch(r'[1-9]\d{0,11}',complex_no):return {'errorCode':'unmatched'}
+        _,loader_id,*_=await self.tab.send(uc.cdp.page.navigate(f'{self.base_url}/complexes/{complex_no}?a=APT&b=A1&e=RETAIL'))
+        for _ in range(40):
+            if self.error:return {'errorCode':self.error}
+            frame=await self.tab.send(uc.cdp.page.get_frame_tree())
+            if not loader_id or frame.frame.loader_id==loader_id:
+                text=await self.tab.evaluate("document.body?.innerText||''")
+                if re.search(r'자동입력\s*방지|비정상적인\s*접근|접근이?\s*제한|Too Many Requests|captcha',text,re.I):return {'errorCode':'blocked'}
+                if '/404' in (await self.tab.evaluate('location.href')):return {'errorCode':'site_unavailable'}
+                ready=await self.tab.evaluate("document.readyState==='complete'&&!!document.querySelector('#complexTitle')?.innerText")
+                if ready:
+                    current=await self.tab.evaluate('location.href')
+                    if urlsplit(current).path.rstrip('/')!=f'/complexes/{complex_no}':return {'errorCode':'address_mismatch'}
+                    detail=await self.detail(complex_no)
+                    if self.error:return {'errorCode':self.error}
+                    return {'complexNo':complex_no,'complexDetail':detail} if detail else {'errorCode':'address_mismatch'}
+            await asyncio.sleep(0.25)
+        return {'errorCode':'timeout'}
 
     async def collect(self, request):
         self.responses, self.requests, self.error = [], {}, None
@@ -126,17 +153,35 @@ class Collector:
         return {"errorCode": "incomplete" if complex_no else "unmatched"}
 
     async def search(self, query):
-        await self.tab.send(uc.cdp.page.navigate(self.base_url+'/'))
+        _, loader_id, *_ = await self.tab.send(uc.cdp.page.navigate(self.base_url+'/'))
+        opened=False
         for _ in range(30):
-            opened=await self.tab.evaluate("(()=>{const b=Array.from(document.querySelectorAll('button')).find(b=>b.textContent.trim()==='단지, 지역검색');if(!b)return false;b.click();return true})()")
+            try:
+                frame=await self.tab.send(uc.cdp.page.get_frame_tree())
+                if loader_id and frame.frame.loader_id!=loader_id:
+                    await asyncio.sleep(0.3)
+                    continue
+                opened=await self.tab.evaluate("(()=>{if(document.readyState!=='complete')return false;const b=Array.from(document.querySelectorAll('button')).find(b=>b.textContent.trim()==='단지, 지역검색');if(!b)return false;b.click();return true})()")
+            except Exception:
+                opened=False
             if opened:break
             await asyncio.sleep(0.3)
-        field=await self.tab.select('#land_search',timeout=10)
-        await field.apply('(element)=>element.focus()')
-        await self.tab.send(uc.cdp.input_.insert_text(query))
+        if not opened:raise asyncio.TimeoutError()
         for _ in range(30):
-            choices=json.loads(await self.tab.evaluate("JSON.stringify(Array.from(document.querySelectorAll('li.search_item button.search_button')).map(b=>b.getClientRects().length?b.innerText.trim():''))"))
-            if any(choices):return choices
+            try:
+                focused=await self.tab.evaluate("(()=>{const field=document.querySelector('#land_search');if(!field?.getClientRects().length)return false;Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(field,'');field.dispatchEvent(new Event('input',{bubbles:true}));field.focus();return true})()")
+            except Exception:
+                focused=False
+            if focused:break
+            await asyncio.sleep(0.3)
+        if not focused:raise asyncio.TimeoutError()
+        await self.tab.send(uc.cdp.input_.insert_text(query))
+        previous=None
+        for _ in range(30):
+            choices=json.loads(await self.tab.evaluate("JSON.stringify(Array.from(document.querySelectorAll('li.search_item:not(.type_recent) button.search_button')).map(b=>b.getClientRects().length?b.innerText.trim():''))"))
+            value=await self.tab.evaluate("document.querySelector('#land_search')?.value")
+            if any(choices) and value==query and choices==previous:return choices
+            previous=choices if value==query else None
             text=await self.tab.evaluate("document.body?.innerText||''")
             if re.search(r'captcha|접근.*제한|비정상적인.*접근',text,re.I):
                 raise PermissionError('blocked')
@@ -148,32 +193,42 @@ class Collector:
     async def discover(self, request):
         query=request.get('query','')
         names=request.get('names',[])
+        phase=request.get('phase')
+        if phase is not None and (not isinstance(phase,str) or not re.fullmatch(r'\d{1,3}',phase)):return {'errorCode':'unmatched'}
+        def phase_allowed(value):
+            values=re.findall(r'(\d+(?:-\d+)?)(?:단지|차)',value)
+            return not phase or not values or any(value==phase or '-' in value for value in values)
         if not isinstance(query,str) or not 0<len(query)<=300 or not isinstance(names,list) or not names or len(names)>100:
             return {'errorCode':'unmatched'}
         normalize=lambda value:re.sub(r'[\s()[\]·.,_-]|아파트','',value).lower()
         names=[normalize(name) for name in names if isinstance(name,str) and len(name)<=300]
+        dong=normalize(request.get('dong',''))
         choices=await self.search(query)
-        selected=[(index,label) for index,label in enumerate(choices) if any(name and (name==normalize(label) or len(name)>=4 and name in normalize(label)) for name in names)]
+        selected=[(index,label) for index,label in enumerate(choices) if phase_allowed(label) and any(name and (name==normalize(label) or dong and normalize(label).startswith(dong) and name==normalize(label)[len(dong):] or len(name)>=4 and name in normalize(label)) for name in names)]
         if os.environ.get('NAVER_BROWSER_DIAGNOSTICS')=='1':
-            print(json.dumps({'stage':'search','choices':len(choices),'matched':len(selected)}),file=sys.stderr,flush=True)
+            print(json.dumps({'stage':'search','choices':len(choices),'matched':len(selected),'phase':phase,'labels':choices},ensure_ascii=False),file=sys.stderr,flush=True)
         if not selected or len(selected)>8:return {'candidates':[]}
         candidates=[]
         for number,(index,label) in enumerate(selected):
             if number:
                 current=await self.search(query)
-                if index>=len(current) or current[index]!=label:return {'errorCode':'unmatched'}
-            buttons=await self.tab.select_all('li.search_item button.search_button')
-            if index>=len(buttons):return {'errorCode':'unmatched'}
-            await buttons[index].apply("element=>element.dispatchEvent(new MouseEvent('mousedown',{bubbles:true,cancelable:true,button:0}))")
+                positions=[position for position,value in enumerate(current) if value==label]
+                if len(positions)!=1:
+                    if os.environ.get('NAVER_BROWSER_DIAGNOSTICS')=='1':print(json.dumps({'stage':'reselect','expected':label,'current':current},ensure_ascii=False),file=sys.stderr,flush=True)
+                    return {'errorCode':'unmatched'}
+            clicked=await self.tab.evaluate("(label=>{const buttons=Array.from(document.querySelectorAll('li.search_item:not(.type_recent) button.search_button')).filter(element=>element.getClientRects().length&&element.innerText.trim()===label);if(buttons.length!==1)return false;buttons[0].dispatchEvent(new MouseEvent('mousedown',{bubbles:true,cancelable:true,button:0}));return true})("+json.dumps(label)+")")
+            if not clicked:
+                if os.environ.get('NAVER_BROWSER_DIAGNOSTICS')=='1':print(json.dumps({'stage':'click','expected':label,'current':await self.tab.evaluate("JSON.stringify(Array.from(document.querySelectorAll('li.search_item button.search_button')).map(e=>({text:e.innerText,visible:!!e.getClientRects().length})))")},ensure_ascii=False),file=sys.stderr,flush=True)
+                return {'errorCode':'unmatched'}
             for _ in range(40):
                 current=await self.tab.evaluate('location.href')
                 match=re.fullmatch(r'/complexes/([1-9]\d{0,11})/?',urlsplit(current).path)
                 name=await self.tab.evaluate("document.querySelector('#complexTitle')?.innerText||''")
-                if match and name:
+                if match and name and phase_allowed(name):
                     candidates.append({'complexNo':match.group(1),'name':name.strip()})
                     break
                 markers=json.loads(await self.tab.evaluate("JSON.stringify(Array.from(document.querySelectorAll('a[id$=COMPLEX]')).map(e=>({complexNo:e.id.replace(/COMPLEX$/,''),name:e.querySelector('.complex_title')?.textContent.trim()||''})))"))
-                matched=[marker for marker in markers if re.fullmatch(r'[1-9]\d{0,11}',marker['complexNo']) and any(expected and (expected==normalize(marker['name']) or len(expected)>=4 and expected in normalize(marker['name'])) for expected in names)]
+                matched=[marker for marker in markers if phase_allowed(marker['name']) and re.fullmatch(r'[1-9]\d{0,11}',marker['complexNo']) and any(expected and (expected==normalize(marker['name']) or len(expected)>=4 and expected in normalize(marker['name'])) for expected in names)]
                 if matched:
                     candidates.extend(matched)
                     break
@@ -214,7 +269,7 @@ async def main():
             if request.get("close"):
                 break
             try:
-                operation=collector.discover(request) if request.get('discover') else collector.collect(request)
+                operation=collector.discover(request) if request.get('discover') else collector.inspect(request) if request.get('inspect') else collector.collect(request)
                 result = await asyncio.wait_for(operation,timeout=request.get('timeoutSeconds',45))
             except asyncio.TimeoutError:
                 if os.environ.get('NAVER_BROWSER_DIAGNOSTICS')=='1':
