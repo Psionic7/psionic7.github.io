@@ -12,8 +12,20 @@ import {validListingSnapshot,kstListingDay,listingGroupForFavorite} from '../src
 import {makeApartmentFavorite} from '../src/apartment-favorites.js';
 import {collectConfigured} from '../scripts/automation.mjs';
 import {encryptState,decryptState} from '../server/cloud-state.mjs';
+import {synchronizeHousingIdentity,housingTradeBindings} from '../server/apartment-identity.mjs';
+import {readNaverMatch} from '../server/apartment-naver-matches.mjs';
 
 const config={version:1,time_kst:'01:00',recent_months:1,address_limit:1000,region_ids:['dong_41135103']};
+test('daily collection resolves once, saves match before stock timeout, and next day goes directly to stored Naver ID',async t=>{
+ const db=fixture(t);let tick=Date.parse('2026-11-08T00:00:00Z'),resolves=0,collects=0;
+ const factory=async()=>({close:async()=>{},resolve:async target=>{
+  resolves++;const complexNo=target.favorite.jibun==='1'?'111':'222';
+  return {complexNo,observation:{complex_no:complexNo,name:target.favorite.apartment,road_address:target.favorite.road_address||'',parcel_address:target.favorite.region_name+' '+target.favorite.dong+' '+target.favorite.jibun,latitude:37.36,longitude:127.12,coordinate_role:'provider_label',source_url:`https://new.land.naver.com/complexes/${complexNo}`,observed_at:new Date(tick).toISOString()}};
+ },collect:async(target,{complexNo})=>{collects++;assert.equal(complexNo,target.favorite.jibun==='1'?'111':'222');throw new BrowserListingError('timeout');}});
+ await collectDailyListings(db,config,{now:()=>tick,sourceFactory:factory});assert.equal(resolves,2);
+ const target=dailyListingTargets(db,config)[0];assert.equal(readNaverMatch(db,target).state,'verified');
+ tick+=86400000;await collectDailyListings(db,config,{now:()=>tick,sourceFactory:factory});assert.equal(resolves,2);assert.equal(collects,4);
+});
 function fixture(t){
   const db=new DatabaseSync(':memory:');t.after(()=>db.close());db.exec(PUBLIC_SCHEMA+LOCAL_SCHEMA+APARTMENT_MASTER_SCHEMA);
   for(const [id,code,name,dong] of [['dong_41135103','41135','경기도 성남시 분당구','정자동'],['dong_41465101','41465','경기도 용인시 수지구','풍덕천동']]){
@@ -93,13 +105,15 @@ test('retrying unresolved targets keeps successful observations and does not ret
  const blocked=await collectDailyListings(db,config,{...options,force:true,sourceFactory:async()=>({close:async()=>{},collect:async()=>{throw new BrowserListingError('blocked');}})});
  let attempted=false;const resumed=await collectDailyListings(db,config,{...options,retryUnresolved:true,sourceFactory:async()=>({close:async()=>{},collect:async()=>{attempted=true;throw new BrowserListingError('blocked');}})});
  assert.equal(resumed.failureCount,blocked.failureCount);assert.equal(attempted,false);
+ const ordinaryResume=await collectDailyListings(db,config,{...options,sourceFactory:async()=>{attempted=true;throw Error('blocked day must not restart');}});
+ assert.equal(ordinaryResume.failureCount,blocked.failureCount);assert.equal(attempted,false);
 });
 
 test('request limits stop remaining targets, remain distinct from zero ads, and force explicitly retries a completed day',async t=>{
   const db=fixture(t);let calls=0;
   const options={now:()=>Date.parse('2026-11-06T00:00:00.000Z'),sourceFactory:async()=>({close:async()=>{},collect:async()=>{calls++;throw new BrowserListingError('rate_limited');}})};
   const report=await collectDailyListings(db,config,options);assert.equal(calls,1);assert.equal(report.failureCount,1);assert.equal(report.notAttemptedCount,1);assert.equal(listingExport(db).groups.length,0);
-  const completed=await collectDailyListings(db,config,{...options,sourceFactory:async()=>source()});assert.equal(completed.successCount,1);assert.equal(completed.failureCount,1);
+  const held=await collectDailyListings(db,config,{...options,sourceFactory:async()=>{calls++;return source();}});assert.equal(held.successCount,0);assert.equal(held.failureCount,1);assert.equal(held.notAttemptedCount,1);assert.equal(calls,1);
   const retry=await collectDailyListings(db,config,{...options,force:true,sourceFactory:async()=>source()});assert.equal(retry.status,'complete');
 });
 
@@ -110,10 +124,66 @@ test('a missing inventory and a time budget are explicit incomplete runs without
   const custom=await collectDailyListings(db,{region_ids:['custom_41465_abcd1234abcd']},{sourceFactory:async()=>{calls++;}});assert.equal(custom.errorCode,'inventory_unavailable');assert.equal(custom.regionIds[0],'custom_41465_abcd1234abcd');assert.equal(calls,0);
 });
 
-test('verified trade aliases connect legacy personal favorites to regional master snapshots',t=>{
+test('legacy trade aliases alone do not prove listing coverage of a source complex',t=>{
   const db=fixture(t);db.prepare('INSERT INTO apartment_trade_links VALUES(?,?,?,?,?,?,?,?,?)').run('41135','정자동','1','이전신고명','hub:a','matched','address','[]','2026-11-06Z');
   const favorite=dailyListingTargets(db,config)[0].favorite,legacy=makeApartmentFavorite({...favorite,apartment:'이전신고명',master_id:undefined},favorite);
-  const group={favorite,complexNo:'111'};assert.equal(listingGroupForFavorite([group],legacy),group);assert.equal(listingGroupForFavorite([group],{...legacy,region_code:'11110'}),null);
+  const group={favorite,complexNo:'111'};assert.equal(listingGroupForFavorite([group],legacy),null);
+  group.favorite={...favorite,identity_ref:{kind:'root',id:favorite.id},identity_coverage:{entity_ids:[legacy.id],root_ids:[favorite.id],cohort_ids:[]}};
+  assert.equal(listingGroupForFavorite([group],legacy),group);assert.equal(listingGroupForFavorite([group],{...legacy,region_code:'11110'}),null);
+});
+
+test('daily targets split shared registry roots by official road and pass location outside favorites',t=>{
+ const db=fixture(t);
+ for(const [id,dong,number] of [['phase2','201','179'],['phase6','601','195']]){
+  const title={mgmBldrgstPk:id,sigunguCd:'41135',bjdongCd:'10300',platGbCd:'0',bun:'0001',ji:'0000',bldNm:'아파트A',dongNm:dong,mainAtchGbCd:'0',mainPurpsCdNm:'공동주택',etcPurps:'아파트',newPlatPlc:'경기도 성남시 분당구 불정로 '+number,useAprDay:'19950101',naRoadCd:'411353012345',naUgrndCd:'0',naMainBun:number,naSubBun:'0'};
+  db.prepare('INSERT INTO apartment_building_inventory VALUES(?,?,?,?,?,?,1,1)').run(id,'dong_41135103','4113510300','a','apartment',JSON.stringify({title,root_id:'a',scope:{region_code:'41135',region_name:'경기도 성남시 분당구',dong:'정자동'}}));
+ }
+ synchronizeHousingIdentity(db,{scopes:[{region_code:'41135',dongs:['정자동']}]});
+ db.prepare('UPDATE apartment_identity SET naver_complex_no=?,naver_name=? WHERE apartment_id=?').run('999','잘못된 대표단지','hub:a');
+ synchronizeHousingIdentity(db,{scopes:[{region_code:'41135',dongs:['정자동']}]});
+ const targets=dailyListingTargets(db,config),split=targets.filter(target=>target.favorite.master_id==='hub:a');
+ assert.equal(split.length,2);assert(split.every(target=>target.favorite.identity_ref.kind==='cohort'&&target.favorite.id.startsWith('cohort:hub:a:')));
+ assert.deepEqual(new Set(split.map(target=>target.favorite.road_address)),new Set(['경기도 성남시 분당구 불정로 179','경기도 성남시 분당구 불정로 195']));
+ assert(split.every(target=>target.location.roads.length===1&&!Object.hasOwn(target.favorite,'location')&&!target.complexNo));
+ assert(targets.some(target=>target.favorite.id==='hub:b'));
+});
+test('a known office-only sibling cohort without reported APT membership is not a sale apartment target',t=>{
+ const db=fixture(t);
+ for(const [id,dong,number,type] of [['apartment','101','1','아파트'],['office','201','2','오피스텔']]){
+  const title={mgmBldrgstPk:id,sigunguCd:'41135',bjdongCd:'10300',platGbCd:'0',bun:'0001',ji:'0000',bldNm:'아파트A',dongNm:dong,mainAtchGbCd:'0',mainPurpsCdNm:type==='아파트'?'공동주택':'업무시설',etcPurps:type,newPlatPlc:'경기도 성남시 분당구 불정로 '+number,useAprDay:'19950101'};
+  db.prepare('INSERT INTO apartment_building_inventory VALUES(?,?,?,?,?,?,1,1)').run(id,'dong_41135103','4113510300','a',type==='아파트'?'apartment':'other',JSON.stringify({title,root_id:'a',scope:{region_code:'41135',region_name:'경기도 성남시 분당구',dong:'정자동'}}));
+ }
+ synchronizeHousingIdentity(db,{scopes:[{region_code:'41135',dongs:['정자동']}]});
+ const scopes=dailyListingTargets(db,config).filter(target=>target.favorite.master_id==='hub:a');
+ assert.equal(scopes.length,1);assert.equal(scopes[0].favorite.identity_ref.kind,'cohort');assert.equal(scopes[0].favorite.road_address,'경기도 성남시 분당구 불정로 1');
+});
+test('unmatched scopes are retried weekly or explicitly, rather than searched every day',async t=>{
+ const db=fixture(t);let tick=Date.parse('2026-11-08T00:00:00Z'),calls=0;
+ const factory=async()=>({close:async()=>{},collect:async()=>{calls++;throw new BrowserListingError('unmatched');}});
+ await collectDailyListings(db,config,{now:()=>tick,sourceFactory:factory});assert.equal(calls,2);
+ tick+=86400000;const next=await collectDailyListings(db,config,{now:()=>tick,sourceFactory:factory});assert.equal(next.unmatchedCount,2);assert.equal(calls,2);
+ tick+=7*86400000;await collectDailyListings(db,config,{now:()=>tick,sourceFactory:factory});assert.equal(calls,4);
+ await collectDailyListings(db,config,{now:()=>tick,sourceFactory:factory,retryUnresolved:true});assert.equal(calls,6);
+});
+
+test('verified source APT inventory-only residential cohorts remain typed without activating apartment masters',t=>{
+ const db=fixture(t),title={mgmBldrgstPk:'office',sigunguCd:'41135',bjdongCd:'10300',platGbCd:'0',bun:'0009',ji:'0000',bldNm:'에버하임',dongNm:'에버하임',mainAtchGbCd:'0',mainPurpsCdNm:'업무시설',etcPurps:'오피스텔, 다세대주택',newPlatPlc:'경기도 성남시 분당구 시험로 9',useAprDay:'20150101'};
+ db.prepare('INSERT INTO apartment_building_inventory VALUES(?,?,?,?,?,?,1,1)').run('office','dong_41135103','4113510300','office','other',JSON.stringify({title,root_id:'office',scope:{region_code:'41135',region_name:'경기도 성남시 분당구',dong:'정자동'}}));
+ db.prepare('INSERT INTO trades VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)').run(1,'41135','202610','2026-10-01','에버하임','정자동','9',10000,84,3,2015,0,JSON.stringify({aptDong:'에버하임'}));
+ synchronizeHousingIdentity(db,{scopes:[{region_code:'41135',dongs:['정자동']}]});
+ const target=dailyListingTargets(db,config).find(target=>target.favorite.apartment==='에버하임');
+ assert(target);assert.equal(target.favorite.identity_ref.kind,'cohort');assert.equal(target.favorite.reported_type,'APT');assert(target.legalTypes.includes('오피스텔'));assert(!target.legalTypes.includes('아파트'));assert.equal(target.favorite.master_id,undefined);assert.equal(db.prepare("SELECT count(*) n FROM apartment_complexes WHERE apartment_id='hub:office'").get().n,0);
+});
+test('a reported source can verify its market listings while a conflicting registry building stays unresolved',t=>{
+ const db=fixture(t),title={mgmBldrgstPk:'building101',sigunguCd:'41135',bjdongCd:'10300',platGbCd:'0',bun:'0001',ji:'0000',bldNm:'아파트A',dongNm:'101',mainAtchGbCd:'0',mainPurpsCdNm:'공동주택',etcPurps:'아파트',newPlatPlc:'경기도 성남시 분당구 불정로 1',useAprDay:'19950101'};
+ db.prepare('INSERT INTO apartment_building_inventory VALUES(?,?,?,?,?,?,1,1)').run('building101','dong_41135103','4113510300','a','apartment',JSON.stringify({title,root_id:'a',scope:{region_code:'41135',region_name:'경기도 성남시 분당구',dong:'정자동'}}));
+ db.prepare('INSERT INTO trades VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)').run(1,'41135','202610','2026-10-01','아파트A','정자동','1',10000,84,3,1995,0,JSON.stringify({aptDong:'102'}));
+ synchronizeHousingIdentity(db,{scopes:[{region_code:'41135',dongs:['정자동']} ]});
+ db.prepare('UPDATE apartment_identity SET naver_complex_no=? WHERE apartment_id=?').run('111','hub:a');
+ synchronizeHousingIdentity(db,{scopes:[{region_code:'41135',dongs:['정자동']} ]});
+ const target=dailyListingTargets(db,config).find(target=>target.favorite.identity_ref?.kind==='source');
+ assert(target);assert.equal(target.favorite.master_id,undefined);assert.equal(target.favorite.id,JSON.stringify(['41135','정자동','1','아파트A']));assert.equal(target.complexNo,'111');assert.equal(target.location.roads[0].road_address,title.newPlatPlc);
+ assert.equal(housingTradeBindings(db).get(1).precision,'unresolved');
 });
 
 test('trade automation runs addresses then listings using saved regions; listing network failure does not discard completed trades',async t=>{

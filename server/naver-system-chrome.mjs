@@ -2,10 +2,11 @@ import {spawn} from 'node:child_process';
 import {createInterface} from 'node:readline';
 import {fileURLToPath} from 'node:url';
 import {BrowserListingError,BrowserListingPages} from './naver-browser-collector.mjs';
-import {LISTING_ERRORS,validComplexNo} from '../src/naver-listings.mjs';
+import {LISTING_ERRORS,validComplexNo,apartmentListingType} from '../src/naver-listings.mjs';
 import {browserCaptureGroup} from './naver-browser-capture.mjs';
 import {listingSearchNames,listingFavoritePhase,listingPhaseMatches} from './naver-listing-names.mjs';
-import {verifyComplex} from './naver-listings.mjs';
+import {verifyComplex,verifyComplexEvidence} from './naver-listings.mjs';
+import {housingMapViewport,housingPoint,housingLocationEvidence,housingObservation} from './housing-location.mjs';
 
 export async function createSystemChromeListingSource({python=process.env.NAVER_BROWSER_PYTHON,connections=[],firstPageOnly=false,discover=false,headless=false,baseUrl='https://new.land.naver.com',spawnWorker=spawn,timeoutMs=90000}={}) {
   const origin=new URL(baseUrl).origin;
@@ -55,26 +56,84 @@ export async function createSystemChromeListingSource({python=process.env.NAVER_
         if(firstPageOnly&&!pages.ready(payload.complexNo)){
           const state=pages.complexes.get(payload.complexNo),first=state?.pages.get(1);
           if(!first)throw new BrowserListingError('incomplete');
-          const articles=first.articleList.filter(a=>(!a.realEstateTypeCode||a.realEstateTypeCode==='APT')&&a.tradeTypeCode==='A1');
+          const articles=first.articleList.filter(a=>apartmentListingType(a.realEstateTypeCode)&&a.tradeTypeCode==='A1');
           if(!articles.length)throw new BrowserListingError('incomplete');
           if(!state.detail?.complexDetail)throw new BrowserListingError('invalid_response');
-          return {...browserCaptureGroup({version:1,favorite:target.favorite,complexDetail:state.detail.complexDetail,sourceUrl:`https://new.land.naver.com/complexes/${payload.complexNo}`,observedAt,articles}),areaSource:'list'};
+          return {...browserCaptureGroup({version:1,favorite:target.favorite,complexDetail:state.detail.complexDetail,sourceUrl:`https://new.land.naver.com/complexes/${payload.complexNo}`,observedAt,articles},{location:target.location}),areaSource:'list'};
         }
-        return {...pages.finish(target.favorite,payload.complexNo,new Date(observedAt)),areaSource:'list'};
+        return {...pages.finish(target.favorite,payload.complexNo,new Date(observedAt),target.location),areaSource:'list'};
       }catch(error){signal?.throwIfAborted();throw error;}finally{signal?.removeEventListener('abort',abort);}
   }
-  return {
-    async collect(target,{complexNo,signal}={}) {
+  async function inspectKnown(target,complexNo,signal) {
+    signal?.throwIfAborted();
+    const abort=()=>child.kill();signal?.addEventListener('abort',abort,{once:true});
+    try{
+      let detail=details.get(complexNo);
+      if(!detail){detail=await request({inspect:true,complexNo});details.set(complexNo,detail);}
+      signal?.throwIfAborted();
+      let verification;
+      try{verification=verifyComplexEvidence(detail,target.favorite,complexNo,target.location);}
+      catch(error){
+        if(!error.needsBuildingEvidence)throw error;
+        // A provider complex may span roads. Only actual full APT ads can
+        // supply the registered building evidence absent from its first page.
+        return await collectKnown(target,complexNo,signal);
+      }
+      const sourceUrl=`https://new.land.naver.com/complexes/${complexNo}`;
+      return {favorite:target.favorite,complexNo,complexName:verification.complexName,sourceUrl,observation:housingObservation(detail.complexDetail,{sourceUrl,observedAt:new Date().toISOString(),verificationMethod:verification.method,buildingWitnesses:verification.buildingWitnesses})};
+    }finally{signal?.removeEventListener('abort',abort);}
+  }
+  async function execute(target,{complexNo,signal,metadataOnly=false}={}) {
+      const fetchKnown=metadataOnly?inspectKnown:collectKnown;
       complexNo??=target.complexNo||byFavorite.get(target.favorite.id);
-      if(complexNo)return collectKnown(target,complexNo,signal);
+      if(complexNo){try{return await fetchKnown(target,complexNo,signal);}catch(error){if(error.code!=='address_mismatch'||!discover||!housingMapViewport(target.location))throw error;byFavorite.delete(target.favorite.id);}}
       if(!discover)throw new BrowserListingError('unmatched');
       signal?.throwIfAborted();
-      if(typeof target.query!=='string'||!target.query.trim()||target.query.length>300)throw new BrowserListingError('unmatched');
+      const viewport=housingMapViewport(target.location);
+      if(!viewport&&(typeof target.query!=='string'||!target.query.trim()||target.query.length>300))throw new BrowserListingError('unmatched');
       const names=listingSearchNames(target.favorite);
       const phase=listingFavoritePhase(target.favorite);
       const normalize=name=>name.replace(/[\s()[\]·.,_-]|아파트/g,'').toLowerCase();
-      const queries=[...new Map([target.query,...names.map(name=>`${target.favorite.dong} ${name.replace(/아파트|[()[\]]/g,'')}`)].filter(query=>query.trim()&&query.length<=300).map(query=>[query.replace(/\s/g,''),query])).values()].slice(0,4);
+      const queries=[...new Map([target.query,...names.map(name=>`${target.favorite.dong} ${name.replace(/아파트|[()[\]]/g,'')}`)].filter(query=>typeof query==='string'&&query.trim()&&query.length<=300).map(query=>[query.replace(/\s/g,''),query])).values()].slice(0,4);
       let searchError;
+      const inspectCandidates=async candidates=>{
+        const matches=[];
+        for(const candidate of candidates){
+          signal?.throwIfAborted();
+          try{
+            let detail=details.get(candidate.complexNo);
+            if(!detail){const abort=()=>child.kill();signal?.addEventListener('abort',abort,{once:true});try{detail=await request({inspect:true,complexNo:candidate.complexNo});details.set(candidate.complexNo,detail);}finally{signal?.removeEventListener('abort',abort);}}
+            signal?.throwIfAborted();
+            try{verifyComplex(detail,target.favorite,candidate.complexNo,target.location);}
+            catch(error){if(!error.needsBuildingEvidence)throw error;await collectKnown(target,candidate.complexNo,signal);}
+            matches.push(candidate.complexNo);
+          }catch(error){signal?.throwIfAborted();if(error.code!=='address_mismatch')throw error;}
+        }
+        if(matches.length>1)throw new BrowserListingError('unmatched');
+        return matches;
+      };
+      const collectMatch=async id=>{const group=await fetchKnown(target,id,signal);byFavorite.set(target.favorite.id,group.complexNo);return group;};
+      if(viewport){
+        const abort=()=>child.kill();signal?.addEventListener('abort',abort,{once:true});
+        let result;
+        try{const input={discover:true,location:viewport,phase},key=JSON.stringify(input);result=discoveries.get(key);if(!result){result=await request(input);discoveries.set(key,result);}}
+        catch(error){signal?.throwIfAborted();if(['unavailable','timeout','unmatched'].includes(error.code))searchError=error;else throw error;}
+        finally{signal?.removeEventListener('abort',abort);}
+        if(result){
+          if(!Array.isArray(result.candidates)||result.candidates.length>2000||result.candidates.some(c=>!validComplexNo(c?.complexNo)||typeof c.name!=='string'||c.name.length>300||!housingPoint(c)))throw new BrowserListingError('invalid_response');
+          const candidates=[...new Map(result.candidates.filter(candidate=>{
+            if(!listingPhaseMatches(phase,candidate.name))return false;
+            const evidence=housingLocationEvidence(target.location,candidate);
+            return evidence.point_in_primary_polygon||evidence.nearest_primary_polygon_m!==null&&evidence.nearest_primary_polygon_m<=300||evidence.nearest_anchor_m!==null&&evidence.nearest_anchor_m<=300;
+          }).map(candidate=>[candidate.complexNo,candidate])).values()].sort((a,b)=>{
+            const distance=candidate=>{const evidence=housingLocationEvidence(target.location,candidate);return evidence.point_in_primary_polygon?-1:Math.min(evidence.nearest_primary_polygon_m??Infinity,evidence.nearest_anchor_m??Infinity);};
+            return distance(a)-distance(b)||a.complexNo.localeCompare(b.complexNo);
+          });
+          if(candidates.length>32)throw new BrowserListingError('unmatched');
+          const matches=await inspectCandidates(candidates);
+          if(matches.length===1)return collectMatch(matches[0]);
+        }
+      }
       for(const query of queries){
         const abort=()=>child.kill();signal?.addEventListener('abort',abort,{once:true});
         let result;
@@ -83,24 +142,15 @@ export async function createSystemChromeListingSource({python=process.env.NAVER_
         finally{signal?.removeEventListener('abort',abort);}
         if(!Array.isArray(result.candidates)||result.candidates.length>8||result.candidates.some(c=>!validComplexNo(c?.complexNo)||typeof c.name!=='string'||c.name.length>300))throw new BrowserListingError('invalid_response');
         const candidates=[...new Map(result.candidates.filter(c=>listingPhaseMatches(phase,c.name)&&names.map(normalize).some(name=>name===normalize(c.name)||name.length>=4&&normalize(c.name).includes(name))).map(c=>[c.complexNo,c])).values()];
-        const matches=[];
-        for(const candidate of candidates){
-          signal?.throwIfAborted();
-          try{
-            let detail=details.get(candidate.complexNo);
-            if(!detail){const abort=()=>child.kill();signal?.addEventListener('abort',abort,{once:true});try{detail=await request({inspect:true,complexNo:candidate.complexNo});details.set(candidate.complexNo,detail);}finally{signal?.removeEventListener('abort',abort);}}
-            signal?.throwIfAborted();
-            verifyComplex(detail,target.favorite,candidate.complexNo);
-            matches.push(candidate.complexNo);
-          }
-          catch(error){signal?.throwIfAborted();if(error.code!=='address_mismatch')throw error;}
-        }
-        if(matches.length>1)throw new BrowserListingError('unmatched');
-        if(matches.length===1){const group=await collectKnown(target,matches[0],signal);byFavorite.set(target.favorite.id,group.complexNo);return group;}
+        const matches=await inspectCandidates(candidates);
+        if(matches.length===1)return collectMatch(matches[0]);
       }
       if(searchError)throw searchError;
       throw new BrowserListingError('unmatched');
-    },
+  }
+  return {
+    collect:(target,options)=>execute(target,options),
+    resolve:(target,options)=>execute(target,{...options,metadataOnly:true}),
     async close(){if(closed)return;closed=true;lines.close();if(!dead){child.stdin.end(JSON.stringify({close:true})+'\n');const timer=setTimeout(()=>child.kill(),3000);timer.unref();child.once('exit',()=>clearTimeout(timer));}}
   };
 }

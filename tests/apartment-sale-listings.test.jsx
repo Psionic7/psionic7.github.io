@@ -15,6 +15,14 @@ const article=(id='26000000001',extra={})=>({id,name:favorite.apartment,tradeTyp
 const group=(extra={})=>({favorite,complexNo:'12345',complexName:favorite.apartment,status:'ready',attemptedAt:'2026-11-05T03:00:00.000Z',collectedAt:'2026-11-05T03:00:00.000Z',errorCode:null,articles:[article()],...extra});
 const result=(groups=[])=>({status:'ready',snapshot:listingSnapshot(groups),retry:vi.fn()});
 const table=()=>screen.getByRole('region',{name:favorite.apartment+' 매매 매물 내역'});
+it('labels advertisement counts and keeps same-house broker advertisements, individual prices and source links',()=>{
+ const ads=[article('26000000001',{providerSameAddress:{advertisementCount:7,minPriceText:'13억',maxPriceText:'13억 5,000',minPriceMan:130000,maxPriceMan:135000}}),article('26000000002',{realtor:'다른중개사',priceMan:130000,priceText:'13억'}),article('26000000003')];
+ render(<ApartmentSaleListings favorite={favorite} result={result([group({articles:ads})])}/>);
+ expect(screen.getByText('광고 3건')).toBeTruthy();expect(within(table()).getByText('네이버 동일주소 광고 7건 · 13억 ~ 13억 5,000')).toBeTruthy();
+ expect(within(table()).getByText('중개 다른중개사')).toBeTruthy();
+ expect(within(table()).getAllByRole('row')).toHaveLength(4);expect(within(table()).getAllByRole('link')).toHaveLength(3);
+ expect(screen.getByText(/건수는 광고 수이며 실제 주택 수가 아닙니다/)).toBeTruthy();
+});
 const pageProps={manifest,catalog:[region],selected:[favorite],searchRegionId:region.region_id,searchFilters:{province:'',city:'',district:'',search:''},onChange:vi.fn(),onSearchRegionChange:vi.fn(),onSearchFiltersChange:vi.fn(),day:'2026-03-31',period:{mode:'custom',start:'2026-03-01',end:'2026-03-31'},onDayChange:vi.fn(),onPeriodChange:vi.fn(),districtLoader:async()=>[trade()]};
 beforeEach(()=>localStorage.clear());
 afterEach(()=>{cleanup();vi.restoreAllMocks();vi.unstubAllGlobals();});
@@ -56,7 +64,8 @@ it('uses the shared area unit, exact range and noncontiguous pyeong bands for li
 
 it('matches verified master aliases and never attaches ads by apartment name alone',()=>{
  const master=makeApartmentFavorite({...trade({apartment:'새이름'}),master_id:'hub:123',trade_keys:[favorite.key]},region);
- const view=render(<ApartmentSaleListings favorite={master} result={result([group()])}/>);
+ const verified=group({favorite:{...favorite,master_id:'hub:123',id:'hub:123',trade_keys:[favorite.key],identity_ref:{kind:'root',id:'hub:123'}}});
+ const view=render(<ApartmentSaleListings favorite={master} result={result([verified])}/>);
  expect(screen.getByRole('region',{name:'새이름 매매 매물 내역'})).toBeTruthy();
  view.rerender(<ApartmentSaleListings favorite={other} result={result([group()])}/>);
  expect(screen.queryByRole('table')).toBeNull();

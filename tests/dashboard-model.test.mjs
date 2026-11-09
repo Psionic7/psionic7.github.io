@@ -23,7 +23,8 @@ test('deduplicates a transaction shared by dong and apartment favorites across t
 });
 test('matches only verified master aliases and distinguishes same-name apartments in other lots or districts',()=>{
  const master={...apartment,id:'hub:master',master_id:'hub:master',trade_keys:[apartment.key,JSON.stringify(['동천동','2','별칭단지'])]};
- const model=build([row(1),row(2,{dong:'동천동',jibun:'2',apartment:'별칭단지'}),row(3,{jibun:'99'})],{apartments:[master]});
+ const binding={entity_id:JSON.stringify(['41465','풍덕천동','1','같은단지']),precision:'building',root_id:'hub:master',cohort_id:'cohort:hub:master:road',building_id:'101'};
+ const model=build([row(1,{identity:binding}),row(2,{dong:'동천동',jibun:'2',apartment:'별칭단지',identity:{...binding,entity_id:JSON.stringify(['41465','동천동','2','별칭단지'])}}),row(3,{jibun:'99'})],{apartments:[master]});
  assert.equal(model.apartmentCount,2);assert.equal(model.uniqueCount,3);assert.equal(model.apartmentGroups[0].latest.id,2);
 });
 test('keeps the latest valid contract from all collected history even when the selected period is empty',()=>{

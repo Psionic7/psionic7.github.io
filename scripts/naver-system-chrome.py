@@ -13,11 +13,13 @@ import os
 import re
 import sys
 import time
+import math
 from urllib.parse import urlsplit, parse_qs
 
 import nodriver as uc
 
 API = re.compile(r"^/api/(?:complexes|articles/complex)/([1-9]\d*)$")
+MARKERS='/api/complexes/single-markers/2.0'
 
 
 class Collector:
@@ -27,6 +29,17 @@ class Collector:
         self.host = urlsplit(base_url).netloc
         self.responses, self.requests = [], {}
         self.error = None
+        self.marker_requests,self.marker_pending,self.marker_responses={},{},[]
+        self.map_active=False
+
+    async def started(self,event):
+        parsed=urlsplit(event.request.url)
+        if parsed.netloc==self.host and parsed.path==MARKERS:self.marker_pending[event.request_id]=str(event.loader_id)
+
+    async def failed(self,event):
+        if self.marker_pending.pop(event.request_id,None) is not None:
+            self.marker_requests.pop(event.request_id,None)
+            if self.map_active and not event.canceled:self.error='unavailable'
 
     async def response(self, event):
         parsed = urlsplit(event.response.url)
@@ -34,12 +47,16 @@ class Collector:
             print(json.dumps({'stage':'document-response','path':parsed.path,'status':int(event.response.status)}),file=sys.stderr,flush=True)
         if parsed.netloc == self.host and API.fullmatch(parsed.path):
             self.requests[event.request_id] = (event.response.url, int(event.response.status))
+        elif parsed.netloc==self.host and parsed.path==MARKERS:
+            self.marker_requests[event.request_id]=(event.response.url,int(event.response.status),str(event.loader_id))
 
     async def finished(self, event):
-        record = self.requests.pop(event.request_id, None)
+        marker=self.marker_requests.pop(event.request_id,None)
+        self.marker_pending.pop(event.request_id,None)
+        record = marker or self.requests.pop(event.request_id, None)
         if not record:
             return
-        url, status = record
+        url,status=record[:2]
         if status in (401, 403, 429):
             self.error = "rate_limited" if status == 429 else "unauthorized"
             return
@@ -48,7 +65,11 @@ class Collector:
             if encoded:
                 body = base64.b64decode(body).decode("utf-8")
             payload = json.loads(body)
-            self.responses.append({"url": url, "status": status, "payload": payload})
+            if marker:
+                if not isinstance(payload,list) or len(payload)>5000:raise ValueError('invalid markers')
+                self.marker_responses.append({'loader':marker[2],'payload':payload,'received':time.monotonic()})
+                self.marker_responses=self.marker_responses[-20:]
+            else:self.responses.append({"url": url, "status": status, "payload": payload})
         except Exception as error:
             print(json.dumps({"path": urlsplit(url).path, "status": status, "error": type(error).__name__, "reason": str(error)[:160]}),file=sys.stderr,flush=True)
             self.error = "invalid_response"
@@ -68,28 +89,54 @@ class Collector:
         last = max(pages)
         return all(i in pages for i in range(1, last + 1)) and pages[last].get("isMoreData") is False
 
-    async def detail(self, complex_no):
-        observed=None
+    def captured_detail(self,complex_no,base=None):
+        if base is None:
+            candidates=[record['payload'][key] for record in self.responses if urlsplit(record['url']).path==f'/api/complexes/{complex_no}' for key in ['complex','complexDetail'] if isinstance(record['payload'].get(key),dict) and str(record['payload'][key].get('complexNo',''))==complex_no]
+            if not candidates:return None
+            complete=[value for value in candidates if value.get('detailAddress') and (value.get('cortarAddress') or value.get('address'))]
+            return self.captured_detail(complex_no,(complete or candidates)[-1])
+        observed=dict(base) if base else None
+        compact=lambda value:re.sub(r'\s','',re.sub(r'(?:\s*\([^)]*\))+\s*$','',str(value or '')))
+        def road(value):
+            prefix=value.get('roadAddressPrefix','');suffix=value.get('roadAddress','')
+            return str(suffix) if compact(suffix).startswith(compact(prefix)) else str(prefix)+' '+str(suffix)
         for record in self.responses:
-            if urlsplit(record["url"]).path == f"/api/complexes/{complex_no}" and record["payload"].get("complexDetail"):
-                observed=record["payload"]["complexDetail"]
-                if observed.get('roadAddress'):return observed
+            if urlsplit(record['url']).path!=f'/api/complexes/{complex_no}':continue
+            for key in ['complex','complexDetail']:
+                value=record['payload'].get(key)
+                if not isinstance(value,dict) or str(value.get('complexNo',''))!=complex_no:continue
+                if base:
+                    if value.get('cortarAddress') or value.get('address'):
+                        if compact(value.get('cortarAddress') or value.get('address'))!=compact(base.get('cortarAddress') or base.get('address')):continue
+                    if value.get('detailAddress') and compact(value['detailAddress'])!=compact(base.get('detailAddress')):continue
+                    if value.get('roadAddress') and base.get('roadAddress') and compact(road(value))!=compact(road(base)):continue
+                observed={**(observed or {}),**value}
+        return observed
+
+    async def detail(self, complex_no):
+        observed=self.captured_detail(complex_no)
         # Initial complex information is server-rendered and need not generate
         # an API response. Read the address table actually displayed by the UI.
         await self.tab.evaluate("Array.from(document.querySelectorAll('button')).find(b=>['단지정보','단지정보 더보기'].includes(b.textContent.trim()))?.click()")
         for _ in range(20):
+            observed=self.captured_detail(complex_no)
             visible = json.loads(await self.tab.evaluate("JSON.stringify((()=>{const th=Array.from(document.querySelectorAll('th')).find(t=>t.textContent.trim()==='주소');return th?{address:th.nextElementSibling.innerText,road:th.nextElementSibling.querySelector('.icon_roadname')?.closest('p')?.innerText.trim(),title:document.querySelector('#complexTitle')?.innerText}:null})())"))
             if visible and visible.get("address"):
                 parcel = next((line.strip() for line in visible["address"].splitlines() if line.strip()), "")
                 match = re.fullmatch(r"(.*(?:동|읍|면))\s+(산?\s*\d+(?:-\d+)?)", parcel)
                 if match and visible.get("title"):
-                    if observed:
-                        compact=lambda value:re.sub(r'\s','',str(value or ''))
-                        if compact(observed.get('cortarAddress') or observed.get('address'))!=compact(match.group(1)) or compact(observed.get('detailAddress'))!=compact(match.group(2)):return observed
-                    return {**(observed or {}),"complexNo": complex_no, "complexName": visible["title"], "cortarAddress": match.group(1), "detailAddress": match.group(2),**({'roadAddressPrefix':'','roadAddress':visible['road']} if visible.get('road') else {})}
-                return observed
+                    base={"complexNo": complex_no, "complexName": visible["title"], "cortarAddress": match.group(1), "detailAddress": match.group(2),**({'roadAddressPrefix':'','roadAddress':visible['road']} if visible.get('road') else {})}
+                    for attempt in range(9):
+                        merged=self.captured_detail(complex_no,base)
+                        if merged and merged.get('latitude') is not None and merged.get('longitude') is not None:return merged
+                        if attempt<8:await asyncio.sleep(0.2)
+                    return merged
+                # Redevelopment parcels can use a block label. A visible table
+                # alone is not a reason to stop waiting for its detail response.
+                if observed and observed.get('detailAddress') and (observed.get('cortarAddress') or observed.get('address')) and observed.get('roadAddress'):
+                    return observed
             await asyncio.sleep(0.5)
-        return observed
+        return self.captured_detail(complex_no) or observed
 
     async def inspect(self, request):
         self.responses,self.requests,self.error=[],{},None
@@ -109,7 +156,8 @@ class Collector:
                     if urlsplit(current).path.rstrip('/')!=f'/complexes/{complex_no}':return {'errorCode':'address_mismatch'}
                     detail=await self.detail(complex_no)
                     if self.error:return {'errorCode':self.error}
-                    return {'complexNo':complex_no,'complexDetail':detail} if detail else {'errorCode':'address_mismatch'}
+                    buildings=sorted({article.get('buildingName','') for record in self.responses if urlsplit(record['url']).path==f'/api/articles/complex/{complex_no}' for article in record['payload'].get('articleList',[]) if article.get('realEstateTypeCode') in ('APT','JGC') and article.get('tradeTypeCode')=='A1' and article.get('articleStatus','R0')=='R0' and article.get('buildingName')})
+                    return {'complexNo':complex_no,'complexDetail':detail,'article_building_dongs':buildings[:1000]} if detail else {'errorCode':'address_mismatch'}
             await asyncio.sleep(0.25)
         return {'errorCode':'timeout'}
 
@@ -191,6 +239,7 @@ class Collector:
         return []
 
     async def discover(self, request):
+        if request.get('location') is not None:return await self.discover_location(request)
         query=request.get('query','')
         names=request.get('names',[])
         phase=request.get('phase')
@@ -236,6 +285,46 @@ class Collector:
         unique={candidate['complexNo']:candidate for candidate in candidates}
         return {'candidates':list(unique.values())} if len(unique)<=8 else {'errorCode':'unmatched'}
 
+    async def discover_location(self,request):
+        self.map_active=True
+        try:return await self._discover_location(request)
+        finally:self.map_active=False
+
+    async def _discover_location(self,request):
+        location=request.get('location')
+        if not isinstance(location,dict):return {'errorCode':'unmatched'}
+        latitude,longitude=location.get('latitude'),location.get('longitude')
+        if isinstance(latitude,bool) or isinstance(longitude,bool) or not isinstance(latitude,(int,float)) or not isinstance(longitude,(int,float)) or not 28<=latitude<=40 or not 122<=longitude<=135:return {'errorCode':'unmatched'}
+        self.marker_responses=[];self.marker_requests={};self.marker_pending={};self.error=None
+        started=time.monotonic()
+        _,loader_id,*_=await self.tab.send(uc.cdp.page.navigate(f'{self.base_url}/complexes?ms={latitude},{longitude},17&a=APT&b=A1&e=RETAIL'))
+        def nearby(marker):
+            lat,lon=marker.get('latitude'),marker.get('longitude')
+            if isinstance(lat,bool) or isinstance(lon,bool) or not isinstance(lat,(int,float)) or not isinstance(lon,(int,float)) or not 28<=lat<=40 or not 122<=lon<=135:return False
+            dlat,dlon=math.radians(lat-latitude),math.radians(lon-longitude)
+            distance=2*6371008.8*math.asin(min(1,math.sqrt(math.sin(dlat/2)**2+math.cos(math.radians(lat))*math.cos(math.radians(latitude))*math.sin(dlon/2)**2)))
+            return distance<=1000
+        for _ in range(100):
+            if self.error:return {'errorCode':self.error}
+            text=await self.tab.evaluate("document.body?.innerText||''")
+            if re.search(r'자동입력\s*방지|비정상적인\s*접근|접근이?\s*제한|Too Many Requests|captcha',text,re.I):return {'errorCode':'blocked'}
+            if '/404' in (await self.tab.evaluate('location.href')):return {'errorCode':'site_unavailable'}
+            batches=[batch for batch in self.marker_responses if batch['loader']==str(loader_id)]
+            pending=any(loader==str(loader_id) for loader in self.marker_pending.values())
+            if batches and not pending and time.monotonic()-started>=2:
+                batch=batches[-1]
+                candidates=[]
+                for marker in batch['payload']:
+                    if not isinstance(marker,dict) or marker.get('markerType')!='COMPLEX':continue
+                    if not re.fullmatch(r'[1-9]\d{0,11}',str(marker.get('markerId',''))) or not isinstance(marker.get('complexName'),str) or len(marker['complexName'])>300:return {'errorCode':'invalid_response'}
+                    lat,lon=marker.get('latitude'),marker.get('longitude')
+                    if isinstance(lat,bool) or isinstance(lon,bool) or not isinstance(lat,(int,float)) or not isinstance(lon,(int,float)) or not 28<=lat<=40 or not 122<=lon<=135:return {'errorCode':'invalid_response'}
+                    if nearby(marker):candidates.append({'complexNo':str(marker['markerId']),'name':marker['complexName'],'latitude':marker['latitude'],'longitude':marker['longitude']})
+                if candidates and time.monotonic()-batch['received']>=0.5:
+                    return {'candidates':list({candidate['complexNo']:candidate for candidate in candidates}.values()),'discovery':'map','sourceUrl':await self.tab.evaluate('location.href')}
+            await asyncio.sleep(0.25)
+        return {'errorCode':'timeout'}
+
 
 async def main():
     parser=argparse.ArgumentParser()
@@ -262,6 +351,8 @@ async def main():
         collector = Collector(browser, tab,args.base_url)
         tab.add_handler(uc.cdp.network.ResponseReceived, collector.response)
         tab.add_handler(uc.cdp.network.LoadingFinished, collector.finished)
+        tab.add_handler(uc.cdp.network.RequestWillBeSent,collector.started)
+        tab.add_handler(uc.cdp.network.LoadingFailed,collector.failed)
         await tab.send(uc.cdp.network.enable(max_total_buffer_size=64000000, max_resource_buffer_size=8000000, enable_durable_messages=True))
         print(json.dumps({"ready": True}), flush=True)
         while line := await asyncio.to_thread(sys.stdin.readline):
@@ -285,6 +376,7 @@ async def main():
             except Exception as error:
                 print(type(error).__name__+": "+str(error)[:180], file=sys.stderr, flush=True)
                 result = {"errorCode": "unavailable"}
+            if collector.error in ['rate_limited','unauthorized','blocked']:result={'errorCode':collector.error}
             print(json.dumps(result, ensure_ascii=False), flush=True)
     finally:
         browser.stop()

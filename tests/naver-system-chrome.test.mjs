@@ -16,6 +16,27 @@ function worker(reply){
   child.stdin=new Writable({write(chunk,encoding,done){const request=JSON.parse(String(chunk));if(request.close)child.emit('exit',0);else {child.request=request;let value=reply(request);if(request.inspect&&value?.responses)value={complexNo:value.complexNo,complexDetail:value.responses.find(r=>r.payload?.complexDetail)?.payload.complexDetail};if(value!==undefined)queueMicrotask(()=>child.stdout.write(JSON.stringify(value)+'\n'));}done();}});
   setImmediate(()=>child.stdout.write('{"ready":true}\n'));return child;
 }
+test('metadata-only resolution verifies actual coordinates without collecting stock pages and known ID bypasses discovery',async()=>{
+ const requests=[],actual={...detail.complexDetail,latitude:37.33,longitude:127.09};
+ const source=await createDailyListingSource({python:'test-python',spawnWorker:()=>worker(request=>{requests.push(request);return {complexNo:'10959',complexDetail:actual};})});
+ try{
+  const result=await source.resolve({favorite,query:'풍덕천동 수지테스트'},{complexNo:'10959'});
+  assert.equal(result.observation.latitude,37.33);assert.equal(result.observation.coordinate_role,'provider_label');assert.equal(result.articles,undefined);
+  assert.equal(requests.length,1);assert.equal(requests[0].inspect,true);assert.equal(requests[0].discover,undefined);
+ }finally{await source.close();}
+});
+test('metadata resolution falls back to actual complete advertisements when a shared provider needs an exclusive building witness',async()=>{
+ const requests=[],road='경기도 용인시 수지구 테스트로 1';
+ const expected={...favorite,id:'cohort:hub:test:phase',identity_ref:{kind:'cohort',id:'cohort:hub:test:phase'},road_address:road};
+ const observed={...detail.complexDetail,roadAddress:'경기도 용인시 수지구 테스트로 2',latitude:37.33,longitude:127.09};
+ const pages=[{...responses[0],payload:{complexDetail:observed}},{...responses[1],payload:{articleList:[{...article,buildingName:'510동'}],isMoreData:false}}];
+ const source=await createDailyListingSource({python:'test-python',discover:false,spawnWorker:()=>worker(request=>{requests.push(request);return request.inspect?{complexNo:'10959',complexDetail:observed}:{complexNo:'10959',responses:pages};})});
+ try{
+  const result=await source.resolve({favorite:expected,location:{roads:[{road_address:road,source:'official'}],exclusive_building_dongs:['510']}},{complexNo:'10959'});
+  assert.equal(result.observation.verification_method,'verified_primary_parcel_and_building_ads');assert.deepEqual(result.observation.building_witnesses,['510']);
+  assert.equal(requests.length,2);assert.equal(requests[0].inspect,true);assert.equal(requests[1].inspect,undefined);
+ }finally{await source.close();}
+});
 test('system Chrome responses produce a sanitized complete snapshot with address and every page validated',async()=>{
   const child=worker(()=>({complexNo:'10959',responses}));
   const source=await createSystemChromeListingSource({python:'test-python',connections:[{id:favorite.id,complexNo:'10959'}],spawnWorker:()=>child});
@@ -137,4 +158,43 @@ test('cancelling an automatic search kills its worker without saving a connectio
   const controller=new AbortController(),child=worker(()=>undefined);
   const source=await createDailyListingSource({python:'test-python',spawnWorker:()=>child});
   try{const pending=source.collect({favorite,query:'test'},{signal:controller.signal});controller.abort();await assert.rejects(pending,e=>e.name==='AbortError');assert.equal(child.killed,true);}finally{await source.close();}
+});
+
+const mapPoint={latitude:37.33,longitude:127.09};
+const mapLocation={anchors:[{latitude:37.3302,longitude:127.09,source:'Juso',role:'entrance',crs:'EPSG:4326'}],roads:[{road_address:'경기도 용인시 수지구 테스트로 1',source:'Juso'}],primary_parcels:[{pnu:'4146510100111910000',source:'V-World',geometry:{type:'Polygon',coordinates:[[[127.0895,37.3295],[127.0905,37.3295],[127.0905,37.3305],[127.0895,37.3305],[127.0895,37.3295]]]}}],parcels:[]};
+function mapResponses(id,changes={}) {
+ return responses.map((response,index)=>({...response,url:response.url.replaceAll('10959',id),...(index===0?{payload:{complexDetail:{...detail.complexDetail,complexNo:id,complexName:'완전히다른새이름',detailAddress:'1192',roadAddress:'경기도 용인시 수지구 테스트로 1',...mapPoint,...changes}}}:{})}));
+}
+test('actual map candidates bypass substring naming and preserve provider coordinates after independent address verification',async()=>{
+ const requests=[];
+ const source=await createDailyListingSource({python:'test-python',spawnWorker:()=>worker(request=>{
+  requests.push(request);
+  if(request.discover)return {candidates:request.location?[{complexNo:'10959',name:'완전히다른새이름',...mapPoint},{complexNo:'10960',name:'이웃새이름',...mapPoint}]:[]};
+  return {complexNo:request.complexNo,responses:mapResponses(request.complexNo,request.complexNo==='10960'?{roadAddress:'경기도 용인시 수지구 테스트로 2'}:{})};
+ })});
+ try{
+  const group=await source.collect({favorite,query:'풍덕천동 수지테스트',location:mapLocation});
+  assert.equal(group.complexName,'완전히다른새이름');assert.equal(group.observation.latitude,mapPoint.latitude);assert.notEqual(group.observation.latitude,mapLocation.anchors[0].latitude);
+  assert.equal(group.observation.verification_method,'verified_road_and_primary_polygon');assert.equal(group.favorite.location,undefined);assert.equal(group.coverage,'complete');
+  assert.deepEqual(requests.filter(request=>!request.discover&&!request.inspect).map(request=>request.complexNo),['10959']);
+ }finally{await source.close();}
+});
+test('multiple same-position map candidates with supported addresses remain unresolved before full collection',async()=>{
+ let full=0;
+ const source=await createDailyListingSource({python:'test-python',spawnWorker:()=>worker(request=>{
+  if(request.discover)return {candidates:[{complexNo:'10959',name:'새이름1',...mapPoint},{complexNo:'10960',name:'새이름2',...mapPoint}]};
+  if(!request.inspect)full++;
+  return {complexNo:request.complexNo,responses:mapResponses(request.complexNo)};
+ })});
+ try{await assert.rejects(source.collect({favorite,query:'test',location:mapLocation}),error=>error.code==='unmatched');assert.equal(full,0);}finally{await source.close();}
+});
+test('a nearby label outside a parcel is inspected and may use actual legacy parcel proof',async()=>{
+ let inspected=false;
+ const outside={latitude:37.3307,longitude:127.09};
+ const source=await createDailyListingSource({python:'test-python',spawnWorker:()=>worker(request=>{
+  if(request.discover)return {candidates:[{complexNo:'10959',name:'이름변경',...outside}]};
+  if(request.inspect)inspected=true;
+  return {complexNo:'10959',responses:mapResponses('10959',{...outside,detailAddress:favorite.jibun})};
+ })});
+ try{const group=await source.collect({favorite,query:'test',location:mapLocation});assert.equal(inspected,true);assert.equal(group.observation.verification_method,'parcel');}finally{await source.close();}
 });

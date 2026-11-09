@@ -33,9 +33,9 @@ it('does not borrow an explicit weekly URL period or selection for the independe
  savePreferences('apartmentTransactions',{selected:[item],period:{mode:'month',month:'2026-01'}});
  expect(restore('tab=weekly&period=month&month=2026-09')).toMatchObject({selected:[item],period:{mode:'month',month:'2026-01'}});
 });
-it('master selections retain verified aliases, and equivalent individual trades cannot create duplicate query cards',()=>{
+it('root and source selections retain distinct coverage while duplicate exact selections are rejected',()=>{
  const master=makeApartmentFavorite({...item,master_id:'hub:official',trade_keys:[item.key,JSON.stringify(['동천동','2','신고단지'])]},region);
- expect(validApartmentSelection([master],catalog)).toBe(true);expect(validApartmentSelection([master,item],catalog)).toBe(false);
+ expect(validApartmentSelection([master],catalog)).toBe(true);expect(validApartmentSelection([master,item],catalog)).toBe(true);expect(validApartmentSelection([master,master],catalog)).toBe(false);
  expect(apartmentQueryRegion(master).dongs).toEqual(['풍덕천동','동천동']);
 });
 

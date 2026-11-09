@@ -18,6 +18,7 @@
     "listings:collect": "node scripts/collect-naver-listings.mjs",
     "listings:import-browser": "node scripts/import-naver-browser-capture.mjs",
     "listings:daily": "node scripts/collect-daily-listings.mjs",
+    "listings:match": "node scripts/match-naver-apartments.mjs",
     "listings:region": "node scripts/collect-naver-region.mjs",
     "test:listings": "node --test tests/naver-listings.test.mjs tests/naver-browser-capture.test.mjs tests/daily-listings.test.mjs tests/naver-browser.integration.mjs tests/naver-system-chrome.test.mjs tests/naver-listing-report.test.mjs tests/naver-nodriver.integration.mjs",
     "test:server": "node --test tests/server.test.mjs tests/automation.test.mjs tests/coordinates.test.mjs tests/apartment-map.test.mjs tests/apartment-master.test.mjs tests/job-runner.test.mjs",

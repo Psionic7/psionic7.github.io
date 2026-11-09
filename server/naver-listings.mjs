@@ -2,11 +2,12 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {randomUUID} from 'node:crypto';
 import {normalizeRoadAddress,normalizeParcel} from '../src/address-identity.mjs';
-import {listingSearchNames,normalizeListingName,listingFavoritePhase,listingPhaseMatches} from './naver-listing-names.mjs';
+import {listingSearchNames,listingRegisteredNameMatches,listingFavoritePhase,listingPhaseMatches} from './naver-listing-names.mjs';
 import {setTimeout as sleep} from 'node:timers/promises';
 import {validApartmentFavorites} from '../src/apartment-favorites.js';
+import {housingLocationEvidence,housingRoadAddress} from './housing-location.mjs';
 import {validRegionalListingReport} from '../src/naver-listing-report.mjs';
-import {LISTING_ERRORS,TRADE_TYPES,LISTING_TRADE_TYPE,saleListingGroup,validComplexNo,validArticle,validListingGroup,validListingSnapshot,listingSnapshot,listingGroupForFavorite} from '../src/naver-listings.mjs';
+import {LISTING_ERRORS,TRADE_TYPES,LISTING_TRADE_TYPE,saleListingGroup,validComplexNo,validArticle,validListingGroup,validListingSnapshot,listingSnapshot,listingGroupForFavorite,listingBuildingDong,apartmentListingType} from '../src/naver-listings.mjs';
 
 class ListingError extends Error {constructor(code){super(LISTING_ERRORS[code]);this.code=code;}}
 const fail=code=>{throw new ListingError(code);};
@@ -27,7 +28,7 @@ export function priceMan(value) {
 export function normalizeArticle(raw) {
   if(!raw||typeof raw!=='object'||Array.isArray(raw))fail('invalid_response');
   if(raw.articleStatus!==undefined&&raw.articleStatus!=='R0')return null;
-  if(raw.realEstateTypeCode!==undefined&&raw.realEstateTypeCode!=='APT')fail('invalid_response');
+  if(!apartmentListingType(raw.realEstateTypeCode))fail('invalid_response');
   if(!Object.hasOwn(TRADE_TYPES,raw.tradeTypeCode))fail('invalid_response');
   const day=String(raw.articleConfirmYmd||'').replace(/[-.]/g,'');
   const article={id:String(raw.articleNo||''),name:clean(raw.articleName),tradeType:raw.tradeTypeCode,
@@ -37,22 +38,49 @@ export function normalizeArticle(raw) {
     floor:clean(raw.floorInfo),building:clean(raw.buildingName),direction:clean(raw.direction),
     confirmedOn:day?`${day.slice(0,4)}-${day.slice(4,6)}-${day.slice(6,8)}`:'',
     description:clean(raw.articleFeatureDesc),realtor:clean(raw.realtorName)};
+  if(raw.realEstateTypeCode)article.propertyType=raw.realEstateTypeCode;
+  if(Number.isInteger(raw.sameAddrCnt)&&raw.sameAddrCnt>0&&raw.sameAddrCnt<=20000){
+    article.providerSameAddress={advertisementCount:raw.sameAddrCnt};
+    for(const [source,field] of [['sameAddrMinPrc','minPrice'],['sameAddrMaxPrc','maxPrice']]){
+      const value=clean(raw[source],100);
+      if(value)try{article.providerSameAddress[field+'Man']=priceMan(value);article.providerSameAddress[field+'Text']=value;}catch{}
+    }
+  }
   if(!validArticle(article))fail('invalid_response');
   return article;
 }
 
-export function verifyComplex(payload,favorite,complexNo) {
+export function verifyComplexEvidence(payload,favorite,complexNo,location) {
   const detail=payload?.complexDetail;
   if(!detail||String(detail.complexNo)!==complexNo||!clean(detail.complexName))fail('invalid_response');
   if(!listingPhaseMatches(listingFavoritePhase(favorite),clean(detail.complexName)))fail('address_mismatch');
+  if(!apartmentListingType(detail.realEstateTypeCode))fail('address_mismatch');
   const address=compact(detail.cortarAddress||detail.address),code=String(detail.cortarNo||'');
   const region=code?/^\d{10}$/.test(code)&&code.slice(0,5)===favorite.region_code:address.includes(compact(favorite.region_name));
   const expectedLot=lot(favorite.jibun);
   const parcel=region&&address.endsWith(compact(favorite.dong))&&expectedLot!==null&&lot(detail.detailAddress)===expectedLot;
-  const road=normalizeRoadAddress([detail.roadAddressPrefix,detail.roadAddress].filter(Boolean).join(' '));
-  const named=listingSearchNames(favorite).some(name=>normalizeListingName(name)===normalizeListingName(clean(detail.complexName)));
-  if(!parcel&&!(region&&road&&road===normalizeRoadAddress(favorite.road_address)&&named))fail('address_mismatch');
-  return clean(detail.complexName);
+  const road=normalizeRoadAddress(housingRoadAddress(detail));
+  const named=listingSearchNames(favorite).some(name=>listingRegisteredNameMatches(name,clean(detail.complexName)));
+  const evidence=housingLocationEvidence(location,detail);
+  const roadConflict=favorite.identity_ref?.kind==='cohort'&&road&&location?.roads?.some(value=>value.source&&normalizeRoadAddress(value.road_address))&&!evidence.road_match;
+  const exclusive=new Set(location?.exclusive_building_dongs||[]),buildingWitnesses=[...new Set((Array.isArray(payload.article_building_dongs)?payload.article_building_dongs:[]).map(listingBuildingDong).filter(dong=>exclusive.has(dong)))];
+  if(roadConflict&&!((parcel||region&&address.endsWith(compact(favorite.dong))&&evidence.primary_parcel_match)&&named&&buildingWitnesses.length)){
+    const error=new ListingError('address_mismatch');
+    error.needsBuildingEvidence=Boolean((parcel||region&&address.endsWith(compact(favorite.dong))&&evidence.primary_parcel_match)&&named&&exclusive.size);
+    throw error;
+  }
+  let method;
+  if(roadConflict)method='verified_primary_parcel_and_building_ads';
+  else if(parcel)method='parcel';
+  else if(region&&address.endsWith(compact(favorite.dong))&&evidence.primary_parcel_match)method='verified_primary_parcel';
+  else if(region&&road&&(road===normalizeRoadAddress(favorite.road_address)||evidence.road_match)&&named)method='road_and_registered_name';
+  else if(region&&address.endsWith(compact(favorite.dong))&&evidence.road_match&&evidence.point&&evidence.point_in_primary_polygon)method='verified_road_and_primary_polygon';
+  else if(region&&address.endsWith(compact(favorite.dong))&&evidence.road_match&&evidence.point&&!evidence.has_primary_polygon&&evidence.anchor_corroborated)method='verified_road_and_official_anchor';
+  else fail('address_mismatch');
+  return {complexName:clean(detail.complexName),method,...(roadConflict?{buildingWitnesses}:{})};
+}
+export function verifyComplex(payload,favorite,complexNo,location) {
+  return verifyComplexEvidence(payload,favorite,complexNo,location).complexName;
 }
 
 export function writeListingSnapshot(filename,snapshot) {

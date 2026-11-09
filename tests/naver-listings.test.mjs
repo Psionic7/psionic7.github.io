@@ -11,7 +11,7 @@ import {regionalListingFixture} from './fixtures/regional-listings.mjs';
 import {secretValues,checkedBytes} from '../server/storage.mjs';
 import {createListingCollector,normalizeArticle,priceMan,writeListingSnapshot,verifyComplex} from '../server/naver-listings.mjs';
 import {listingMiddleware} from '../server/naver-listings-api.mjs';
-import {saleListingGroup,parseComplexNo,validListingSnapshot,listingSnapshot,listingIsStale,selectArticles,validTargets} from '../src/naver-listings.mjs';
+import {saleListingGroup,parseComplexNo,validListingSnapshot,listingSnapshot,listingIsStale,selectArticles,validTargets,listingGroupForFavorite} from '../src/naver-listings.mjs';
 import {makeApartmentFavorite} from '../src/apartment-favorites.js';
 
 const favorite=makeApartmentFavorite({apartment:'관심아파트',dong:'풍덕천동',jibun:'1112'}, {region_code:'41465',region_name:'경기도 용인시 수지구'});
@@ -22,7 +22,38 @@ test('a different numbered phase cannot use the same parcel as proof of identity
  assert.throws(()=>verifyComplex({complexDetail:{...detail.complexDetail,complexName:'관심7단지'}},registered,'12345'),error=>error.code==='address_mismatch');
  assert.equal(verifyComplex({complexDetail:{...detail.complexDetail,complexName:'관심8단지'}},registered,'12345'),'관심8단지');
 });
+test('exact road and complete registered compound name permit reordered components without claiming spatial containment',()=>{
+ const registered={...favorite,jibun:'198',road_address:'경기도 용인시 수지구 테스트로 179',apartment:'정든마을',name_aliases:['정든마을(2단지)(동아)'],trade_keys:[JSON.stringify(['풍덕천동','198','정든마을(2단지)(동아)'])]};
+ const observed={complexDetail:{...detail.complexDetail,complexName:'정든동아2단지',detailAddress:'199',roadAddressPrefix:'경기도 용인시 수지구',roadAddress:'테스트로 179'}};
+ assert.equal(verifyComplex(observed,registered,'12345'),'정든동아2단지');
+ for(const name of ['정든동아6단지','정든우성2단지','정든동아2단지별동'])assert.throws(()=>verifyComplex({complexDetail:{...observed.complexDetail,complexName:name}},registered,'12345'),error=>error.code==='address_mismatch');
+ assert.throws(()=>verifyComplex({complexDetail:{...observed.complexDetail,roadAddress:'테스트로 180'}},registered,'12345'),error=>error.code==='address_mismatch');
+});
+test('whole registered names tolerate the generic village word only with an independently matching official road',()=>{
+ const registered={...favorite,apartment:'탑마을',name_aliases:['탑마을타워빌'],road_address:'경기도 용인시 수지구 시험로 1'};
+ const observed={complexDetail:{...detail.complexDetail,complexName:'탑타워빌',detailAddress:'다른 지번',roadAddress:'경기도 용인시 수지구 시험로 1'}};
+ assert.equal(verifyComplex(observed,registered,'12345'),'탑타워빌');
+ assert.throws(()=>verifyComplex({complexDetail:{...observed.complexDetail,complexName:'탑다른빌'}},registered,'12345'),error=>error.code==='address_mismatch');
+ assert.throws(()=>verifyComplex({complexDetail:{...observed.complexDetail,roadAddress:'경기도 용인시 수지구 시험로 2'}},registered,'12345'),error=>error.code==='address_mismatch');
+});
+test('a shared primary parcel does not override the explicit road scope of a cohort',()=>{
+ const registered={...favorite,identity_ref:{kind:'cohort',id:'cohort:hub:test:road'},road_address:'경기도 용인시 수지구 시험로 1'};
+ const location={roads:[{road_address:registered.road_address,source:'건축물대장'},{road_address:'경기도 용인시 수지구 시험로 2',source:'건축물대장'}]};
+ assert.throws(()=>verifyComplex({complexDetail:{...detail.complexDetail,roadAddress:'경기도 용인시 수지구 다른로 9'}},registered,'12345',location),error=>error.code==='address_mismatch');
+ assert.equal(verifyComplex({complexDetail:{...detail.complexDetail,complexName:registered.apartment,detailAddress:'999',roadAddress:'경기도 용인시 수지구 시험로 2'}},registered,'12345',location),registered.apartment);
+});
 const raw=(id='26000000001',extra={})=>({articleNo:id,articleName:'관심아파트',realEstateTypeCode:'APT',articleStatus:'R0',tradeTypeCode:'A1',dealOrWarrantPrc:'13억 5,000',area1:112.3,area2:84.9,floorInfo:'10/20',buildingName:'101동',direction:'남향',articleConfirmYmd:'20261105',articleFeatureDesc:'채광 좋은 집',realtorName:'공인중개사',...extra});
+test('Naver same-address advertisement counts and price ranges survive without merging different advertisement IDs',()=>{
+ const first=normalizeArticle(raw('26000000001',{sameAddrCnt:7,sameAddrMinPrc:'13억',sameAddrMaxPrc:'13억 5,000'}));
+ const second=normalizeArticle(raw('26000000002',{sameAddrCnt:7,sameAddrMinPrc:'13억',sameAddrMaxPrc:'13억 5,000',realtorName:'다른 중개사',dealOrWarrantPrc:'13억'}));
+ assert.equal(first.providerSameAddress.advertisementCount,7);assert.equal(first.providerSameAddress.minPriceMan,130000);assert.equal(second.priceMan,130000);
+ assert.notEqual(first.id,second.id);assert.notEqual(first.realtor,second.realtor);assert.equal(normalizeArticle(raw()).providerSameAddress,undefined);
+ assert.equal(normalizeArticle(raw('26000000003',{sameAddrCnt:-1})).providerSameAddress,undefined);
+});
+test('reconstruction apartment sales preserve the observed JGC classification rather than disappearing as zero ads',()=>{
+ const article=normalizeArticle(raw('26000000001',{realEstateTypeCode:'JGC'}));assert.equal(article.tradeType,'A1');assert.equal(article.propertyType,'JGC');
+ assert.throws(()=>normalizeArticle(raw('26000000002',{realEstateTypeCode:'OPST'})));
+});
 const json=(data,status=200,headers={})=>new Response(JSON.stringify(data),{status,headers:{'Content-Type':'application/json',...headers}});
 
 test('road address verification ignores spaces and reference names but rejects a conflicting complex name or building number',()=>{
@@ -178,6 +209,17 @@ test('local API rejects foreign origins, forged hosts, methods and invalid favor
   assert.equal(f.calls.length,0);
   const response=await post('collect',targets(),{Origin:base});assert.equal(response.status,200);const result=await response.json();assert(validListingSnapshot(result));assert.equal(result.groups[0].articles.length,1);
   assert.deepEqual((await (await post('read',targets())).json()).groups,result.groups);
+});
+test('reading a source and a child together preserves provider observations for each independent view',async t=>{
+ const f=fixture(t),sample=await f.collector.collect(favorite,'12345'),ids=['cohort:hub:a:road','cohort:hub:b:road'];
+ const units=ids.map((id,index)=>makeApartmentFavorite({...favorite,identity_ref:{kind:'cohort',id},identity_coverage:{entity_ids:[],cohort_ids:[id],root_ids:[index?'hub:b':'hub:a']},identity_listing_members:[{cohort_id:id,building_dongs:[index?'201':'101']}]},favorite));
+ const source={...favorite,identity_ref:{kind:'source',id:favorite.id},identity_coverage:{entity_ids:[favorite.id],cohort_ids:ids,root_ids:['hub:a','hub:b']},identity_listing_members:ids.map(cohort_id=>({cohort_id,building_dongs:null}))};
+ const ads=[{...sample.articles[0],id:'26000000101',building:'101동'},{...sample.articles[0],id:'26000000201',building:'201동'}];
+ const collector=createListingCollector({initialSnapshot:listingSnapshot(units.map(favorite=>({...sample,favorite,articles:ads})))}),middleware=listingMiddleware({collector,snapshotFile:path.join(f.folder,'absent.json')});
+ const server=http.createServer((req,res)=>middleware(req,res,()=>{res.writeHead(404);res.end();}));server.listen(0,'127.0.0.1');await once(server,'listening');t.after(()=>{server.closeAllConnections();return new Promise(resolve=>server.close(resolve));});
+ const response=await fetch(`http://127.0.0.1:${server.address().port}/api/naver-listings/read`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({version:1,favorites:[source,units[0]],connections:[]})});
+ assert.equal(response.status,200);const snapshot=await response.json();assert(validListingSnapshot(snapshot));assert(snapshot.groups.every(group=>group.articles.length===2));
+ assert.equal(listingGroupForFavorite(snapshot.groups,source).articles.length,2);assert.equal(listingGroupForFavorite(snapshot.groups,units[0]).articles.length,1);
 });
 
 test('CLI rejects invalid targets and overwrites before collecting, and reports unconnected favorites as failure',t=>{

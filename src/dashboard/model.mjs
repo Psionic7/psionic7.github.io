@@ -1,4 +1,4 @@
-import {apartmentKey} from '../domain.mjs';
+import {favoriteTradeMatches} from '../apartment-favorites.js';
 import {hasTradeCoverage} from '../coverage.js';
 import {publishedDay,recentRange,weekBounds} from '../weekly.mjs';
 export const overviewDurations=[7,30,90];
@@ -29,15 +29,15 @@ export function buildOverview({manifest,regions,apartments,datasets,days=30}) {
     return {item,type,status,count:0,previousCount:0,latest:null,partial:status==='ready'&&!coversRange(source.months,range),comparable:status==='ready'&&(!earliest||previous.start>=earliest)&&coversRange(source.months,range)&&coversRange(source.months,previous)};
   };
   const dongGroups=regions.map(item=>create(item,'dong')),apartmentGroups=apartments.map(item=>create(item,'apartment'));
-  const dongIndex=new Map(),apartmentIndex=new Map(),codes=new Set();
+  const dongIndex=new Map(),codes=new Set();
   for(const group of dongGroups){codes.add(group.item.region_code);for(const dong of group.item.dongs){const key=group.item.region_code+'|'+dong;const matches=dongIndex.get(key)||[];matches.push(group);dongIndex.set(key,matches);}}
-  for(const group of apartmentGroups){codes.add(group.item.region_code);for(const key of group.item.master_id?group.item.trade_keys:[group.item.key]){const id=group.item.region_code+'|'+key;const matches=apartmentIndex.get(id)||[];matches.push(group);apartmentIndex.set(id,matches);}}
+  for(const group of apartmentGroups)codes.add(group.item.region_code);
   const recent=new Map(),dongTrades=new Set(),apartmentTrades=new Set(),uniqueTrades=new Set();let lastValid=null;
   for(const code of codes){
     const rows=datasets[code]?.rows;if(!manifest.districts[code]||!Array.isArray(rows))continue;
     for(const row of rows){
       if(row.region_code!==code||row.deal_date>latestDay)continue;
-      const dongs=dongIndex.get(code+'|'+row.dong)||[],apts=apartmentIndex.size?apartmentIndex.get(code+'|'+apartmentKey(row))||[]:[];
+      const dongs=dongIndex.get(code+'|'+row.dong)||[],apts=apartmentGroups.filter(group=>favoriteTradeMatches(group.item,row));
       if((!dongs.length&&!apts.length)||!weekBounds(row.deal_date))continue;
       const valid=row.cancelled===0,inRange=row.deal_date>=range.start&&row.deal_date<=range.end,inPrevious=row.deal_date>=previous.start&&row.deal_date<=previous.end;
       if(valid&&isLatest(row,lastValid))lastValid=row;

@@ -1,0 +1,22 @@
+import React from 'react';
+import {afterEach,expect,it,vi} from 'vitest';
+import {cleanup,render,screen,within,waitFor} from '@testing-library/react';
+import App from '../src/App.jsx';
+import {makeApartmentFavorite} from '../src/apartment-favorites.js';
+const state=vi.hoisted(()=>({information:[],load:vi.fn(),map:vi.fn()}));
+vi.mock('../src/useApartmentInformation.js',()=>({default:()=>state.information,loadApartmentInformation:()=>state.load()}));
+vi.mock('../src/apartment-map-data.js',()=>({loadApartmentMap:()=>state.map()}));
+afterEach(()=>{cleanup();vi.restoreAllMocks();localStorage.clear();});
+it('refreshes stored selections from shared identity information and keeps complex-level historical trades',async()=>{
+ localStorage.clear();const region={region_id:'dong_41465101',region_code:'41465',region_name:'경기도 용인시 수지구',label:'수지구 풍덕천동',dongs:['풍덕천동']};
+ const entity=JSON.stringify(['41465','풍덕천동','1','신고명']),root='hub:history';
+ const favorite=makeApartmentFavorite({apartment:'공식단지',dong:'풍덕천동',jibun:'1',master_id:root,identity_ref:{kind:'root',id:root},identity_coverage:{entity_ids:[entity],cohort_ids:['cohort:hub:history:road'],root_ids:[root]}},region);
+ state.information=[favorite];state.load.mockResolvedValue(state.information);state.map.mockResolvedValue({apartments:[{...favorite,identity_coverage:undefined}]});
+ const params=new URLSearchParams({tab:'apartments',period:'custom',from:'2026-03-01',to:'2026-03-31'});params.append('apt',JSON.stringify(favorite));window.history.replaceState(null,'','/?'+params);
+ const raw={region_code:'41465',dong:'풍덕천동',jibun:'1',apartment:'신고명',deal_date:'2026-03-10',deal_month:'202603',area_m2:85,price_man:100000,floor:10,cancelled:0};
+ const rows=[{...raw,id:1,identity:{entity_id:entity,precision:'complex',root_id:null,cohort_id:null,building_id:null}},{...raw,id:2,identity:{entity_id:entity,precision:'building',root_id:root,cohort_id:'cohort:hub:history:road',building_id:'101'}}];
+ render(<App initialManifest={{regions:[region],districts:{'41465':{months:['202603']}},months:['202603'],published_at:'2026-03-31T12:00:00Z'}} districtLoader={async()=>rows}/>);
+ await waitFor(()=>expect(state.load).toHaveBeenCalled());
+ const table=await screen.findByRole('region',{name:'공식단지 · 경기도 용인시 수지구 풍덕천동 · 지번 1 기간별 거래 내역'});
+ expect(within(table).getAllByRole('row')).toHaveLength(3);expect(state.map).not.toHaveBeenCalled();
+});

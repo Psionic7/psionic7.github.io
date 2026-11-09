@@ -49,12 +49,16 @@ test('linking needs a verified ID or address and names; names and postcodes alon
   assert.equal(resolveApartmentIdentity(db,{region_code:'41465',dong:'풍덕천동',jibun:'693',apartment:'다른아파트'}).status,'unmatched');
 });
 
-test('refresh is idempotent and public identity retains the old trade selection and the collection connection',t=>{
+test('refresh is idempotent and legacy trade keys do not grant a raw selection its parent identity',t=>{
   const {db,options}=fixture(t);synchronizeApartmentIdentity(db,options);const before=apartmentInformation(db);
   synchronizeApartmentIdentity(db,{...options,now:'2026-11-08T00:00:00.000Z'});assert.deepEqual(apartmentInformation(db),before);
   const catalog=validateApartmentInformation(publicApartmentInformation(db));
   const legacy=makeApartmentFavorite({apartment:'삼성1',dong:'풍덕천동',jibun:'693'},{region_code:'41465',region_name:'경기도 용인시 수지구'});
-  assert.equal(identityForApartment(catalog.apartments,legacy).id,'hub:samsung');
+  assert.equal(identityForApartment(catalog.apartments,legacy),null);
+  const sourceId=JSON.stringify(['41465','풍덕천동','693','삼성1']);
+  const routed={...catalog.apartments.find(item=>item.id==='hub:samsung'),identity_ref:{kind:'root',id:'hub:samsung'},identity_default_sources:[sourceId]};
+  assert.equal(identityForApartment([routed],legacy).id,'hub:samsung');
+  assert.equal(identityForApartment([routed,{...routed,id:'hub:other'}],legacy),null);
   const target=dailyListingTargets(db,{region_ids:['dong_41465101']}).find(t=>t.favorite.id==='hub:samsung');
   assert.equal(target.complexNo,'2219');assert.equal(target.query,'풍덕천동 삼성1차');assert(target.favorite.name_aliases.includes('삼성래미안1차아파트'));
 });

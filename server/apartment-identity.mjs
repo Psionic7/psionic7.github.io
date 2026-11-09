@@ -3,6 +3,18 @@ import {APARTMENT_IDENTITY_SCHEMA} from './apartment-identity-schema.mjs';
 import {validListingSnapshot} from '../src/naver-listings.mjs';
 import {makeApartmentFavorite} from '../src/apartment-favorites.js';
 import {normalizeRoadAddress,normalizeParcel} from '../src/address-identity.mjs';
+import {rebuildHousingIdentity,housingIdentityCatalog,housingTradeBindings,housingIdentityStats} from './housing-identity.mjs';
+export {housingIdentityCatalog,housingTradeBindings,housingIdentityStats};
+export {readNaverMatch,naverMatchStats} from './apartment-naver-matches.mjs';
+export function synchronizeHousingIdentity(db,options={}) {
+  synchronizeApartmentIdentity(db,options);
+  let scopes=options.scopes;
+  if(scopes===undefined){
+    const config=JSON.parse(fs.readFileSync(new URL('../automation/config.json',import.meta.url),'utf8'));
+    scopes=db.prepare('SELECT region_id,region_code,dongs_json FROM regions').all().filter(row=>config.region_ids.includes(row.region_id));
+  }
+  return rebuildHousingIdentity(db,{...options,scopes,information:apartmentInformation(db)});
+}
 
 const has=(db,name)=>Boolean(db.prepare('SELECT 1 FROM sqlite_master WHERE name=?').get(name));
 const clean=value=>String(value||'').trim();

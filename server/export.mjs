@@ -5,9 +5,11 @@ import {readTradeSnapshot,verifyTradeExport} from './verify-trade-export.mjs';
 import {createHash,randomUUID} from 'node:crypto';
 import {gzipSync} from 'node:zlib';
 import {exportApartmentMap} from './export-apartment-map.mjs';
-import {publicApartmentInformation,synchronizeApartmentIdentity} from './apartment-identity.mjs';
+import {publicApartmentInformation,synchronizeApartmentIdentity,synchronizeHousingIdentity} from './apartment-identity.mjs';
 import {validateApartmentInformation} from '../src/apartment-identity.mjs';
-import {browserPayloads,writeBrowserPayloads,writeBrowserRegistry,cleanBrowserPayloads} from './browser-export.mjs';
+import {browserPayloads,writeBrowserPayloads,writeBrowserRegistry,cleanBrowserPayloads,attachHousingRows} from './browser-export.mjs';
+import {housingBindingsMap} from '../src/housing-wire.mjs';
+import {housingQueryInformation} from './housing-export.mjs';
 import {connect,PUBLIC_SCHEMA,TRADE_COLUMNS,REGION_COLUMNS,paths,ROOT,secretValues,checkedBytes,savedIds,atomicWrite} from './storage.mjs';
 export const sha256=data=>createHash('sha256').update(data).digest('hex');
 export function databasePayload(raw,secrets,compressAbove=95*1024*1024) {
@@ -35,7 +37,13 @@ function writeExportData({snapshot,target,favorites,secretsFile,compressAbove}) 
     districts[code]={file,count:rows.length,months:[...new Set(rows.map(r=>r.deal_month))].sort(),sha256:digest,dongs:[...new Set(rows.map(r=>r.dong))].sort()};
   }
   const manifest={version:2,published_at:published,exported_at:new Date().toISOString(),count:trades.length,regions:catalog,districts,favorite_region_ids:savedIds(favorites,catalog),months:[...new Set(trades.map(r=>r.deal_month))].sort(),source:'국토교통부 아파트 매매 실거래가',boundary_catalog_date:'2023-07-29'};
-  const browser=browserPayloads(groups,secrets),browserFolder=path.join(path.dirname(target),'query-data');
+  if(snapshot.housing){
+    const bytes=checkedBytes(JSON.stringify(snapshot.housing),secrets),digest=sha256(bytes),file=`housing-${digest.slice(0,12)}.json`;
+    payloads.set(file,bytes);manifest.housing={file,sha256:digest,bytes:bytes.length,row_count:trades.length,source_fingerprint:snapshot.housing.source_fingerprint,sources:Object.fromEntries(Object.entries(districts).map(([code,item])=>[code,item.sha256]))};
+  }
+  const bindings=snapshot.housing?housingBindingsMap(snapshot.housing):null;
+  const queryGroups=bindings?new Map([...groups].map(([code,rows])=>[code,attachHousingRows(rows,bindings)])):groups;
+  const browser=browserPayloads(queryGroups,secrets,{housing:manifest.housing}),browserFolder=path.join(path.dirname(target),'query-data');
   for(const [code,metadata] of Object.entries(browser.districts))districts[code].browser=metadata;
   fs.mkdirSync(target,{recursive:true});const temp=path.join(target,`.snapshot-${randomUUID()}.tmp`);
   try {
@@ -61,7 +69,7 @@ function writeExportData({snapshot,target,favorites,secretsFile,compressAbove}) 
     writeBrowserRegistry(browserFolder,manifest,browser.districts,secrets);
     atomicWrite(path.join(target,'manifest.json'),manifestBytes);
     cleanBrowserPayloads(browserFolder,browser.payloads);
-    for(const name of fs.readdirSync(target))if(/^trades-\d{5}-[a-f0-9]{12}\.json$/.test(name)&&!payloads.has(name))fs.unlinkSync(path.join(target,name));
+    for(const name of fs.readdirSync(target))if(/^(trades-\d{5}|housing)-[a-f0-9]{12}\.json$/.test(name)&&!payloads.has(name))fs.unlinkSync(path.join(target,name));
     const obsolete=path.join(target,payload.metadata.file==='public.sqlite3'?'public.sqlite3.gz':'public.sqlite3');
     if(fs.existsSync(obsolete))fs.unlinkSync(obsolete);
   } finally {if(fs.existsSync(temp))fs.unlinkSync(temp);}
@@ -76,7 +84,8 @@ export function exportData({source=paths.db,target=path.join(ROOT,'public/data')
   const identityDb=connect(source);let identities;
   try{
     const listingFile=path.join(path.dirname(target),'listings/snapshot.json');
-    synchronizeApartmentIdentity(identityDb,{snapshot:fs.existsSync(listingFile)?JSON.parse(fs.readFileSync(listingFile,'utf8')):undefined});
+    const synchronize=identityDb.prepare("SELECT 1 FROM sqlite_master WHERE name='housing_identity_meta'").get()?synchronizeHousingIdentity:synchronizeApartmentIdentity;
+    synchronize(identityDb,{snapshot:fs.existsSync(listingFile)?JSON.parse(fs.readFileSync(listingFile,'utf8')):undefined});
     identities=publicApartmentInformation(identityDb);
     const inventory=identityDb.prepare("SELECT 1 FROM sqlite_master WHERE name='apartment_inventory_regions'").get();
     const prior=path.join(path.dirname(target),'apartment-identity/catalog.json');
@@ -86,12 +95,13 @@ export function exportData({source=paths.db,target=path.join(ROOT,'public/data')
   const stage=fs.mkdtempSync(path.join(os.tmpdir(),'home-records-export-')),stageData=path.join(stage,'data');
   try {
     const snapshot=readTradeSnapshot(source),manifest=writeExportData({snapshot,target:stageData,favorites,secretsFile,compressAbove});
+    if(snapshot.housing)identities=housingQueryInformation(identities,snapshot.housing);
     const validation=verifyTradeExport({target:stageData,snapshot});
     const stageQueries=path.join(stage,'query-data'),queries=path.join(path.dirname(target),'query-data');
     for(const [from,to]of [[stageData,target],[stageQueries,queries]])for(const name of fs.readdirSync(from).filter(name=>name!=='manifest.json'))atomicWrite(path.join(to,name),fs.readFileSync(path.join(from,name)));
     atomicWrite(path.join(queries,'manifest.json'),fs.readFileSync(path.join(stageQueries,'manifest.json')));
     atomicWrite(path.join(target,'manifest.json'),fs.readFileSync(path.join(stageData,'manifest.json')));
-    for(const [from,to,pattern]of [[stageData,target,/^(trades-\d{5}-[a-f0-9]{12}\.json|public\.sqlite3(?:\.gz)?)$/],[stageQueries,queries,/^(search|catalog-\d{5}|month-\d{5}-\d{6})-[a-f0-9]{12}\.json$/]]){
+    for(const [from,to,pattern]of [[stageData,target,/^((?:trades-\d{5}|housing)-[a-f0-9]{12}\.json|public\.sqlite3(?:\.gz)?)$/],[stageQueries,queries,/^(search|catalog-\d{5}|month-\d{5}-\d{6})-[a-f0-9]{12}\.json$/]]){
       const keep=new Set(fs.readdirSync(from));for(const name of fs.readdirSync(to))if(pattern.test(name)&&!keep.has(name))fs.unlinkSync(path.join(to,name));
     }
     exportApartmentMap({source,target:path.join(path.dirname(target),'apartment-map'),favorites,secretsFile});

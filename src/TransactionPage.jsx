@@ -63,7 +63,7 @@ export default function TransactionPage({manifest,regions,day,onDayChange,period
   // Invalid dates must never become an unbounded transaction request. Keep only
   // the lightweight catalog available when the apartment selector needs it.
   const requestCodes=week?codes:districtLoader.supportsRanges&&searchRegionCode?[searchRegionCode]:[];
-  const datasets=useDistrictDatasets(manifest,requestCodes,districtLoader,retry,{...week,catalogOnlyCodes:codes.filter(code=>!week||!selectedCodes.includes(code)),...(countMode?{recentCount,recentRegions:selected.map(({region_code,dongs,key,master_id,trade_keys})=>({region_code,dongs,key,master_id,trade_keys})),minArea,maxArea,selectedBands,includeCancelled}:{})});
+  const datasets=useDistrictDatasets(manifest,requestCodes,districtLoader,retry,{...week,catalogOnlyCodes:codes.filter(code=>!week||!selectedCodes.includes(code)),...(countMode?{recentCount,recentRegions:selected,minArea,maxArea,selectedBands,includeCancelled}:{})});
   const knownMaxArea=useMemo(()=>selectedCodes.reduce((max,code)=>(datasets[code]?.rows||[]).reduce((value,row)=>Math.max(value,Number(row.area_m2)||0),max),300),[selectedCodes,datasets]);
   const sliderCeiling=Math.max(Math.ceil(knownMaxArea/50)*50,minArea||0,maxArea||0);
   return <div className="weekly-page">

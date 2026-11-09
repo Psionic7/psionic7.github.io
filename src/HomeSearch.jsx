@@ -8,13 +8,13 @@ import {loadApartmentInformation} from './useApartmentInformation.js';
 export const normalizeSearch=value=>String(value||'').toLocaleLowerCase().replace(/[\s·()_-]/g,'');
 export async function loadSearchIndex(manifest){
   const meta=typeof __SEARCH_DATA__==='undefined'?null:__SEARCH_DATA__;
-  if(meta&&Object.entries(manifest.districts).every(([code,d])=>meta.sources[code]===d.sha256)){
+  if(meta&&(!manifest.housing||meta.housing_sha256===manifest.housing.sha256)&&Object.entries(manifest.districts).every(([code,d])=>meta.sources[code]===d.sha256)){
     if(!/^search-[a-f0-9]{12}\.json$/.test(meta.file))throw new Error('검색 목록을 확인할 수 없습니다.');
     const items=await cachedJson('/query-data/'+meta.file);if(!Array.isArray(items))throw new Error('검색 목록을 확인할 수 없습니다.');return items;
   }
   // Compatibility for a newly published manifest while an older page is still open.
   const groups=await Promise.all(Object.keys(manifest.districts).map(async code=>[code,(await loadDistrict(manifest,code,{catalogOnly:true})).catalog||[]]));
-  const information=await loadApartmentInformation();
+  const information=await loadApartmentInformation(manifest.housing?.sha256||manifest.published_at);
   return buildSearchIndex(new Map(groups),manifest.regions,information);
 }
 export default function HomeSearch({manifest,catalog,onApartment,onRegion,loader=loadSearchIndex}){

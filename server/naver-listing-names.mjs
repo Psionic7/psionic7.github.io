@@ -1,5 +1,15 @@
 const normalize=name=>name.replace(/[\s()[\]·.,_-]|아파트/g,'').toLowerCase();
 export {normalize as normalizeListingName};
+export function listingRegisteredNameMatches(registered,observed) {
+  if(normalize(registered)===normalize(observed))return true;
+  const village=name=>normalize(name).replaceAll('마을','');
+  if(village(registered).length>=4&&village(registered)===village(observed))return true;
+  const parts=registered.split(/[()[\]]/).map(value=>normalize(value).replaceAll('마을','')).filter(Boolean);
+  if(parts.length<2||parts.length>6)return false;
+  const target=normalize(observed).replaceAll('마을','');
+  const consume=(rest,remaining)=>remaining.length?remaining.some((part,index)=>rest.startsWith(part)&&consume(rest.slice(part.length),remaining.filter((_,i)=>i!==index))):rest==='';
+  return consume(target,parts);
+}
 
 export function listingSearchNames(favorite) {
   const names=[favorite.apartment,...(favorite.name_aliases||[]),...(favorite.trade_keys||[]).map(key=>JSON.parse(key)[2])];

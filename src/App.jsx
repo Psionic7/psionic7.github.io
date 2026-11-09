@@ -17,6 +17,7 @@ import {validApartmentFavorites,sameApartmentFavorite,makeApartmentFavorite,refr
 import {validRegionFavorites} from './region-favorites.js';
 import {restoreApartmentQuery,appendTransactionPeriod} from './apartment-query.js';
 import {restoreOverviewDays} from './dashboard/model.mjs';
+import {loadApartmentInformation} from './useApartmentInformation.js';
 const Dashboard=lazy(()=>import('./Dashboard.jsx'));
 const ApartmentMapPage=lazy(()=>import('./ApartmentMapPage.jsx'));
 const RegionMapPage=lazy(()=>import('./RegionMapPage.jsx'));
@@ -104,16 +105,16 @@ function Explorer({manifest,districtLoader,onResetPreferences,restoredScroll=0,u
   const [sharedOverview,setSharedOverview]=useState(()=>readSharedOverview(new URLSearchParams(window.location.search),catalog));
   const overviewRegions=sharedOverview?.regions||favorites,overviewApartments=sharedOverview?.apartments||apartmentFavorites;
   const [currentMasterApartments,setCurrentMasterApartments]=useState(null);
-  const hasMasterApartments=[...apartmentFavorites,...selectedApartments,...(sharedOverview?.apartments||[])].some(item=>item.master_id);
+  const hasApartmentSelections=[...apartmentFavorites,...selectedApartments,...(sharedOverview?.apartments||[])].length>0;
   useEffect(()=>{
-    if(!hasMasterApartments)return;
+    if(!hasApartmentSelections)return;
     let active=true;
-    import('./apartment-map-data.js').then(module=>module.loadApartmentMap()).then(({apartments})=>{
+    loadApartmentInformation(manifest.housing?.sha256||manifest.published_at).then(apartments=>{
       if(!active)return;
       setCurrentMasterApartments(apartments);
     }).catch(()=>{/* Keep saved selections available during a metadata outage. */});
     return()=>{active=false;};
-  },[hasMasterApartments,manifest.published_at,setApartmentFavorites]);
+  },[hasApartmentSelections,manifest.published_at,manifest.housing?.sha256,setApartmentFavorites]);
   useEffect(()=>{
     if(!currentMasterApartments)return;
     if(refreshApartmentFavorites(apartmentFavorites,currentMasterApartments)!==apartmentFavorites)setApartmentFavorites(previous=>refreshApartmentFavorites(previous,currentMasterApartments));

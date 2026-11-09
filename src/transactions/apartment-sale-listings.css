@@ -5,7 +5,7 @@
 .sale-listing-warning{color:#9c5927}
 .sale-listing-source a{display:inline-flex;align-items:center;gap:3px;margin-left:8px;font-size:11px;color:var(--accent)}
 .public-shell .weekly-dong.with-sale-listings .compact-trades td.sale-listing-source{white-space:normal}
-.sale-listing-source span{display:inline-block;white-space:nowrap}
+.sale-listing-source span{display:block;white-space:normal;overflow-wrap:anywhere}
 @media(min-width:651px){
   .public-shell .weekly-dong.with-sale-listings .compact-trades .summary-table{table-layout:fixed}
   .with-sale-listings .trade-date-column{width:10%}

@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import {fileURLToPath} from 'node:url';
 import {localEnv} from './storage.mjs';
 import {createListingCollector} from './naver-listings.mjs';
-import {validTargets,listingSnapshot} from '../src/naver-listings.mjs';
+import {validTargets,listingSnapshot,listingGroupsForFavorite} from '../src/naver-listings.mjs';
 
 const root=fileURLToPath(new URL('../',import.meta.url));
 export function listingMiddleware({collector=createListingCollector({stateFile:path.join(root,'local/naver-listings-cache.json'),authorization:process.env.NAVER_LAND_AUTHORIZATION||localEnv().NAVER_LAND_AUTHORIZATION||''}),snapshotFile=path.join(root,'public/listings/snapshot.json')}={}) {
@@ -25,7 +25,9 @@ export function listingMiddleware({collector=createListingCollector({stateFile:p
       const published=fs.existsSync(snapshotFile)?JSON.parse(fs.readFileSync(snapshotFile,'utf8').replace(/^\uFEFF/,'')):null;
       if(published)collector.restore(published);
       if(pathname==='/api/naver-listings/read') {
-        const groups=input.favorites.map(favorite=>collector.read(favorite,input.connections.find(c=>c.favoriteId===favorite.id)?.complexNo)).filter(Boolean);
+        const stored=collector.snapshot().groups;
+        const originals=new Map(stored.map(group=>[group.favorite.id,group]));
+        const groups=[...new Map(input.favorites.flatMap(favorite=>listingGroupsForFavorite(stored,favorite,input.connections.find(c=>c.favoriteId===favorite.id)?.complexNo)).map(group=>[group.favorite.id,originals.get(group.favorite.id)])).values()];
         return json(200,{...listingSnapshot(groups),...(published?.collection?{collection:published.collection}:{})});
       }
       if(input.favorites.length!==1||input.connections.length!==1)return json(400,{error:'단지 하나씩 수집하세요.'});

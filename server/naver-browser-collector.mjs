@@ -1,8 +1,9 @@
 import fs from 'node:fs';
 import {fileURLToPath} from 'node:url';
 import {setTimeout as sleep} from 'node:timers/promises';
-import {LISTING_ERRORS,LISTING_TRADE_TYPE,complexUrl,validListingGroup} from '../src/naver-listings.mjs';
-import {normalizeArticle,verifyComplex} from './naver-listings.mjs';
+import {LISTING_ERRORS,LISTING_TRADE_TYPE,complexUrl,validListingGroup,apartmentListingType} from '../src/naver-listings.mjs';
+import {normalizeArticle,verifyComplex,verifyComplexEvidence} from './naver-listings.mjs';
+import {housingObservation} from './housing-location.mjs';
 
 export class BrowserListingError extends Error {
   constructor(code){super(LISTING_ERRORS[code]);this.code=code;}
@@ -36,21 +37,21 @@ export class BrowserListingPages {
     const last=Math.max(...state.pages.keys());
     return state.pages.get(last).isMoreData===false&&Array.from({length:last},(_,i)=>i+1).every(page=>state.pages.has(page));
   }
-  finish(favorite,id,now=new Date()) {
+  finish(favorite,id,now=new Date(),location) {
     if(!this.ready(id))fail('incomplete');
-    const state=this.complexes.get(id),complexName=verifyComplex(state.detail,favorite,id),seen=new Set(),articles=[];
+    const state=this.complexes.get(id),seen=new Set(),articles=[];
     for(const [page,payload] of [...state.pages].sort((a,b)=>a[0]-b[0])) {
       if(page<state.pages.size&&!payload.isMoreData)fail('incomplete');
       for(const raw of payload.articleList) {
         const articleId=String(raw?.articleNo||'');
         if(!/^[1-9]\d{0,11}$/.test(articleId)||seen.has(articleId)||raw.complexNo!==undefined&&String(raw.complexNo)!==id)fail('incomplete');
         seen.add(articleId);if(seen.size>20000)fail('incomplete');
-        if(raw.realEstateTypeCode&&raw.realEstateTypeCode!=='APT'||raw.tradeTypeCode!==LISTING_TRADE_TYPE)continue;
+        if(!apartmentListingType(raw.realEstateTypeCode)||raw.tradeTypeCode!==LISTING_TRADE_TYPE)continue;
         const article=normalizeArticle(raw);if(article)articles.push(article);
       }
     }
-    const collectedAt=new Date(now).toISOString();
-    const group={favorite,complexNo:id,complexName,tradeType:LISTING_TRADE_TYPE,status:'ready',attemptedAt:collectedAt,collectedAt,errorCode:null,articles,collectionMethod:'browser',coverage:'complete',pageCount:state.pages.size,sourceUrl:complexUrl(id)};
+    const verification=verifyComplexEvidence({...state.detail,article_building_dongs:articles.map(article=>article.building)},favorite,id,location),complexName=verification.complexName,collectedAt=new Date(now).toISOString();
+    const sourceUrl=complexUrl(id),group={favorite,complexNo:id,complexName,tradeType:LISTING_TRADE_TYPE,status:'ready',attemptedAt:collectedAt,collectedAt,errorCode:null,articles,collectionMethod:'browser',coverage:'complete',pageCount:state.pages.size,sourceUrl,observation:housingObservation(state.detail.complexDetail,{sourceUrl,observedAt:collectedAt,verificationMethod:verification.method,buildingWitnesses:verification.buildingWitnesses})};
     if(!validListingGroup(group))fail('invalid_response');return group;
   }
 }

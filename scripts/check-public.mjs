@@ -43,6 +43,7 @@ export function checkPublic(root=ROOT,secretsFile=paths.env,{checkIndex=true}={}
     const database=manifest.database||{file:'public.sqlite3',format:'sqlite3'};
     if(!['public.sqlite3','public.sqlite3.gz'].includes(database.file)||(database.file.endsWith('.gz')?database.format!=='sqlite3+gzip':database.format!=='sqlite3'))throw new Error('공개 SQLite 파일 경로 / 형식 오류');
     const allowed=new Set(['manifest.json',database.file,...Object.values(manifest.districts).map(d=>d.file)]);
+    if(manifest.housing)allowed.add(manifest.housing.file);
     if(fs.readdirSync(folder).some(f=>!allowed.has(f)))throw new Error('공개 데이터 폴더에 허용되지 않은 파일이 있습니다.');
     let count=0;
     for(const [code,item] of Object.entries(manifest.districts)) {
