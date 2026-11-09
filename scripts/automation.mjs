@@ -12,6 +12,13 @@ import {refreshPlan, repairTradeData} from '../server/trade-refresh.mjs';
 import {linkMasterTrades} from '../server/apartment-master.mjs';
 import {collectDailyListings,listingExport} from '../server/daily-naver-listings.mjs';
 import {writeListingSnapshot} from '../server/naver-listings.mjs';
+import {synchronizeHousingIdentity} from '../server/apartment-identity.mjs';
+
+export function prepareListingExport(db,{initialSnapshot}={}) {
+  if(db.prepare("SELECT name FROM sqlite_master WHERE name='apartment_complexes'").get()&&db.prepare('SELECT 1 FROM apartment_complexes WHERE active=1 LIMIT 1').get())linkMasterTrades(db);
+  synchronizeHousingIdentity(db,{snapshot:initialSnapshot});
+  return listingExport(db,{initialSnapshot});
+}
 
 export async function collectConfigured(db, config, {now, tradeKey = serviceKey(), jusoKey = addressKey(), collector = collectMonth, addressCollector = collectAddresses, listingCollector=collectDailyListings,listingOptions={},onProgress = console.log} = {}) {
   const catalog = regions(db), settings = validateConfig(config, catalog);
@@ -88,9 +95,9 @@ export async function runAutomation(action) {
     const db = connect();
     let listings;
     try {
-      if (db.prepare("SELECT name FROM sqlite_master WHERE name='apartment_complexes'").get() && db.prepare('SELECT 1 FROM apartment_complexes WHERE active=1 LIMIT 1').get()) linkMasterTrades(db);
       const initialFile=path.join(ROOT,'public/listings/snapshot.json');
-      listings=listingExport(db,{initialSnapshot:fs.existsSync(initialFile)?readJson(initialFile):undefined});
+      const initialSnapshot=fs.existsSync(initialFile)?readJson(initialFile):undefined;
+      listings=prepareListingExport(db,{initialSnapshot});
     } finally {db.close();}
     const manifest = exportData();
     writeListingSnapshot(path.join(ROOT,'public/listings/snapshot.json'),listings);

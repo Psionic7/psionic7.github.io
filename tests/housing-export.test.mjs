@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {connect,PUBLIC_SCHEMA} from '../server/storage.mjs';
+import {APARTMENT_MASTER_SCHEMA} from '../server/apartment-master-schema.mjs';
 import {normalize} from '../server/collector.mjs';
 import {rebuildHousingIdentity} from '../server/housing-identity.mjs';
 import {exportData,sha256} from '../server/export.mjs';
@@ -16,14 +17,26 @@ import {sourceIdentityId,selectIdentityRows} from '../src/housing-identity.mjs';
 const read=file=>JSON.parse(fs.readFileSync(file));
 const write=(file,value)=>fs.writeFileSync(file,JSON.stringify(value));
 const raw={aptNm:'원본단지',umdNm:'시험동',jibun:'001-2',dealAmount:'100,000',excluUseAr:'84.5',dealYear:'2026',dealMonth:'01',dealDay:'09',sggCd:'11110',floor:'3',buildYear:'2000',cdealType:'',cdealDay:'',untouched:'original'};
-function fixture(t){
+function fixture(t,{legacyInventory=false}={}){
  const root=fs.mkdtempSync(path.join(os.tmpdir(),'home-housing-export-'));t.after(()=>{assert.equal(path.dirname(path.resolve(root)),path.resolve(os.tmpdir()));assert(path.basename(root).startsWith('home-housing-export-'));fs.rmSync(root,{recursive:true,force:true});});
  const source=path.join(root,'working.sqlite3'),target=path.join(root,'public/data'),queries=path.join(root,'public/query-data'),secretsFile=path.join(root,'.env');fs.writeFileSync(secretsFile,'');
  const db=connect(source);db.exec(PUBLIC_SCHEMA);db.prepare('INSERT INTO regions VALUES(?,?,?,?,?,?,?)').run('dong_11110101','시험동','11110','서울특별시 종로구','["시험동"]',null,null);
- const insert=db.prepare('INSERT INTO trades VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)');for(const id of [1,2])insert.run(id,...normalize(raw,'11110','202601'));rebuildHousingIdentity(db,{scopes:[]});db.close();
+ const insert=db.prepare('INSERT INTO trades VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)');for(const id of [1,2])insert.run(id,...normalize(raw,'11110','202601'));
+ if(legacyInventory){db.exec(APARTMENT_MASTER_SCHEMA);db.prepare('INSERT INTO apartment_inventory_regions(region_id,legal_code,dong,status) VALUES(?,?,?,?)').run('dong_11110101','1111010100','시험동','scanned');}
+ else rebuildHousingIdentity(db,{scopes:[]});
+ db.close();
  const options={source,target,secretsFile,favorites:path.join(root,'absent.json')};const manifest=exportData(options);
  return {root,source,target,queries,manifest};
 }
+test('export migrates a restored scanned inventory without housing tables before creating source routes',t=>{
+ const f=fixture(t,{legacyInventory:true});assert(f.manifest.housing);
+ const payload=readHousingPayload(f.target,f.manifest);assert.equal(payload.assignments.length,2);
+ const catalog=read(path.join(f.root,'public/apartment-identity/catalog.json')),index=read(path.join(f.queries,f.manifest.districts['11110'].browser.file));
+ const search=buildSearchIndex(new Map([['11110',index.catalog]]),f.manifest.regions,catalog.apartments);
+ assert.equal(search.length,1);assert.equal(search[0].identity_default_sources.length,1);
+ const again=exportData({source:f.source,target:f.target,secretsFile:path.join(f.root,'.env'),favorites:path.join(f.root,'absent.json')});
+ assert.equal(again.housing.sha256,f.manifest.housing.sha256);assert.equal(verifyTradeExport({target:f.target,source:f.source}).rows,2);
+});
 test('export keeps original district and duplicate contracts intact while publishing packed identity and exact compact selections',async t=>{
  const f=fixture(t),rawRows=read(path.join(f.target,f.manifest.districts['11110'].file));
  assert.equal(rawRows.length,2);assert.deepEqual(rawRows.map(row=>row.raw),[raw,raw]);assert(rawRows.every(row=>!('identity' in row)));

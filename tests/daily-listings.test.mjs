@@ -10,12 +10,18 @@ import {dailyListingTargets,collectDailyListings,listingExport,readListingCollec
 import {BrowserListingError} from '../server/naver-browser-collector.mjs';
 import {validListingSnapshot,kstListingDay,listingGroupForFavorite} from '../src/naver-listings.mjs';
 import {makeApartmentFavorite} from '../src/apartment-favorites.js';
-import {collectConfigured} from '../scripts/automation.mjs';
+import {collectConfigured,prepareListingExport} from '../scripts/automation.mjs';
+import {linkMasterTrades} from '../server/apartment-master.mjs';
 import {encryptState,decryptState} from '../server/cloud-state.mjs';
 import {synchronizeHousingIdentity,housingTradeBindings} from '../server/apartment-identity.mjs';
 import {readNaverMatch} from '../server/apartment-naver-matches.mjs';
 
 const config={version:1,time_kst:'01:00',recent_months:1,address_limit:1000,region_ids:['dong_41135103']};
+test('deployment refreshes invalidated housing identity after legacy links and before reading listing groups',t=>{
+ const db=fixture(t);synchronizeHousingIdentity(db);
+ linkMasterTrades(db);assert.throws(()=>listingExport(db),/만료/);
+ const snapshot=prepareListingExport(db);assert(validListingSnapshot(snapshot));assert(validListingSnapshot(prepareListingExport(db)));
+});
 test('daily collection resolves once, saves match before stock timeout, and next day goes directly to stored Naver ID',async t=>{
  const db=fixture(t);let tick=Date.parse('2026-11-08T00:00:00Z'),resolves=0,collects=0;
  const factory=async()=>({close:async()=>{},resolve:async target=>{

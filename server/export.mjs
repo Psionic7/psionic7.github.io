@@ -84,12 +84,13 @@ export function exportData({source=paths.db,target=path.join(ROOT,'public/data')
   const identityDb=connect(source);let identities;
   try{
     const listingFile=path.join(path.dirname(target),'listings/snapshot.json');
-    const synchronize=identityDb.prepare("SELECT 1 FROM sqlite_master WHERE name='housing_identity_meta'").get()?synchronizeHousingIdentity:synchronizeApartmentIdentity;
+    const inventory=identityDb.prepare("SELECT 1 FROM sqlite_master WHERE name='apartment_inventory_regions'").get();
+    const scannedInventory=Boolean(inventory&&identityDb.prepare("SELECT 1 FROM apartment_inventory_regions WHERE status='scanned' LIMIT 1").get());
+    const synchronize=scannedInventory||identityDb.prepare("SELECT 1 FROM sqlite_master WHERE name='housing_identity_meta'").get()?synchronizeHousingIdentity:synchronizeApartmentIdentity;
     synchronize(identityDb,{snapshot:fs.existsSync(listingFile)?JSON.parse(fs.readFileSync(listingFile,'utf8')):undefined});
     identities=publicApartmentInformation(identityDb);
-    const inventory=identityDb.prepare("SELECT 1 FROM sqlite_master WHERE name='apartment_inventory_regions'").get();
     const prior=path.join(path.dirname(target),'apartment-identity/catalog.json');
-    if((!inventory||!identityDb.prepare("SELECT 1 FROM apartment_inventory_regions WHERE status='scanned' LIMIT 1").get())&&fs.existsSync(prior))identities=validateApartmentInformation(JSON.parse(fs.readFileSync(prior,'utf8')));
+    if(!scannedInventory&&fs.existsSync(prior))identities=validateApartmentInformation(JSON.parse(fs.readFileSync(prior,'utf8')));
   }finally{identityDb.close();}
   reportFile??=target===path.join(ROOT,'public/data')?path.join(ROOT,'local/data-validation/export.json'):null;
   const stage=fs.mkdtempSync(path.join(os.tmpdir(),'home-records-export-')),stageData=path.join(stage,'data');
