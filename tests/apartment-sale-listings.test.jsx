@@ -14,10 +14,30 @@ const other=makeApartmentFavorite(trade({jibun:'2'}),region);
 const article=(id='26000000001',extra={})=>({id,name:favorite.apartment,tradeType:'A1',priceText:'13억 5,000',rentText:'',priceMan:135000,rentMan:0,areaM2:85,supplyAreaM2:112.3,floor:'저/20',building:'101동',direction:'남향',confirmedOn:'2026-11-05',description:'채광 좋은 집',realtor:'중개사',...extra});
 const group=(extra={})=>({favorite,complexNo:'12345',complexName:favorite.apartment,status:'ready',attemptedAt:'2026-11-05T03:00:00.000Z',collectedAt:'2026-11-05T03:00:00.000Z',errorCode:null,articles:[article()],...extra});
 const result=(groups=[])=>({status:'ready',snapshot:listingSnapshot(groups),retry:vi.fn()});
+const expandSales=()=>screen.queryAllByRole('button',{name:/ 매매 매물 펼치기$/}).forEach(button=>fireEvent.click(button));
+const waitExpandSales=async()=>{await screen.findAllByRole('button',{name:/ 매매 매물 펼치기$/});expandSales();};
 const table=()=>screen.getByRole('region',{name:favorite.apartment+' 매매 매물 내역'});
+it('starts collapsed with the house count, expands and collapses independently, and respects area filters',()=>{
+ const ads=[article('26000000001',{providerHouseId:'12345:26000000001'}),article('26000000002',{providerHouseId:'12345:26000000001'}),article('26000000003',{providerHouseId:'12345:26000000003',areaM2:60})];
+ const view=render(<ApartmentSaleListings favorite={favorite} result={result([group({articles:ads})])}/>);
+ const button=screen.getByRole('button',{name:favorite.apartment+' 매매 매물 펼치기'});
+ expect(button.getAttribute('aria-expanded')).toBe('false');expect(within(button).getByText('매물 2건')).toBeTruthy();
+ expect(screen.queryByRole('table')).toBeNull();expect(screen.queryByText(/확인일과 매매 호가를 표시/)).toBeNull();
+ fireEvent.click(button);expect(table()).toBeTruthy();expect(button.getAttribute('aria-expanded')).toBe('true');
+ fireEvent.click(button);expect(screen.queryByRole('table')).toBeNull();
+ view.rerender(<ApartmentSaleListings favorite={favorite} result={result([group({articles:ads})])} minArea={80}/>);
+ expect(within(button).getByText('매물 1건')).toBeTruthy();expect(button.getAttribute('aria-expanded')).toBe('false');
+});
+it('does not display unknown or failed collection as zero in the collapsed summary',()=>{
+ const view=render(<ApartmentSaleListings favorite={favorite} result={result()}/>);
+ expect(screen.getByText('자료 미확인')).toBeTruthy();
+ view.rerender(<ApartmentSaleListings favorite={favorite} result={{status:'error',retry:vi.fn()}}/>);
+ expect(screen.getByText('불러오기 실패')).toBeTruthy();
+});
 it('shows one parent per provider house and expands all broker ads underneath without losing prices or links',()=>{
  const ads=[article('26000000001',{providerHouseId:'12345:26000000001'}),article('26000000002',{providerHouseId:'12345:26000000001',priceMan:130000,realtor:'두번째 중개사'}),article('26000000003',{providerHouseId:'12345:26000000003'})];
  render(<ApartmentSaleListings favorite={favorite} result={result([group({articles:ads})])}/>);
+ expandSales();
  expect(screen.getByText(/네이버 묶음 2건/)).toBeTruthy();
  const summary=screen.getByText('네이버 동일 주택 · 중개사별 광고 2건 펼치기');fireEvent.click(summary);
  expect(summary.closest('details').open).toBe(true);
@@ -27,6 +47,7 @@ it('shows one parent per provider house and expands all broker ads underneath wi
 it('labels advertisement counts and keeps same-house broker advertisements, individual prices and source links',()=>{
  const ads=[article('26000000001',{providerSameAddress:{advertisementCount:7,minPriceText:'13억',maxPriceText:'13억 5,000',minPriceMan:130000,maxPriceMan:135000}}),article('26000000002',{realtor:'다른중개사',priceMan:130000,priceText:'13억'}),article('26000000003')];
  render(<ApartmentSaleListings favorite={favorite} result={result([group({articles:ads})])}/>);
+ expandSales();
  expect(screen.getByText('광고 3건')).toBeTruthy();expect(within(table()).getByText('네이버 동일주소 광고 7건 · 13억 ~ 13억 5,000')).toBeTruthy();
  expect(within(table()).getByText('중개 다른중개사')).toBeTruthy();
  expect(within(table()).getAllByRole('row')).toHaveLength(4);expect(within(table()).getAllByRole('link')).toHaveLength(3);
@@ -39,6 +60,7 @@ afterEach(()=>{cleanup();vi.restoreAllMocks();vi.unstubAllGlobals();});
 it('places a separate six-column sale table directly after transactions and before the trend, retaining current ads outside the trade period',async()=>{
  const api={load:vi.fn(async()=>({snapshot:listingSnapshot([group({articles:[article(),article('26000000002',{tradeType:'B1',priceMan:50000})]})])}))};
  render(<ApartmentPage {...pageProps} listingClient={api}/>);
+ await waitExpandSales();
  const sales=await screen.findByRole('region',{name:favorite.apartment+' 매매 매물 내역'});
  const trades=await screen.findByRole('region',{name:/기간별 거래 내역/});
  expect(within(trades).getAllByRole('columnheader').map(el=>el.textContent)).toEqual(['계약일','아파트 이름','전용면적','층','거래금액','거래 상태 / 해제일']);
@@ -62,11 +84,13 @@ it('places a separate six-column sale table directly after transactions and befo
 it('uses the shared area unit, exact range and noncontiguous pyeong bands for listings',()=>{
  const state=result([group({articles:[article(),article('26000000002',{areaM2:115}),article('26000000003',{areaM2:50})]})]);
  const view=render(<ApartmentSaleListings favorite={favorite} result={state} areaUnit="pyeong" selectedBands={[10,30]}/>);
+ expandSales();
  expect(within(table()).getAllByRole('row')).toHaveLength(3);
  expect(within(table()).getByText('15.1평')).toBeTruthy();
  expect(within(table()).getByText('34.8평')).toBeTruthy();
  expect(within(table()).queryByText('25.7평')).toBeNull();
  view.rerender(<ApartmentSaleListings favorite={favorite} result={state} minArea={85} maxArea={85}/>);
+ expandSales();
  expect(within(table()).getAllByRole('row')).toHaveLength(2);
  expect(within(table()).getByText('85.00㎡')).toBeTruthy();
 });
@@ -75,18 +99,23 @@ it('matches verified master aliases and never attaches ads by apartment name alo
  const master=makeApartmentFavorite({...trade({apartment:'새이름'}),master_id:'hub:123',trade_keys:[favorite.key]},region);
  const verified=group({favorite:{...favorite,master_id:'hub:123',id:'hub:123',trade_keys:[favorite.key],identity_ref:{kind:'root',id:'hub:123'}}});
  const view=render(<ApartmentSaleListings favorite={master} result={result([verified])}/>);
+ expandSales();
  expect(screen.getByRole('region',{name:'새이름 매매 매물 내역'})).toBeTruthy();
  view.rerender(<ApartmentSaleListings favorite={other} result={result([group()])}/>);
+ expandSales();
  expect(screen.queryByRole('table')).toBeNull();
  expect(screen.getByText(/아직 확인된 매매 매물 자료가 없습니다/)).toBeTruthy();
 });
 
 it('distinguishes complete zero ads, missing data and failed collection with retained partial data',()=>{
  const view=render(<ApartmentSaleListings favorite={favorite} result={result([group({articles:[]})])}/>);
+ expandSales();
  expect(screen.getByText('수집 당시 확인된 매매 매물 광고가 없습니다.')).toBeTruthy();
  view.rerender(<ApartmentSaleListings favorite={favorite} result={result()}/>);
+ expandSales();
  expect(screen.getByText(/매물 0건으로 확인된 결과가 아닙니다/)).toBeTruthy();
  view.rerender(<ApartmentSaleListings favorite={favorite} result={result([group({status:'failed',errorCode:'blocked',coverage:'partial',areaSource:'list'})])}/>);
+ expandSales();
  expect(table()).toBeTruthy();
  expect(screen.getByText(/이전 수집 결과를 표시합니다/)).toBeTruthy();
  expect(screen.getByText(/일부 광고만 수집한 결과/)).toBeTruthy();
@@ -96,6 +125,7 @@ it('distinguishes complete zero ads, missing data and failed collection with ret
 it('paginates sale ads independently, keeps the page when collapsed, and resets on area changes',async()=>{
  const api={load:async()=>({snapshot:listingSnapshot([group({articles:Array.from({length:52},(_,i)=>article(String(26000000001+i),{areaM2:i===0?60:85}))})])})};
  render(<ApartmentPage {...pageProps} initialFilters={{recentCount:10}} listingClient={api}/>);
+ await waitExpandSales();
  await screen.findByRole('region',{name:favorite.apartment+' 매매 매물 내역'});
  expect(within(table()).getAllByRole('row')).toHaveLength(51);
  fireEvent.click(screen.getByRole('button',{name:favorite.apartment+' 다음 매물 페이지'}));
@@ -113,6 +143,7 @@ it('paginates sale ads independently, keeps the page when collapsed, and resets 
 it('shows listings despite a trade failure and retries a failed snapshot read',async()=>{
  const api={load:vi.fn().mockRejectedValueOnce(new Error('offline')).mockResolvedValue({snapshot:listingSnapshot([group()])})};
  render(<ApartmentPage {...pageProps} districtLoader={async()=>{throw new Error('offline');}} listingClient={api}/>);
+ await waitExpandSales();
  await screen.findByRole('button',{name:favorite.apartment+' 매물 다시 불러오기'});
  fireEvent.click(screen.getByRole('button',{name:favorite.apartment+' 매물 다시 불러오기'}));
  await screen.findByRole('region',{name:favorite.apartment+' 매매 매물 내역'});
@@ -124,8 +155,10 @@ it('loads once per comparison selection and ignores a late response for the prev
  let resolveOld;
  const api={load:vi.fn().mockImplementationOnce(()=>new Promise(resolve=>{resolveOld=resolve;})).mockResolvedValue({snapshot:listingSnapshot([group({favorite:other,articles:[article('26000000099')]})])})};
  const view=render(<ApartmentPage {...pageProps} listingClient={api}/>);
+ await waitExpandSales();
  await waitFor(()=>expect(api.load).toHaveBeenCalledTimes(1));
  view.rerender(<ApartmentPage {...pageProps} selected={[favorite,other]} listingClient={api}/>);
+ await waitExpandSales();
  await screen.findByRole('link',{name:favorite.apartment+' 매물 26000000099 네이버 원문'});
  await act(async()=>resolveOld({snapshot:listingSnapshot([group()])}));
  expect(screen.queryByRole('link',{name:favorite.apartment+' 매물 26000000001 네이버 원문'})).toBeNull();
@@ -136,6 +169,7 @@ it('loads once per comparison selection and ignores a late response for the prev
 it('uses twenty ads per page on narrow screens',()=>{
  vi.stubGlobal('matchMedia',()=>({matches:true,addEventListener:vi.fn(),removeEventListener:vi.fn()}));
  render(<ApartmentSaleListings favorite={favorite} result={result([group({articles:Array.from({length:22},(_,i)=>article(String(26000000001+i)))})])}/>);
+ expandSales();
  expect(within(table()).getAllByRole('row')).toHaveLength(21);
  fireEvent.click(screen.getByRole('button',{name:favorite.apartment+' 다음 매물 페이지'}));
  expect(within(table()).getAllByRole('row')).toHaveLength(3);

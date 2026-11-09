@@ -1,5 +1,5 @@
-import React,{useEffect,useMemo,useRef,useState} from 'react';
-import {ChevronLeft,ChevronRight,ExternalLink} from 'lucide-react';
+import React,{useEffect,useId,useMemo,useRef,useState} from 'react';
+import {ChevronDown,ChevronLeft,ChevronRight,ExternalLink} from 'lucide-react';
 import {areaValue,formatNumber,PYEONG_M2} from '../domain.mjs';
 import {sameApartmentFavorite} from '../apartment-favorites.js';
 import {LISTING_ERRORS,articleUrl,listingGroupForFavorite,listingIsStale,saleListingGroup} from '../naver-listings.mjs';
@@ -19,12 +19,17 @@ export default function ApartmentSaleListings({favorite,result,areaUnit='m2',min
   const houses=useMemo(()=>listingHouses(rows),[rows]);
   const mobile=useMediaQuery('(max-width:650px)'),pageSize=mobile?20:50;
   const [page,setPage]=useState(1),tableRef=useRef(null);
+  const [expanded,setExpanded]=useState(false),contentId=useId();
+  useEffect(()=>setExpanded(false),[favorite.id]);
   useEffect(()=>setPage(1),[rows,pageSize]);
   const pages=Math.max(1,Math.ceil(houses.length/pageSize)),safePage=Math.min(page,pages),unit=areaUnit==='m2'?'㎡':'평';
   const changePage=value=>{setPage(value);requestAnimationFrame(()=>{tableRef.current?.scrollIntoView?.({block:'start'});tableRef.current?.focus({preventScroll:true});});};
   const missing=group?.errorCode||daily?.errorCode;
+  const confirmed=houses.filter(house=>house.confirmed).length,unconfirmed=houses.length-confirmed;
+  const count=result.status==='loading'?'불러오는 중':result.status==='error'?'불러오기 실패':!group?.collectedAt?'자료 미확인':confirmed?`매물 ${formatNumber(confirmed)}건${unconfirmed?` · 미확인 광고 ${formatNumber(unconfirmed)}건`:''}`:`광고 ${formatNumber(rows.length)}건`;
   return <section className="apartment-sale-listings" aria-label={`${favorite.apartment} 매매 매물`}>
-    <div className="sale-listings-heading"><h3 className="transaction-table-label">매매 매물</h3>{group?.collectedAt&&<span className="badge result-count">광고 {formatNumber(rows.length)}건</span>}</div>
+    <h3 className="transaction-table-label"><button type="button" className="sale-listings-toggle" aria-expanded={expanded} aria-controls={contentId} aria-describedby={`${contentId}-count`} aria-label={`${favorite.apartment} 매매 매물 ${expanded?'접기':'펼치기'}`} onClick={()=>setExpanded(value=>!value)}><span>매매 매물</span><span id={`${contentId}-count`} className="sale-listings-count">{group?.status==='failed'?'이전 자료 · ':''}{count}</span><ChevronDown size={16} aria-hidden="true" className={expanded?'is-expanded':''}/></button></h3>
+    <div id={contentId} hidden={!expanded}>{expanded&&<>
     <p className="sale-listing-note">확인일과 매매 호가를 표시합니다. 계약된 실거래가와 다릅니다. 면적 조건을 함께 적용하며, 조회 기간·최근 거래 건수는 실거래에만 적용됩니다.</p>
     {group?.buildingScopeRestricted&&<p className="sale-listing-note">같은 주소를 쓰는 다른 단지와 구분해 확인된 동의 매물만 표시합니다. 동 정보가 없는 광고는 주소별 매물에서 확인하세요.</p>}
     {group?.scopeUncertain&&<p className="sale-listing-note">동 정보로 이 조회 범위를 정확히 나눌 수 없어, 연결된 네이버 단지의 전체 광고를 표시합니다.</p>}
@@ -53,5 +58,6 @@ export default function ApartmentSaleListings({favorite,result,areaUnit='m2',min
         </>}
       </>}
     </>}
+    </>}</div>
   </section>;
 }

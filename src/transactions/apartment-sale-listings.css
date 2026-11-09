@@ -1,6 +1,10 @@
 .transaction-table-label{font-size:13px;font-weight:600;line-height:1.5;margin:8px 0;color:var(--text)}
 .apartment-sale-listings{border-top:1px solid var(--border);margin-top:14px;padding-top:10px}
 .sale-listings-heading{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.sale-listings-toggle{display:flex;align-items:center;gap:10px;width:100%;padding:8px 0;border:0;background:none;color:var(--text);font:inherit;text-align:left;cursor:pointer}
+.sale-listings-count{margin-left:auto;font-size:12px;font-weight:400;color:var(--muted)}
+.sale-listings-toggle svg{flex-shrink:0}.sale-listings-toggle svg.is-expanded{transform:rotate(180deg)}
+.sale-listings-toggle:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:4px}
 .sale-listing-note{font-size:11px;color:var(--muted);line-height:1.65;margin:6px 0 9px}
 .sale-listing-warning{color:#9c5927}
 .sale-listing-source a{display:inline-flex;align-items:center;gap:3px;margin-left:8px;font-size:11px;color:var(--accent)}
