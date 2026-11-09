@@ -15,6 +15,15 @@ const article=(id='26000000001',extra={})=>({id,name:favorite.apartment,tradeTyp
 const group=(extra={})=>({favorite,complexNo:'12345',complexName:favorite.apartment,status:'ready',attemptedAt:'2026-11-05T03:00:00.000Z',collectedAt:'2026-11-05T03:00:00.000Z',errorCode:null,articles:[article()],...extra});
 const result=(groups=[])=>({status:'ready',snapshot:listingSnapshot(groups),retry:vi.fn()});
 const table=()=>screen.getByRole('region',{name:favorite.apartment+' 매매 매물 내역'});
+it('shows one parent per provider house and expands all broker ads underneath without losing prices or links',()=>{
+ const ads=[article('26000000001',{providerHouseId:'12345:26000000001'}),article('26000000002',{providerHouseId:'12345:26000000001',priceMan:130000,realtor:'두번째 중개사'}),article('26000000003',{providerHouseId:'12345:26000000003'})];
+ render(<ApartmentSaleListings favorite={favorite} result={result([group({articles:ads})])}/>);
+ expect(screen.getByText(/네이버 묶음 2건/)).toBeTruthy();
+ const summary=screen.getByText('네이버 동일 주택 · 중개사별 광고 2건 펼치기');fireEvent.click(summary);
+ expect(summary.closest('details').open).toBe(true);
+ const tree=screen.getByRole('list',{name:'같은 집의 중개사별 광고'});expect(within(tree).getAllByRole('listitem')).toHaveLength(2);expect(within(tree).getAllByRole('link')).toHaveLength(2);expect(within(tree).getByText('두번째 중개사')).toBeTruthy();
+ expect(within(tree).getByText('13.00억 원')).toBeTruthy();expect(within(tree).getByText('13.50억 원')).toBeTruthy();
+});
 it('labels advertisement counts and keeps same-house broker advertisements, individual prices and source links',()=>{
  const ads=[article('26000000001',{providerSameAddress:{advertisementCount:7,minPriceText:'13억',maxPriceText:'13억 5,000',minPriceMan:130000,maxPriceMan:135000}}),article('26000000002',{realtor:'다른중개사',priceMan:130000,priceText:'13억'}),article('26000000003')];
  render(<ApartmentSaleListings favorite={favorite} result={result([group({articles:ads})])}/>);

@@ -14,6 +14,24 @@ export class BrowserListingPages {
   constructor({maxPages=2000}={}){this.complexes=new Map();this.maxPages=maxPages;this.error=null;}
   consume(url,status,payload) {
     const parsed=new URL(url),detail=parsed.pathname.match(/^\/api\/complexes\/([1-9]\d*)$/),articles=parsed.pathname.match(/^\/api\/articles\/complex\/([1-9]\d*)$/);
+    if(parsed.pathname==='/api/articles'){
+      const representative=parsed.searchParams.get('representativeArticleNo');
+      const states=[...this.complexes.values()].filter(state=>state.representatives?.has(representative));
+      if(states.length!==1)return;
+      if(status===429)fail('rate_limited');
+      if(status===401||status===403)fail('unauthorized');
+      if(status!==200||!Array.isArray(payload)||payload.length>20000)fail('invalid_response');
+      const state=states[0];state.houseMembers??=new Map();state.houseArticles??=new Map();
+      for(const raw of payload){
+        if(!/^[1-9]\d{0,11}$/.test(String(raw?.articleNo||'')))fail('invalid_response');
+        if(raw.tradeTypeCode!==LISTING_TRADE_TYPE||!apartmentListingType(raw.realEstateTypeCode)||raw.articleStatus&&raw.articleStatus!=='R0')continue;
+        const id=String(raw.articleNo),old=state.houseMembers.get(id);
+        if(old&&old!==representative)fail('invalid_response');
+        state.houseMembers.set(id,representative);
+        state.houseArticles.set(id,raw);
+      }
+      return;
+    }
     if(!detail&&!articles)return;
     if(status===429)fail('rate_limited');
     if(status===401||status===403)fail('unauthorized');
@@ -23,6 +41,13 @@ export class BrowserListingPages {
     if(!this.complexes.has(id))this.complexes.set(id,{detail:null,pages:new Map(),signature:null});
     const state=this.complexes.get(id);
     if(detail){state.detail=payload;return;}
+    if(parsed.searchParams.get('sameAddressGroup')==='true'){
+      if(parsed.searchParams.get('tradeType')!==LISTING_TRADE_TYPE||parsed.searchParams.get('realEstateType')!=='APT')return;
+      if(!Array.isArray(payload.articleList))fail('invalid_response');
+      state.representatives??=new Set();state.houseMembers??=new Map();
+      for(const raw of payload.articleList){const articleId=String(raw.articleNo);state.representatives.add(articleId);if(raw.sameAddrCnt===1)state.houseMembers.set(articleId,articleId);}
+      return;
+    }
     if(parsed.searchParams.get('sameAddressGroup')!=='false'||parsed.searchParams.get('tradeType')!==LISTING_TRADE_TYPE||parsed.searchParams.get('realEstateType')!=='APT')return;
     const page=Number(parsed.searchParams.get('page')||1),signature=new URLSearchParams(parsed.searchParams);signature.delete('page');signature.sort();
     if(!Number.isInteger(page)||page<1||page>this.maxPages)fail('incomplete');
@@ -47,8 +72,13 @@ export class BrowserListingPages {
         if(!/^[1-9]\d{0,11}$/.test(articleId)||seen.has(articleId)||raw.complexNo!==undefined&&String(raw.complexNo)!==id)fail('incomplete');
         seen.add(articleId);if(seen.size>20000)fail('incomplete');
         if(!apartmentListingType(raw.realEstateTypeCode)||raw.tradeTypeCode!==LISTING_TRADE_TYPE)continue;
-        const article=normalizeArticle(raw);if(article)articles.push(article);
+        const article=normalizeArticle(raw);if(article){const representative=state.houseMembers?.get(article.id);if(representative)article.providerHouseId=`${id}:${representative}`;articles.push(article);}
       }
+    }
+    for(const [articleId,raw] of state.houseArticles||[]){
+      if(seen.has(articleId))continue;
+      if(raw.complexNo!==undefined&&String(raw.complexNo)!==id)fail('invalid_response');
+      const article=normalizeArticle(raw);if(article){article.providerHouseId=`${id}:${state.houseMembers.get(articleId)}`;articles.push(article);seen.add(articleId);}
     }
     const verification=verifyComplexEvidence({...state.detail,article_building_dongs:articles.map(article=>article.building)},favorite,id,location),complexName=verification.complexName,collectedAt=new Date(now).toISOString();
     const sourceUrl=complexUrl(id),group={favorite,complexNo:id,complexName,tradeType:LISTING_TRADE_TYPE,status:'ready',attemptedAt:collectedAt,collectedAt,errorCode:null,articles,collectionMethod:'browser',coverage:'complete',pageCount:state.pages.size,sourceUrl,observation:housingObservation(state.detail.complexDetail,{sourceUrl,observedAt:collectedAt,verificationMethod:verification.method,buildingWitnesses:verification.buildingWitnesses})};

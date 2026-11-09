@@ -104,3 +104,18 @@ test('real Chrome location discovery ignores stale map batches and verifies rena
  assert.equal(requests.filter(path=>path==='/complexes/10959?a=APT&b=A1&e=RETAIL').length,2);
  assert.equal(requests.filter(path=>path==='/complexes/10960?a=APT&b=A1&e=RETAIL').length,1);
 });
+
+test('real Chrome expands every provider house even when the open button changes its tracking attribute',{skip:!process.env.NAVER_BROWSER_PYTHON},async t=>{
+ const favorite=makeApartmentFavorite({apartment:'묶음테스트',dong:'풍덕천동',jibun:'1'},{region_code:'41465',region_name:'경기도 용인시 수지구'}),opened=[];
+ const raw=id=>({articleNo:id,articleName:'묶음테스트',tradeTypeCode:'A1',realEstateTypeCode:'APT',dealOrWarrantPrc:'10억',area2:84});
+ const server=http.createServer((req,res)=>{
+  const u=new URL(req.url,'http://localhost');res.setHeader('content-type','application/json');
+  if(u.pathname==='/api/complexes/111'){res.end(JSON.stringify({complexDetail:{complexNo:'111',complexName:'묶음테스트',cortarAddress:'경기도 용인시 수지구 풍덕천동',detailAddress:'1',latitude:37.33,longitude:127.09}}));return;}
+  if(u.pathname==='/api/articles/complex/111'){res.end(JSON.stringify({articleList:u.searchParams.get('sameAddressGroup')==='true'?[{...raw('11'),sameAddrCnt:2},{...raw('21'),sameAddrCnt:2}]:['11','12','21','22'].map(raw),isMoreData:false}));return;}
+  if(u.pathname==='/api/articles'){const id=u.searchParams.get('representativeArticleNo');opened.push(id);res.end(JSON.stringify([raw(id),raw(id==='11'?'12':'22')]));return;}
+  res.setHeader('content-type','text/html; charset=utf-8');res.end(`<!doctype html><h3 id="complexTitle">묶음테스트</h3><input id="address_group2" type="checkbox" onchange="fetch('/api/articles/complex/111?realEstateType=APT&tradeType=A1&sameAddressGroup='+this.checked+'&page=1')"><div id="articleListArea">${['11','21'].map(id=>`<div class="item"><div class="item_inner"><a class="item_link" data-nclk="TAA.groupo" aria-expanded="false" onclick="this.dataset.nclk='TAA.groupc';this.setAttribute('aria-expanded','true');fetch('/api/articles?index=0&representativeArticleNo=${id}')">묶음</a></div></div>`).join('')}</div><script>fetch('/api/complexes/111');fetch('/api/articles/complex/111?realEstateType=APT&tradeType=A1&sameAddressGroup=false&page=1')</script>`);
+ });server.listen(0,'127.0.0.1');await once(server,'listening');
+ let source;t.after(async()=>{await source?.close();server.closeAllConnections();await new Promise(r=>server.close(r));});
+ source=await createDailyListingSource({baseUrl:`http://127.0.0.1:${server.address().port}`,python:process.env.NAVER_BROWSER_PYTHON,timeoutMs:45000});
+ const group=await source.collect({favorite},{complexNo:'111'});assert.deepEqual(opened,['11','21']);assert.deepEqual(group.articles.map(a=>a.providerHouseId),['111:11','111:11','111:21','111:21']);
+});

@@ -45,7 +45,7 @@ class Collector:
         parsed = urlsplit(event.response.url)
         if parsed.netloc==self.host and event.response.mime_type=='text/html' and os.environ.get('NAVER_BROWSER_DIAGNOSTICS')=='1':
             print(json.dumps({'stage':'document-response','path':parsed.path,'status':int(event.response.status)}),file=sys.stderr,flush=True)
-        if parsed.netloc == self.host and API.fullmatch(parsed.path):
+        if parsed.netloc == self.host and (API.fullmatch(parsed.path) or parsed.path=='/api/articles'):
             self.requests[event.request_id] = (event.response.url, int(event.response.status))
         elif parsed.netloc==self.host and parsed.path==MARKERS:
             self.marker_requests[event.request_id]=(event.response.url,int(event.response.status),str(event.loader_id))
@@ -161,6 +161,37 @@ class Collector:
             await asyncio.sleep(0.25)
         return {'errorCode':'timeout'}
 
+    async def house_groups(self, complex_no, deadline):
+        await self.tab.evaluate("(()=>{let c=document.querySelector('#address_group2');if(c&&!c.checked)c.click()})()")
+        def grouped_pages():
+            return {int(parse_qs(urlsplit(r['url']).query).get('page',['1'])[0]):r['payload'] for r in self.responses if urlsplit(r['url']).path==f'/api/articles/complex/{complex_no}' and parse_qs(urlsplit(r['url']).query).get('sameAddressGroup')==['true']}
+        for _ in range(15):
+            if grouped_pages():break
+            if self.error:return
+            await asyncio.sleep(.2)
+        if not grouped_pages():return
+        processed=0
+        while time.monotonic()<deadline:
+            count=await self.tab.evaluate("document.querySelectorAll('#articleListArea > .item > .item_inner > .item_link[aria-expanded]').length")
+            if count<processed:processed=0
+            for index in range(processed,min(count,1000)):
+                if self.error or time.monotonic()>=deadline:return
+                before=sum(urlsplit(r['url']).path=='/api/articles' for r in self.responses)
+                clicked=await self.tab.evaluate(f"(()=>{{let e=document.querySelectorAll('#articleListArea > .item > .item_inner > .item_link[aria-expanded]')[{index}];if(e&&e.getAttribute('aria-expanded')!=='true'){{e.click();return true}}return false}})()")
+                if not clicked:continue
+                for _ in range(30):
+                    if self.error or time.monotonic()>=deadline:return
+                    if sum(urlsplit(r['url']).path=='/api/articles' for r in self.responses)>before:break
+                    await asyncio.sleep(.1)
+            processed=count
+            pages=grouped_pages();last=max(pages)
+            if pages[last].get('isMoreData') is False and all(i in pages for i in range(1,last+1)):return
+            await self.tab.evaluate("(()=>{for(let e=document.querySelector('#articleListArea');e;e=e.parentElement)if(e.scrollHeight>e.clientHeight){e.scrollTop=e.scrollHeight;e.dispatchEvent(new Event('scroll',{bubbles:true}));}})()")
+            for _ in range(30):
+                if len(grouped_pages())>len(pages):break
+                await asyncio.sleep(.1)
+
+
     async def collect(self, request):
         self.responses, self.requests, self.error = [], {}, None
         complex_no = request.get("complexNo")
@@ -188,6 +219,7 @@ class Collector:
                     detail = await self.detail(complex_no)
                     if not detail:
                         return {"errorCode": "address_mismatch"}
+                    if not request.get("firstPageOnly",False):await self.house_groups(complex_no,min(deadline-2,time.monotonic()+65))
                     return {"complexNo": complex_no, "complexDetail": detail, "responses": self.responses}
                 if not request.get('firstPageOnly',False):
                     await self.tab.evaluate("(()=>{for(let e=document.querySelector('#articleListArea');e;e=e.parentElement){if(e.scrollHeight>e.clientHeight){e.scrollTop=e.scrollHeight;e.dispatchEvent(new Event('scroll',{bubbles:true}));}}})()")

@@ -54,6 +54,7 @@ export function validTargets(value) {
   return object(value)&&value.version===1&&validApartmentFavorites(value.favorites)&&validConnections(value.connections)&&value.connections.every(item=>value.favorites.some(f=>f.id===item.favoriteId));
 }
 export function validArticle(value) {
+  if(value?.providerHouseId!==undefined&&(typeof value.providerHouseId!=='string'||!/^[1-9]\d{0,11}:[1-9]\d{0,11}$/.test(value.providerHouseId)))return false;
   if(!apartmentListingType(value?.propertyType))return false;
   if(value?.providerSameAddress!==undefined){
     const group=value.providerSameAddress;

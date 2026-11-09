@@ -5,6 +5,7 @@
 - 실거래 원천 단지와 네이버 연결은 `apartment_naver_sources` → `apartment_naver_matches`를 사용하세요. `apartment_naver_source_connections` 뷰는 여러 원천 단지·주소 구획·네이버 번호의 관계를 보존합니다. 매일 이름이나 좌표로 다시 검색하지 말고 검증된 단지번호부터 수집하세요. 신규·주소 변경·재검토 대상은 연결을 확인하고, 기존 미확정은 7일 간격으로 다시 검색합니다. 즉시 재검색은 `pnpm listings:match --retry-unmatched`를 사용하세요. 매물 페이지의 일시 오류를 단지 연결 해제로 처리하지 마세요.
 - 검증된 연결과 검색 미확정의 최초 작업 DB 이관 자료는 `pnpm listings:match --write-seed`로 생성하세요. `automation/naver-verified-matches.json`을 직접 편집하지 마세요. 범위 해시가 일치하는 기존 시도 없는 대상에만 적용하고 실제 관측 좌표와 공통 주소 검증을 통과해야 검증 상태로 저장하세요.
 - 광고 번호는 주택 ID가 아닙니다. 중개사별 동일 주택 광고와 가격을 보존하고 건수는 광고 수로 표시하세요. 네이버의 동일주소 광고 수·호가 범위는 제공자 메타데이터로 보존하되 합산해서 주택 수를 계산하지 마세요. 동·면적·층·가격 일치만으로 광고를 합치거나 호수를 추정하지 마세요.
+- 주택 묶음은 해당 단지의 `sameAddressGroup=true` 목록에서 확인한 대표 광고와 `/api/articles?representativeArticleNo=...`의 실제 하위 광고 관계만 사용하세요. `providerHouseId`는 단지번호와 대표 광고번호를 함께 보존합니다. 묶음 미확인 광고는 따로 표시하고 원본 광고를 삭제하지 마세요. 중복·다른 집 오병합·중개사별 가격 보존 검사는 `tests/listing-houses.test.mjs`와 화면 테스트로 확인하세요.
 
 - 아파트를 찾거나 실거래·매물·지도·주소 데이터를 연결하기 전에 `server/apartment-identity.mjs`의 `apartmentInformation`, `searchApartmentInformation`, `resolveApartmentIdentity`를 사용하세요. `apartment_identity`와 기존 `apartment_aliases`, `apartment_identity_addresses`가 공통 아파트 정보입니다.
 - 대장 기본키는 기존 `apartment_complexes.apartment_id`입니다. 실거래 원천 단지·주소 구획·대장 root는 서로 다른 조회 범위이므로 `synchronizeHousingIdentity`와 `housingIdentityCatalog`의 명시적 참조를 사용하세요. 단지명이 다르다는 이유로 대장 ID를 만들거나, 이름·부분 일치·우편번호만으로 단지를 병합하지 마세요. 같은 이름이나 주소에 후보가 여러 개면 자동 연결하지 말고 미확정 상태를 보존하세요.
