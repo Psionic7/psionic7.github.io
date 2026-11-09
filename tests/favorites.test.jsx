@@ -89,6 +89,34 @@ describe('Personal apartment watchlist',()=>{
     const loader=vi.fn();render(<App initialManifest={manifest} districtLoader={loader}/>);await openQueryControls();
     await screen.findByText('실거래가를 볼 아파트를 선택해 주세요.');expect(loader).not.toHaveBeenCalled();
   });
+  it('keeps favorites and navigation available after scrolling within Safari history limits',async()=>{
+    vi.spyOn(window,'scrollTo').mockImplementation(()=>{});
+    window.history.replaceState(null,'','/?tab=apartments&region=area_41465');
+    const user=userEvent.setup();
+    render(<App initialManifest={manifest} districtLoader={async()=>[row(1)]}/>);await openQueryControls();
+    const search=await screen.findByRole('group',{name:'검색 아파트 선택'});
+    await user.click(within(search).getByRole('button',{name:/즐겨찾기 추가$/}));
+    await waitFor(()=>expect(readPreferences('viewer').apartments).toHaveLength(1));
+    const replace=window.history.replaceState.bind(window.history),push=window.history.pushState.bind(window.history);
+    let calls=0;
+    const limited=method=>(...args)=>{
+      if(++calls>100)throw new DOMException('History API rate limit exceeded','SecurityError');
+      return method(...args);
+    };
+    vi.spyOn(window.history,'replaceState').mockImplementation(limited(replace));
+    vi.spyOn(window.history,'pushState').mockImplementation(limited(push));
+    let scrollY=0;vi.spyOn(window,'scrollY','get').mockImplementation(()=>scrollY);
+    const errors=[];
+    const capture=event=>{errors.push(event.error);event.preventDefault();};
+    window.addEventListener('error',capture);
+    try {
+      for(let index=0;index<120;index++){scrollY=index+1;fireEvent.scroll(window);}
+      await user.click(screen.getByRole('button',{name:'데이터 안내',exact:true}));
+      expect(screen.getByRole('navigation',{name:'주요 메뉴'})).toBeTruthy();
+      expect(readPreferences('viewer').apartments).toHaveLength(1);
+      expect(errors).toEqual([]);
+    } finally {window.removeEventListener('error',capture);}
+  });
 });
 
 it('master favorites aggregate only verified trade bindings and keep unrelated names out',async()=>{const master=makeApartmentFavorite({...row(1),apartment:'공식단지명',master_id:'hub:official1',trade_keys:[JSON.stringify(['풍덕천동','1','첫번째신고명']),JSON.stringify(['풍덕천동','2','두번째신고명'])]},region);saveFavorites({apartments:[master]});const binding={precision:'cohort',root_id:'hub:official1',cohort_id:'cohort:hub:official1:road'};const loader=vi.fn(()=>Promise.resolve([row(1,{apartment:'첫번째신고명',identity:binding}),row(2,{jibun:'2',apartment:'두번째신고명',identity:binding}),row(3,{apartment:'무관한아파트'})]));render(<App initialManifest={manifest} districtLoader={loader}/>);await openQueryControls();const trades=await screen.findByRole('region',{name:label(master)+' 주간 거래 내역'});expect(within(trades).getAllByRole('row')).toHaveLength(3);expect(within(trades).queryByText('무관한아파트')).toBeNull();expect(readPreferences('viewer').apartments[0].master_id).toBe('hub:official1');});

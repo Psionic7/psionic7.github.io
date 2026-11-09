@@ -151,15 +151,33 @@ function Explorer({manifest,initialInformation=[],districtLoader,onResetPreferen
     if(JSON.stringify(previous[scope])===JSON.stringify(filters))return previous;
     return {...previous,[scope]:filters,[scope==='weekly'?'apartmentTransactions':'weekly']:{...previous[scope==='weekly'?'apartmentTransactions':'weekly'],areaUnit:filters.areaUnit}};
   }),[]);
-  const firstUrl=useRef(true),previousTab=useRef(tab);
+  const firstUrl=useRef(true),previousTab=useRef(tab),flushScroll=useRef(()=>{});
   useEffect(()=>{
     if(!restoredScroll)return;let frame=0,id;
     const restore=()=>{if(document.documentElement.scrollHeight>=restoredScroll+window.innerHeight||frame++>120){window.scrollTo(0,restoredScroll);}else id=requestAnimationFrame(restore);};
     id=requestAnimationFrame(restore);return()=>cancelAnimationFrame(id);
   },[restoredScroll]);
   useEffect(()=>{
-    const saveScroll=()=>window.history.replaceState({...window.history.state,scrollY:window.scrollY},'',window.location.href);
-    window.addEventListener('scroll',saveScroll,{passive:true});return()=>window.removeEventListener('scroll',saveScroll);
+    let timer=null,scrollUrl='';
+    const cancel=()=>{clearTimeout(timer);timer=null;scrollUrl='';};
+    const saveScroll=()=>{
+      const url=scrollUrl;cancel();
+      if(url!==window.location.href||window.history.state?.scrollY===window.scrollY)return;
+      window.history.replaceState({...window.history.state,scrollY:window.scrollY},'',url);
+    };
+    // Safari shares a History API rate limit between scroll and URL updates.
+    const schedule=()=>{if(timer===null){scrollUrl=window.location.href;timer=setTimeout(saveScroll,1000);}};
+    const onVisibility=()=>{if(document.visibilityState==='hidden')saveScroll();};
+    flushScroll.current=saveScroll;
+    window.addEventListener('scroll',schedule,{passive:true});
+    window.addEventListener('popstate',cancel);
+    window.addEventListener('pagehide',saveScroll);
+    document.addEventListener('visibilitychange',onVisibility);
+    return()=>{
+      cancel();flushScroll.current=()=>{};
+      window.removeEventListener('scroll',schedule);window.removeEventListener('popstate',cancel);
+      window.removeEventListener('pagehide',saveScroll);document.removeEventListener('visibilitychange',onVisibility);
+    };
   },[]);
   const toggleRegionFavorite=id=>{if(catalog.some(region=>region.region_id===id&&region.dongs.length===1))setRegionFavorites(previous=>previous.includes(id)?previous.filter(saved=>saved!==id):previous.length<2000?[...previous,id]:previous);};
   const toggleApartmentFavorite=item=>setApartmentFavorites(previous=>previous.some(saved=>sameApartmentFavorite(saved,item))?previous.filter(saved=>!sameApartmentFavorite(saved,item)):previous.length<1000?[...previous,item]:previous);
@@ -180,7 +198,7 @@ function Explorer({manifest,initialInformation=[],districtLoader,onResetPreferen
     const route=routeUrl(params),anchor=window.location.hash&&!window.location.hash.startsWith('#selection?')&&!route.includes('#')?window.location.hash:'';
     const url=route+anchor;
     if(firstUrl.current){window.history.replaceState({...window.history.state,scrollY:restoredScroll},'',url);firstUrl.current=false;}
-    else if(window.location.search+window.location.hash!==url)window.history.pushState({scrollY:previousTab.current===tab?window.scrollY:0},'',url);
+    else if(window.location.search+window.location.hash!==url){flushScroll.current();window.history.pushState({scrollY:previousTab.current===tab?window.scrollY:0},'',url);}
     if(previousTab.current!==tab){document.getElementById('main-content')?.focus({preventScroll:true});if(window.scrollY)window.scrollTo(0,0);}
     previousTab.current=tab;onLocationChange();document.title=tabs.find(([id])=>id===tab)[1]+' · 집의 기록';
   },[tab,weeklyIds,weeklyDay,weeklyPeriod,selectedApartments,searchRegionId,apartmentDay,apartmentPeriod,dashboardDays,queryFilters,sharedOverview]);
