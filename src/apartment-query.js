@@ -1,13 +1,14 @@
 import {makeApartmentFavorite,validApartmentFavorites,sameApartmentFavorite} from './apartment-favorites.js';
 import {readPreferences,textPreference} from './preferences.js';
 import {publishedDay,weekBounds,monthBounds,dateBounds} from './weekly.mjs';
+import {readApartmentUrlValue} from './apartment-url.js';
 export function validApartmentSelection(value,catalog) {
   return validApartmentFavorites(value)&&value.every(item=>catalog.some(region=>region.region_code===item.region_code))&&value.every((item,index)=>!value.slice(0,index).some(other=>sameApartmentFavorite(other,item)));
 }
 export function apartmentQueryRegion(item) {
   return {...item,region_id:item.id,label:item.apartment+' · '+item.region_name+' '+item.dong+' · 지번 '+(item.jibun||'미상'),dongs:item.master_id?[...new Set([item.dong,...item.trade_keys.map(key=>JSON.parse(key)[0])])]:[item.dong]};
 }
-export function restoreApartmentQuery(manifest,catalog,params,favorites) {
+export function restoreApartmentQuery(manifest,catalog,params,favorites,information=[]) {
   const saved=readPreferences('apartmentTransactions'),legacy=readPreferences('favoriteDashboard'),explorer=readPreferences('explorer');
   const current=!params.has('tab')||params.get('tab')==='apartments';
   const requested=current?params:new URLSearchParams();
@@ -15,7 +16,7 @@ export function restoreApartmentQuery(manifest,catalog,params,favorites) {
   const region=catalog.find(item=>item.region_id===regionId);
   let selected=validApartmentSelection(saved.selected,catalog)?saved.selected:[];
   if(requested.has('apt')) {
-    try{const values=requested.getAll('apt').filter(Boolean);if(values.length>1000||values.some(value=>value.length>262144))throw new Error();const items=values.map(value=>JSON.parse(value));selected=validApartmentSelection(items,catalog)?items:[];}catch{selected=[];}
+    try{const values=requested.getAll('apt').filter(Boolean);if(values.length>1000||values.some(value=>value.length>262144))throw new Error();const items=values.map(value=>readApartmentUrlValue(value,[...information,...(Array.isArray(saved.selected)?saved.selected:[]),...favorites],catalog));selected=validApartmentSelection(items,catalog)?items:[];}catch{selected=[];}
   }else if(requested.has('region'))selected=[];
   else if(!Array.isArray(saved.selected)) {
     if(region&&explorer.selectedApartment){try{const [dong,jibun,apartment]=JSON.parse(explorer.selectedApartment);const item=makeApartmentFavorite({dong,jibun,apartment},region);if(validApartmentSelection([item],catalog))selected=[item];}catch{}}

@@ -18,6 +18,7 @@ import {validRegionFavorites} from './region-favorites.js';
 import {restoreApartmentQuery,appendTransactionPeriod} from './apartment-query.js';
 import {restoreOverviewDays} from './dashboard/model.mjs';
 import {loadApartmentInformation} from './useApartmentInformation.js';
+import {readRouteParams,routeUrl,apartmentUrlValue,apartmentUrlIds,readApartmentUrlValue} from './apartment-url.js';
 const Dashboard=lazy(()=>import('./Dashboard.jsx'));
 const ApartmentMapPage=lazy(()=>import('./ApartmentMapPage.jsx'));
 const RegionMapPage=lazy(()=>import('./RegionMapPage.jsx'));
@@ -41,10 +42,29 @@ export default function App({ initialManifest = null, districtLoader = loadDistr
   const [availableManifest,setAvailableManifest]=useState(null);
   const [preferencesRevision,setPreferencesRevision]=useState(0);
   const [undo,setUndo]=useState(null),[restoredScroll,setRestoredScroll]=useState(0);
-  const locationRef=useRef(window.location.search);
-  const onLocationChange=useCallback(()=>{locationRef.current=window.location.search;},[]);
+  const locationRef=useRef(window.location.search+window.location.hash);
+  const onLocationChange=useCallback(()=>{locationRef.current=window.location.search+window.location.hash;},[]);
+  const routeIds=useMemo(()=>apartmentUrlIds(readRouteParams()),[preferencesRevision]);
+  const knownRoute=useMemo(()=>{
+    const selected=readPreferences('apartmentTransactions').selected,favorites=readPreferences('viewer').apartments;
+    const saved=[...(Array.isArray(selected)?selected:[]),...(Array.isArray(favorites)?favorites:[])];
+    const valid=[...new Map(saved.filter(item=>validApartmentFavorites([item])).map(item=>[item.id,item])).values()];
+    return routeIds.flatMap(id=>{try{return [readApartmentUrlValue('@'+id,valid,manifest?.regions||[])];}catch{return [];}});
+  },[routeIds,manifest]);
+  const needsRouteInformation=routeIds.some(id=>!knownRoute.some(item=>item.id===id));
+  const routeVersion=manifest?.housing?.sha256||manifest?.published_at||'',routeKey=preferencesRevision+':'+routeVersion;
+  const [routeInformation,setRouteInformation]=useState({key:'',status:'loading',apartments:[]});
   useEffect(()=>{
-    const restore=()=>{if(locationRef.current===window.location.search)return;locationRef.current=window.location.search;setRestoredScroll(window.history.state?.scrollY||0);setPreferencesRevision(value=>value+1);};
+    if(!manifest||!needsRouteInformation)return;
+    let active=true;setRouteInformation({key:routeKey,status:'loading',apartments:[]});
+    loadApartmentInformation(routeVersion).then(apartments=>{
+      if(routeIds.some(id=>!apartments.some(item=>item.id===id)&&!knownRoute.some(item=>item.id===id)))throw Error('공유 주소의 아파트 정보를 찾지 못했습니다.');
+      if(active)setRouteInformation({key:routeKey,status:'ready',apartments});
+    }).catch(()=>{if(active)setRouteInformation({key:routeKey,status:'error',apartments:[]});});
+    return()=>{active=false;};
+  },[manifest,needsRouteInformation,routeKey,routeVersion,routeIds,knownRoute]);
+  useEffect(()=>{
+    const restore=()=>{const location=window.location.search+window.location.hash;if(locationRef.current===location)return;locationRef.current=location;setRestoredScroll(window.history.state?.scrollY||0);setPreferencesRevision(value=>value+1);};
     window.addEventListener('popstate',restore);return()=>window.removeEventListener('popstate',restore);
   },[]);
   useEffect(() => {
@@ -68,10 +88,11 @@ export default function App({ initialManifest = null, districtLoader = loadDistr
   },[initialManifest,manifest]);
   if (error) return <main className="startup"><h1>집의 기록</h1><div role="alert" className="notice error">{error}</div><button onClick={() => setRevision(value => value + 1)}>다시 불러오기</button></main>;
   if (!manifest) return <main className="startup"><h1>집의 기록</h1><Loading text="공개 데이터 목록을 불러오는 중입니다." /></main>;
+  if(needsRouteInformation&&(routeInformation.key!==routeKey||routeInformation.status!=='ready'))return <main className="startup"><h1>집의 기록</h1>{routeInformation.key===routeKey&&routeInformation.status==='error'?<div role="alert">공유 주소의 아파트 정보를 불러오지 못했습니다.<button onClick={()=>setPreferencesRevision(value=>value+1)}>다시 불러오기</button></div>:<Loading text="공유 주소의 아파트 정보를 불러오는 중입니다."/>}</main>;
   const resetPreferences=kind=>{
     const document=snapshotPreferences();if(!document)return;
     if(!(kind==='favorites'?clearFavorites():resetQueries()))return;
-    setUndo({document,url:window.location.search,kind});
+    setUndo({document,url:window.location.search+window.location.hash,kind});
     if(kind!=='favorites')window.history.replaceState(null,'','/?tab=apartments');
     setRestoredScroll(0);setPreferencesRevision(value=>value+1);
   };
@@ -83,18 +104,18 @@ export default function App({ initialManifest = null, districtLoader = loadDistr
     }else if(!restorePreferences({...undo.document,scopes:{...undo.document.scopes,viewer}}))return;
     window.history.replaceState(null,'','/'+undo.url);setUndo(null);setPreferencesRevision(value=>value+1);
   };
-  return <Explorer key={preferencesRevision} manifest={manifest} districtLoader={districtLoader} onResetPreferences={resetPreferences} restoredScroll={restoredScroll} undo={undo} onUndo={undoPreferences} onLocationChange={onLocationChange} updateAvailable={!!availableManifest} onApplyUpdate={()=>{setManifest(availableManifest);setAvailableManifest(null);setPreferencesRevision(value=>value+1);}}/>;
+  return <Explorer key={preferencesRevision} initialInformation={[...(routeInformation.key===routeKey?routeInformation.apartments:[]),...knownRoute]} manifest={manifest} districtLoader={districtLoader} onResetPreferences={resetPreferences} restoredScroll={restoredScroll} undo={undo} onUndo={undoPreferences} onLocationChange={onLocationChange} updateAvailable={!!availableManifest} onApplyUpdate={()=>{setManifest(availableManifest);setAvailableManifest(null);setPreferencesRevision(value=>value+1);}}/>;
 }
 
 
-function Explorer({manifest,districtLoader,onResetPreferences,restoredScroll=0,undo,onUndo,onLocationChange,updateAvailable,onApplyUpdate}) {
-  const sharedFilters=useMemo(()=>applySharedFilters(new URLSearchParams(window.location.search)),[]);
+function Explorer({manifest,initialInformation=[],districtLoader,onResetPreferences,restoredScroll=0,undo,onUndo,onLocationChange,updateAvailable,onApplyUpdate}) {
+  const sharedFilters=useMemo(()=>applySharedFilters(readRouteParams()),[]);
   const catalog=useMemo(()=>buildCatalog(manifest.regions),[manifest]);
   const [apartmentFavorites,setApartmentFavorites]=useStoredState('viewer','apartments',[],validApartmentFavorites);
   const [regionFavorites,setRegionFavorites]=useStoredState('viewer','regions',[],validRegionFavorites);
   const favorites=useMemo(()=>{const byId=new Map(catalog.map(region=>[region.region_id,region]));return regionFavorites.map(id=>byId.get(id)).filter(Boolean);},[catalog,regionFavorites]);
   const initial=useMemo(()=>restoreExplorer(manifest,catalog,new URLSearchParams(window.location.search)),[]);
-  const apartmentInitial=useMemo(()=>restoreApartmentQuery(manifest,catalog,new URLSearchParams(window.location.search),apartmentFavorites),[]);
+  const apartmentInitial=useMemo(()=>restoreApartmentQuery(manifest,catalog,readRouteParams(),apartmentFavorites,initialInformation),[]);
   const [tab,setTab]=useState(initial.tab),[weeklyIds,setWeeklyIds]=useState(initial.weeklyIds),[weeklyDay,setWeeklyDay]=useState(initial.weeklyDay),[weeklyPeriod,setWeeklyPeriod]=useState(initial.weeklyPeriod);
   const [lastExploreTab,setLastExploreTab]=useStoredState('explorer','lastExploreTab',()=>exploreTabs.includes(initial.tab)?initial.tab:'apartments',value=>exploreTabs.includes(value));
   useEffect(()=>{if(exploreTabs.includes(tab))setLastExploreTab(tab);},[tab,setLastExploreTab]);
@@ -102,7 +123,7 @@ function Explorer({manifest,districtLoader,onResetPreferences,restoredScroll=0,u
   const [apartmentFilters,setApartmentFilters]=useState(apartmentInitial.filters);
   const [dashboardDays,setDashboardDays]=useState(()=>restoreOverviewDays(new URLSearchParams(window.location.search),readPreferences('overview').days));
   const [copied,setCopied]=useState(false),[searchOpen,setSearchOpen]=useState(false);
-  const [sharedOverview,setSharedOverview]=useState(()=>readSharedOverview(new URLSearchParams(window.location.search),catalog));
+  const [sharedOverview,setSharedOverview]=useState(()=>readSharedOverview(readRouteParams(),catalog,initialInformation));
   const overviewRegions=sharedOverview?.regions||favorites,overviewApartments=sharedOverview?.apartments||apartmentFavorites;
   const [currentMasterApartments,setCurrentMasterApartments]=useState(null);
   const hasApartmentSelections=[...apartmentFavorites,...selectedApartments,...(sharedOverview?.apartments||[])].length>0;
@@ -154,15 +175,16 @@ function Explorer({manifest,districtLoader,onResetPreferences,restoredScroll=0,u
     const params=new URLSearchParams({tab});
     if(tab==='dashboard'){params.set('days',String(dashboardDays));if(sharedOverview)appendSharedOverview(params,sharedOverview);}
     if(tab==='weekly'){weeklyIds.forEach(id=>params.append('dong',id));appendTransactionPeriod(params,weeklyPeriod,weeklyDay);}
-    if(tab==='apartments'){if(searchRegionId)params.set('region',searchRegionId);if(selectedApartments.length)selectedApartments.forEach(item=>params.append('apt',JSON.stringify(item)));else params.set('apt','');appendTransactionPeriod(params,apartmentPeriod,apartmentDay);}
+    if(tab==='apartments'){if(searchRegionId)params.set('region',searchRegionId);if(selectedApartments.length)selectedApartments.forEach(item=>params.append('apt',apartmentUrlValue(item)));else params.set('apt','');appendTransactionPeriod(params,apartmentPeriod,apartmentDay);}
     if(tab==='weekly'||tab==='apartments')appendSharedFilters(params,queryFilters[tab==='weekly'?'weekly':'apartmentTransactions']);
-    const url='?'+params;
-    if(firstUrl.current){window.history.replaceState({...window.history.state,scrollY:restoredScroll},'',url+window.location.hash);firstUrl.current=false;}
-    else if(window.location.search!==url)window.history.pushState({scrollY:previousTab.current===tab?window.scrollY:0},'',url);
+    const route=routeUrl(params),anchor=window.location.hash&&!window.location.hash.startsWith('#selection?')&&!route.includes('#')?window.location.hash:'';
+    const url=route+anchor;
+    if(firstUrl.current){window.history.replaceState({...window.history.state,scrollY:restoredScroll},'',url);firstUrl.current=false;}
+    else if(window.location.search+window.location.hash!==url)window.history.pushState({scrollY:previousTab.current===tab?window.scrollY:0},'',url);
     if(previousTab.current!==tab){document.getElementById('main-content')?.focus({preventScroll:true});if(window.scrollY)window.scrollTo(0,0);}
     previousTab.current=tab;onLocationChange();document.title=tabs.find(([id])=>id===tab)[1]+' · 집의 기록';
   },[tab,weeklyIds,weeklyDay,weeklyPeriod,selectedApartments,searchRegionId,apartmentDay,apartmentPeriod,dashboardDays,queryFilters,sharedOverview]);
-  const share=async()=>{const url=new URL(window.location.href);if(tab==='dashboard'&&!sharedOverview)appendSharedOverview(url.searchParams,{regions:overviewRegions,apartments:overviewApartments});try{await navigator.clipboard.writeText(url.href);setCopied(true);setTimeout(()=>setCopied(false),2500);}catch{window.prompt('이 주소를 복사해 주세요.',url.href);}};
+  const share=async()=>{const params=readRouteParams();if(tab==='apartments'){params.delete('apt');selectedApartments.forEach(item=>params.append('apt',apartmentUrlValue(item)));if(!selectedApartments.length)params.set('apt','');}if(tab==='dashboard'){params.delete('viewDong');params.delete('viewApt');appendSharedOverview(params,{regions:overviewRegions,apartments:overviewApartments});}const url=new URL(routeUrl(params),window.location.href);try{await navigator.clipboard.writeText(url.href);setCopied(true);setTimeout(()=>setCopied(false),2500);}catch{window.prompt('이 주소를 복사해 주세요.',url.href);}};
   const activeLabel=tabs.find(([id])=>id===tab)[1];
   return <div className="app-shell public-shell" data-tab={tab} data-explore={exploreTabs.includes(tab)?'true':undefined} data-has-selection={(tab==='apartments'&&selectedApartments.length>0||tab==='weekly'&&weeklyIds.length>0)?'true':undefined}>
     <a className="skip-content" href="#main-content">본문으로 건너뛰기</a>

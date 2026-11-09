@@ -3,10 +3,11 @@ import {afterEach,expect,it,vi} from 'vitest';
 import {cleanup,render,screen,within,waitFor} from '@testing-library/react';
 import App from '../src/App.jsx';
 import {makeApartmentFavorite} from '../src/apartment-favorites.js';
+import {readRouteParams} from '../src/apartment-url.js';
 const state=vi.hoisted(()=>({information:[],load:vi.fn(),map:vi.fn()}));
 vi.mock('../src/useApartmentInformation.js',()=>({default:()=>state.information,loadApartmentInformation:()=>state.load()}));
 vi.mock('../src/apartment-map-data.js',()=>({loadApartmentMap:()=>state.map()}));
-afterEach(()=>{cleanup();vi.restoreAllMocks();localStorage.clear();});
+afterEach(()=>{cleanup();vi.restoreAllMocks();localStorage.clear();state.load.mockReset();});
 it('refreshes stored selections from shared identity information and keeps complex-level historical trades',async()=>{
  localStorage.clear();const region={region_id:'dong_41465101',region_code:'41465',region_name:'경기도 용인시 수지구',label:'수지구 풍덕천동',dongs:['풍덕천동']};
  const entity=JSON.stringify(['41465','풍덕천동','1','신고명']),root='hub:history';
@@ -19,4 +20,28 @@ it('refreshes stored selections from shared identity information and keeps compl
  await waitFor(()=>expect(state.load).toHaveBeenCalled());
  const table=await screen.findByRole('region',{name:'공식단지 · 경기도 용인시 수지구 풍덕천동 · 지번 1 기간별 거래 내역'});
  expect(within(table).getAllByRole('row')).toHaveLength(3);expect(state.map).not.toHaveBeenCalled();
+ expect(window.location.href.length).toBeLessThan(600);expect(new URLSearchParams(window.location.search).get('apt')).toBe('@hub:history');
+});
+
+it('waits for common identity information before restoring a compact shared link after refresh',async()=>{
+ const region={region_id:'dong_41465101',region_code:'41465',region_name:'경기도 용인시 수지구',dongs:['풍덕천동']};
+ const entity=JSON.stringify(['41465','풍덕천동','1','신고명']),id='hub:shared';
+ const favorite=makeApartmentFavorite({apartment:'공유단지',dong:'풍덕천동',jibun:'1',master_id:id,identity_ref:{kind:'root',id},identity_coverage:{entity_ids:[entity],cohort_ids:[],root_ids:[id]}},region);
+ let resolve;state.information=[favorite];state.load.mockImplementationOnce(()=>new Promise(done=>{resolve=done;})).mockResolvedValue([favorite]);
+ const params=new URLSearchParams({tab:'apartments',period:'custom',from:'2026-03-01',to:'2026-03-31'});window.history.replaceState(null,'','/?'+params+'#selection?'+new URLSearchParams({apt:'@'+id}));
+ const rows=[{id:1,region_code:'41465',dong:'풍덕천동',jibun:'1',apartment:'신고명',deal_date:'2026-03-10',deal_month:'202603',area_m2:85,price_man:100000,floor:10,cancelled:0,identity:{entity_id:entity,precision:'complex',root_id:null,cohort_id:null,building_id:null}}];
+ render(<App initialManifest={{regions:[region],districts:{'41465':{months:['202603']}},months:['202603'],published_at:'2026-03-31T12:00:00Z'}} districtLoader={async()=>rows}/>);
+ expect(screen.getByText('공유 주소의 아파트 정보를 불러오는 중입니다.')).toBeTruthy();
+ expect(readRouteParams().get('apt')).toBe('@'+id);
+ resolve([favorite]);
+ const table=await screen.findByRole('region',{name:'공유단지 · 경기도 용인시 수지구 풍덕천동 · 지번 1 기간별 거래 내역'});
+ expect(within(table).getAllByRole('row')).toHaveLength(2);
+ expect(new URLSearchParams(window.location.search).get('apt')).toBe('@'+id);expect(window.location.href.length).toBeLessThan(600);
+});
+it('preserves unresolved selections while showing an actionable loading error',async()=>{
+ state.load.mockRejectedValue(new Error('offline'));window.history.replaceState(null,'','/?tab=apartments&apt=%40hub%3Amissing');
+ render(<App initialManifest={{regions:[],months:['202603'],published_at:'2026-03-31T12:00:00Z'}}/>);
+ expect((await screen.findByRole('alert')).textContent).toContain('공유 주소의 아파트 정보를 불러오지 못했습니다.');
+ expect(screen.getByRole('button',{name:'다시 불러오기'})).toBeTruthy();
+ expect(new URLSearchParams(window.location.search).get('apt')).toBe('@hub:missing');
 });

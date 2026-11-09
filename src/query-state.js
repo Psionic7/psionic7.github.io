@@ -1,6 +1,7 @@
 import {areaPreference,readPreferences,savePreferences,unitPreference} from './preferences.js';
 import {validApartmentSelection} from './apartment-query.js';
 import {validRecentCount} from './weekly/query.mjs';
+import {apartmentUrlValue,readApartmentUrlValue} from './apartment-url.js';
 
 // Explicit empty values in a shared link must override the recipient's filters.
 export function applySharedFilters(params) {
@@ -26,10 +27,10 @@ export function appendSharedFilters(params,filters) {
   if(filters.recentCount!==''&&validRecentCount(filters.recentCount))params.set('count',String(filters.recentCount));
   else params.delete('count');
 }
-export function readSharedOverview(params,catalog) {
+export function readSharedOverview(params,catalog,information=[]) {
   if(params.get('view')!=='shared')return null;
   try {
-    const apartments=params.getAll('viewApt').map(value=>JSON.parse(value));
+    const apartments=params.getAll('viewApt').map(value=>readApartmentUrlValue(value,information,catalog));
     const ids=[...new Set(params.getAll('viewDong'))];
     if(ids.length>2000||!validApartmentSelection(apartments,catalog))return null;
     return {apartments,regions:ids.map(id=>catalog.find(item=>item.region_id===id&&item.dongs.length===1)).filter(Boolean)};
@@ -38,5 +39,5 @@ export function readSharedOverview(params,catalog) {
 export function appendSharedOverview(params,overview) {
   params.set('view','shared');
   overview.regions.forEach(item=>params.append('viewDong',item.region_id));
-  overview.apartments.forEach(item=>params.append('viewApt',JSON.stringify(item)));
+  overview.apartments.forEach(item=>params.append('viewApt',apartmentUrlValue(item)));
 }
