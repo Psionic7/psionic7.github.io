@@ -77,7 +77,7 @@ pnpm build
 
 ## 구조
 
-아파트 위치·구역·조회 범위의 판단을 통합하는 후속 작업은 [아파트 공통 정보 아키텍처와 구현 인계 계획](project-notes/apartment-information-architecture.md)을 기준으로 재개합니다. 현재는 설계 문서만 작성했으며 구현 승인을 기다리고 있습니다.
+아파트 위치·구역·조회 범위의 공통 모델과 로컬 이관 검증은 [아파트 공통 정보 아키텍처와 구현 기록](project-notes/apartment-information-architecture.md)에 정리했습니다. 실제 배포 DB의 재구성 누락, 현재 실거래·위치·매물의 미매칭과 해결 우선순위는 [2026-11-10 데이터 미매칭 보고서](project-notes/apartment-data-matching-report-2026-11-10.md)를 확인하세요.
 
 ```text
 src/                    공개 React 화면: 즐겨찾기 대시보드·아파트별/동별 실거래가·지도·안내
