@@ -77,7 +77,9 @@ pnpm build
 
 ## 구조
 
-아파트 위치·구역·조회 범위의 공통 모델과 로컬 이관 검증은 [아파트 공통 정보 아키텍처와 구현 기록](project-notes/apartment-information-architecture.md)에 정리했습니다. 실제 배포 DB의 재구성 누락, 현재 실거래·위치·매물의 미매칭과 해결 우선순위는 [2026-11-10 데이터 미매칭 보고서](project-notes/apartment-data-matching-report-2026-11-10.md)를 확인하세요.
+새 작업의 데이터 운영 기준은 [데이터 소유권과 공급자 단지 ID 규칙](project-notes/data-ownership-and-provider-identities.md)입니다. 아파트·ID 연결은 로컬에서 확정하고, GitHub는 네이버 매물과 실거래를 각각 저장하며, 웹은 확정된 공급자 단지 ID 연결표로 조회합니다. 규칙과 현재 미이관 항목을 구분해 기록했습니다.
+
+아파트 위치·구역·조회 범위의 공통 모델과 로컬 이관 검증은 [아파트 공통 정보 아키텍처와 구현 기록](project-notes/apartment-information-architecture.md)에 정리했습니다. 로컬 아파트 기준 정보와 클라우드 실거래·매물의 소유권 분리 문제, 현재 미매칭과 해결 우선순위는 [2026-11-10 데이터 미매칭 보고서](project-notes/apartment-data-matching-report-2026-11-10.md)를 확인하세요.
 
 ```text
 src/                    공개 React 화면: 즐겨찾기 대시보드·아파트별/동별 실거래가·지도·안내
