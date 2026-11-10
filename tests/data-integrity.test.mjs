@@ -45,12 +45,20 @@ test('an older cloud trade DB preserves the independently collected apartment id
   const catalog={version:1,apartments:[apartment]};write(file,catalog);
   f.export();assert.deepEqual(read(file),catalog);f.verify();
 });
+test('a trade-only database cannot replace a previously collected registry map or its common generation',async t=>{
+  const f=await fixture(t);f.export();
+  const folder=path.join(f.root,'public/apartment-map');fs.mkdirSync(folder,{recursive:true});
+  const file=path.join(folder,'manifest.json');write(file,{version:2,data_mode:'registry_master',count:400});
+  const manifest=fs.readFileSync(path.join(f.target,'manifest.json')),map=fs.readFileSync(file);
+  assert.throws(()=>f.export(),/전체 건축물대장/);
+  assert(fs.readFileSync(path.join(f.target,'manifest.json')).equals(manifest));assert(fs.readFileSync(file).equals(map));
+});
 function addSearch(f,masters=[]) {
   const manifest=read(path.join(f.target,'manifest.json')),rows=read(path.join(f.target,manifest.districts['11110'].file));
   const folder=path.join(f.root,'public/apartment-map');fs.mkdirSync(folder,{recursive:true});
   const apartments=hashed(folder,'apartments',masters);write(path.join(folder,'manifest.json'),{apartments});
   const search=buildSearchIndex(new Map([['11110',rows]]),manifest.regions,masters),meta=hashed(f.queries,'search',search),registry=read(path.join(f.queries,'manifest.json'));
-  registry.search={...meta,sources:{'11110':manifest.districts['11110'].sha256}};write(path.join(f.queries,'manifest.json'),registry);return search;
+  registry.search={...meta,sources:{'11110':manifest.districts['11110'].sha256},apartment_information_generation:manifest.apartment_information?.generation};write(path.join(f.queries,'manifest.json'),registry);return search;
 }
 
 test('real collection and compressed export preserve duplicate contracts, cancellations, raw fields and addresses',async t=>{
@@ -148,6 +156,8 @@ test('catalog omissions and wrong latest-valid rows fail despite unchanged trans
 test('search omissions and lost verified master links block a finished build',async t=>{
   const f=await fixture(t);f.export();const search=addSearch(f),registry=read(path.join(f.queries,'manifest.json'));
   registry.search={...registry.search,...hashed(f.queries,'search',search.slice(1))};write(path.join(f.queries,'manifest.json'),registry);assert.throws(()=>f.verify({requireSearch:true}),/통합 검색 거래 누락/);
+  // The remaining assertions exercise the pre-housing export contract.
+  const legacyManifest=read(path.join(f.target,'manifest.json'));delete legacyManifest.apartment_information;write(path.join(f.target,'manifest.json'),legacyManifest);
   const tradeKey=JSON.stringify(['청운동','001-2','아파트']),master=makeApartmentFavorite({master_id:'hub:fixture',apartment:'공식 단지명',dong:'청운동',jibun:'001-2',trade_keys:[tradeKey]},{region_code:'11110',region_name:'서울특별시 종로구'});
   addSearch(f,[master]);
   const db=connect(f.source);db.exec('CREATE TABLE apartment_trade_links(region_code TEXT,dong TEXT,jibun TEXT,trade_name TEXT,apartment_id TEXT,status TEXT,method TEXT,candidates_json TEXT)');db.prepare('INSERT INTO apartment_trade_links VALUES(?,?,?,?,?,?,?,?)').run('11110','청운동','001-2','아파트',master.id,'matched','unique_registry_parcel','[]');db.close();

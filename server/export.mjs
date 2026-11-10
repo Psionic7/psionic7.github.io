@@ -6,10 +6,10 @@ import {createHash,randomUUID} from 'node:crypto';
 import {gzipSync} from 'node:zlib';
 import {exportApartmentMap} from './export-apartment-map.mjs';
 import {publicApartmentInformation,synchronizeApartmentIdentity,synchronizeHousingIdentity} from './apartment-identity.mjs';
-import {validateApartmentInformation} from '../src/apartment-identity.mjs';
+import {validateIdentityMap} from '../src/apartment-identity.mjs';
+import {writeApartmentInformationFile} from './apartment-information-files.mjs';
 import {browserPayloads,writeBrowserPayloads,writeBrowserRegistry,cleanBrowserPayloads,attachHousingRows} from './browser-export.mjs';
 import {housingBindingsMap} from '../src/housing-wire.mjs';
-import {housingQueryInformation} from './housing-export.mjs';
 import {connect,PUBLIC_SCHEMA,TRADE_COLUMNS,REGION_COLUMNS,paths,ROOT,secretValues,checkedBytes,savedIds,atomicWrite} from './storage.mjs';
 export const sha256=data=>createHash('sha256').update(data).digest('hex');
 export function databasePayload(raw,secrets,compressAbove=95*1024*1024) {
@@ -86,27 +86,39 @@ export function exportData({source=paths.db,target=path.join(ROOT,'public/data')
     const listingFile=path.join(path.dirname(target),'listings/snapshot.json');
     const inventory=identityDb.prepare("SELECT 1 FROM sqlite_master WHERE name='apartment_inventory_regions'").get();
     const scannedInventory=Boolean(inventory&&identityDb.prepare("SELECT 1 FROM apartment_inventory_regions WHERE status='scanned' LIMIT 1").get());
+    const priorMap=path.join(path.dirname(target),'apartment-map/manifest.json');
+    if(!scannedInventory&&fs.existsSync(priorMap)&&JSON.parse(fs.readFileSync(priorMap,'utf8')).data_mode==='registry_master')throw Error('기존 대장 지도를 보존했습니다. 전체 건축물대장이 포함된 작업 DB에서 공통 정보를 내보내세요.');
     const synchronize=scannedInventory||identityDb.prepare("SELECT 1 FROM sqlite_master WHERE name='housing_identity_meta'").get()?synchronizeHousingIdentity:synchronizeApartmentIdentity;
     synchronize(identityDb,{snapshot:fs.existsSync(listingFile)?JSON.parse(fs.readFileSync(listingFile,'utf8')):undefined});
     identities=publicApartmentInformation(identityDb);
-    const prior=path.join(path.dirname(target),'apartment-identity/catalog.json');
-    if(!scannedInventory&&fs.existsSync(prior))identities=validateApartmentInformation(JSON.parse(fs.readFileSync(prior,'utf8')));
   }finally{identityDb.close();}
   reportFile??=target===path.join(ROOT,'public/data')?path.join(ROOT,'local/data-validation/export.json'):null;
   const stage=fs.mkdtempSync(path.join(os.tmpdir(),'home-records-export-')),stageData=path.join(stage,'data');
   try {
     const snapshot=readTradeSnapshot(source),manifest=writeExportData({snapshot,target:stageData,favorites,secretsFile,compressAbove});
-    if(snapshot.housing)identities=housingQueryInformation(identities,snapshot.housing);
+    manifest.apartment_information=writeApartmentInformationFile(stage,identities,{housingSha256:manifest.housing?.sha256,secrets:secretValues(secretsFile)});
+    atomicWrite(path.join(stageData,'manifest.json'),JSON.stringify(manifest));
+    const registryFile=path.join(stage,'query-data/manifest.json'),registry=JSON.parse(fs.readFileSync(registryFile));
+    registry.apartment_information_generation=identities.generation;
+    atomicWrite(registryFile,JSON.stringify(registry));
+    const map=exportApartmentMap({source,target:path.join(stage,'apartment-map'),favorites,secretsFile,generation:identities.generation});
+    if(map?.data_mode==='registry_master')validateIdentityMap(JSON.parse(fs.readFileSync(path.join(stage,'apartment-map',map.apartments.file))),identities);
     const validation=verifyTradeExport({target:stageData,snapshot});
     const stageQueries=path.join(stage,'query-data'),queries=path.join(path.dirname(target),'query-data');
     for(const [from,to]of [[stageData,target],[stageQueries,queries]])for(const name of fs.readdirSync(from).filter(name=>name!=='manifest.json'))atomicWrite(path.join(to,name),fs.readFileSync(path.join(from,name)));
     atomicWrite(path.join(queries,'manifest.json'),fs.readFileSync(path.join(stageQueries,'manifest.json')));
+    for(const folder of ['apartment-identity','apartment-map']){
+      const from=path.join(stage,folder),to=path.join(path.dirname(target),folder);
+      if(fs.existsSync(from))for(const name of fs.readdirSync(from))atomicWrite(path.join(to,name),fs.readFileSync(path.join(from,name)));
+    }
     atomicWrite(path.join(target,'manifest.json'),fs.readFileSync(path.join(stageData,'manifest.json')));
+    if(map){
+      const from=path.join(stage,'apartment-map'),to=path.join(path.dirname(target),'apartment-map'),keep=new Set(fs.readdirSync(from));
+      for(const name of fs.readdirSync(to))if(/^(apartments-[a-f0-9]{12}\.json|boundaries-[a-f0-9]{12}\.geojson)$/.test(name)&&!keep.has(name))fs.unlinkSync(path.join(to,name));
+    }
     for(const [from,to,pattern]of [[stageData,target,/^((?:trades-\d{5}|housing)-[a-f0-9]{12}\.json|public\.sqlite3(?:\.gz)?)$/],[stageQueries,queries,/^(search|catalog-\d{5}|month-\d{5}-\d{6})-[a-f0-9]{12}\.json$/]]){
       const keep=new Set(fs.readdirSync(from));for(const name of fs.readdirSync(to))if(pattern.test(name)&&!keep.has(name))fs.unlinkSync(path.join(to,name));
     }
-    exportApartmentMap({source,target:path.join(path.dirname(target),'apartment-map'),favorites,secretsFile});
-    atomicWrite(path.join(path.dirname(target),'apartment-identity/catalog.json'),checkedBytes(JSON.stringify(identities),secretValues(secretsFile)));
     if(reportFile)atomicWrite(reportFile,JSON.stringify(validation,null,2)+'\n');
     return manifest;
   } catch(error) {

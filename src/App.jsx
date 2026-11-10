@@ -13,11 +13,11 @@ import {readPreferences,restoreExplorer,savePreferences,useStoredState,snapshotP
 import {applySharedFilters,appendSharedFilters,readSharedOverview,appendSharedOverview} from './query-state.js';
 import DataStatus from './DataStatus.jsx';
 import PreferenceControls from './PreferenceControls.jsx';
-import {validApartmentFavorites,sameApartmentFavorite,makeApartmentFavorite,refreshApartmentFavorites} from './apartment-favorites.js';
+import {validApartmentFavorites,sameApartmentFavorite,makeApartmentFavorite,refreshApartmentFavorites,apartmentFavoriteLabel} from './apartment-favorites.js';
 import {validRegionFavorites} from './region-favorites.js';
 import {restoreApartmentQuery,appendTransactionPeriod} from './apartment-query.js';
 import {restoreOverviewDays} from './dashboard/model.mjs';
-import {loadApartmentInformation} from './useApartmentInformation.js';
+import {loadApartmentInformation,apartmentInformationVersion} from './useApartmentInformation.js';
 import {readRouteParams,routeUrl,apartmentUrlValue,apartmentUrlIds,readApartmentUrlValue} from './apartment-url.js';
 const Dashboard=lazy(()=>import('./Dashboard.jsx'));
 const ApartmentMapPage=lazy(()=>import('./ApartmentMapPage.jsx'));
@@ -52,17 +52,17 @@ export default function App({ initialManifest = null, districtLoader = loadDistr
     return routeIds.flatMap(id=>{try{return [readApartmentUrlValue('@'+id,valid,manifest?.regions||[])];}catch{return [];}});
   },[routeIds,manifest]);
   const needsRouteInformation=routeIds.some(id=>!knownRoute.some(item=>item.id===id));
-  const routeVersion=manifest?.housing?.sha256||manifest?.published_at||'',routeKey=preferencesRevision+':'+routeVersion;
+  const routeVersion=apartmentInformationVersion(manifest),routeSource=manifest?.apartment_information||routeVersion,routeKey=preferencesRevision+':'+routeVersion;
   const [routeInformation,setRouteInformation]=useState({key:'',status:'loading',apartments:[]});
   useEffect(()=>{
     if(!manifest||!needsRouteInformation)return;
     let active=true;setRouteInformation({key:routeKey,status:'loading',apartments:[]});
-    loadApartmentInformation(routeVersion).then(apartments=>{
+    loadApartmentInformation(routeSource).then(apartments=>{
       if(routeIds.some(id=>!apartments.some(item=>item.id===id)&&!knownRoute.some(item=>item.id===id)))throw Error('공유 주소의 아파트 정보를 찾지 못했습니다.');
       if(active)setRouteInformation({key:routeKey,status:'ready',apartments});
     }).catch(()=>{if(active)setRouteInformation({key:routeKey,status:'error',apartments:[]});});
     return()=>{active=false;};
-  },[manifest,needsRouteInformation,routeKey,routeVersion,routeIds,knownRoute]);
+  },[manifest,needsRouteInformation,routeKey,routeVersion,routeSource,routeIds,knownRoute]);
   useEffect(()=>{
     const restore=()=>{const location=window.location.search+window.location.hash;if(locationRef.current===location)return;locationRef.current=location;setRestoredScroll(window.history.state?.scrollY||0);setPreferencesRevision(value=>value+1);};
     window.addEventListener('popstate',restore);return()=>window.removeEventListener('popstate',restore);
@@ -126,16 +126,17 @@ function Explorer({manifest,initialInformation=[],districtLoader,onResetPreferen
   const [sharedOverview,setSharedOverview]=useState(()=>readSharedOverview(readRouteParams(),catalog,initialInformation));
   const overviewRegions=sharedOverview?.regions||favorites,overviewApartments=sharedOverview?.apartments||apartmentFavorites;
   const [currentMasterApartments,setCurrentMasterApartments]=useState(null);
+  const informationVersion=apartmentInformationVersion(manifest),informationSource=manifest.apartment_information||informationVersion;
   const hasApartmentSelections=[...apartmentFavorites,...selectedApartments,...(sharedOverview?.apartments||[])].length>0;
   useEffect(()=>{
     if(!hasApartmentSelections)return;
     let active=true;
-    loadApartmentInformation(manifest.housing?.sha256||manifest.published_at).then(apartments=>{
+    loadApartmentInformation(informationSource).then(apartments=>{
       if(!active)return;
       setCurrentMasterApartments(apartments);
     }).catch(()=>{/* Keep saved selections available during a metadata outage. */});
     return()=>{active=false;};
-  },[hasApartmentSelections,manifest.published_at,manifest.housing?.sha256,setApartmentFavorites]);
+  },[hasApartmentSelections,informationVersion,informationSource,setApartmentFavorites]);
   useEffect(()=>{
     if(!currentMasterApartments)return;
     if(refreshApartmentFavorites(apartmentFavorites,currentMasterApartments)!==apartmentFavorites)setApartmentFavorites(previous=>refreshApartmentFavorites(previous,currentMasterApartments));
@@ -180,8 +181,14 @@ function Explorer({manifest,initialInformation=[],districtLoader,onResetPreferen
     };
   },[]);
   const toggleRegionFavorite=id=>{if(catalog.some(region=>region.region_id===id&&region.dongs.length===1))setRegionFavorites(previous=>previous.includes(id)?previous.filter(saved=>saved!==id):previous.length<2000?[...previous,id]:previous);};
-  const toggleApartmentFavorite=item=>setApartmentFavorites(previous=>previous.some(saved=>sameApartmentFavorite(saved,item))?previous.filter(saved=>!sameApartmentFavorite(saved,item)):previous.length<1000?[...previous,item]:previous);
-  const searchMapApartment=item=>{if(window.scrollY)window.scrollTo(0,0);setSearchOpen(false);setSelectedApartments([makeApartmentFavorite(item,item)]);setSearchRegionId('area_'+item.region_code);setApartmentFilters({province:'',city:'',district:'',search:''});setTab('apartments');};
+  const toggleApartmentFavorite=item=>setApartmentFavorites(previous=>previous.some(saved=>sameApartmentFavorite(saved,item))?previous.filter(saved=>!sameApartmentFavorite(saved,item)):previous.length<1000?[...previous,makeApartmentFavorite(item,item)]:previous);
+  const searchMapApartment=item=>{
+    const filters={minArea:'',maxArea:'',areaBands:[],includeCancelled:false,recentCount:20};
+    savePreferences('apartmentTransactions',{...readPreferences('apartmentTransactions'),...filters});
+    savePreferences('apartmentSearch',{...readPreferences('apartmentSearch'),query:''});
+    setQueryFilters(previous=>({...previous,apartmentTransactions:{...previous.apartmentTransactions,...filters}}));
+    if(window.scrollY)window.scrollTo(0,0);setSearchOpen(false);setSelectedApartments([makeApartmentFavorite(item,item)]);setSearchRegionId('area_'+item.region_code);setApartmentFilters({province:'',city:'',district:'',search:''});setTab('apartments');
+  };
   const searchMapRegion=item=>{setWeeklyIds([item.region_id]);setTab('weekly');};
   const openOverviewDong=(item,range,includeCancelled=false)=>{setWeeklyIds([item.region_id]);setWeeklyPeriod(previous=>({...previous,mode:'custom',...range}));savePreferences('weekly',{...readPreferences('weekly'),minArea:'',maxArea:'',areaBands:[],includeCancelled,recentCount:''});setQueryFilters(previous=>({...previous,weekly:{...previous.weekly,minArea:'',maxArea:'',areaBands:[],includeCancelled,recentCount:''}}));setTab('weekly');};
   const openOverviewApartment=(item,range,includeCancelled=false)=>{setSelectedApartments([item]);setApartmentPeriod(previous=>({...previous,mode:'custom',...range}));setSearchRegionId('area_'+item.region_code);setApartmentFilters({province:'',city:'',district:'',search:''});savePreferences('apartmentTransactions',{...readPreferences('apartmentTransactions'),minArea:'',maxArea:'',areaBands:[],includeCancelled,recentCount:''});setQueryFilters(previous=>({...previous,apartmentTransactions:{...previous.apartmentTransactions,minArea:'',maxArea:'',areaBands:[],includeCancelled,recentCount:''}}));setTab('apartments');};
@@ -221,6 +228,7 @@ function Explorer({manifest,initialInformation=[],districtLoader,onResetPreferen
     <StorageNotice/>
     {updateAvailable&&<div className="notice update-notice" role="status">새로 게시된 거래 자료가 있습니다.<button onClick={onApplyUpdate}>새 자료 불러오기</button></div>}
     {exploreTabs.includes(tab)&&<nav className="explore-views" aria-label="조회 화면">{tabs.filter(([id])=>exploreTabs.includes(id)).map(([id,label,Icon])=><button key={id} aria-label={label} aria-current={tab===id?'page':undefined} onClick={()=>setTab(id)}><Icon size={17}/>{{apartments:'단지 거래',weekly:'동네 거래',map:'단지 지도',regions:'동네 지도'}[id]}</button>)}</nav>}
+    {tab==='apartments'&&apartmentFavorites.length>0&&<section className="apartment-favorite-shortcuts" aria-label="즐겨찾기 단지"><div className="favorite-shortcuts-heading"><h2><Star size={16} fill="currentColor"/>즐겨찾기 단지 <span className="badge">{formatNumber(apartmentFavorites.length)}곳</span></h2><p>선택하면 전체 면적의 최근 유효 거래 20건을 봅니다.</p></div><div className="favorite-shortcut-list">{[...apartmentFavorites].reverse().map(item=><button key={item.id} type="button" aria-label={apartmentFavoriteLabel(item)+' 최근 거래 보기'} aria-current={selectedApartments.length===1&&sameApartmentFavorite(selectedApartments[0],item)?'true':undefined} onClick={()=>searchMapApartment(item)}><strong>{item.apartment}</strong><small>{item.region_name} {item.dong}</small></button>)}</div></section>}
     {tab==='apartments'&&selectedApartments.length>0&&<button className="new-search-button" aria-expanded={searchOpen} onClick={()=>setSearchOpen(value=>!value)}><Search size={17}/>다른 집 찾기</button>}
     {tab==='apartments'&&(!selectedApartments.length||searchOpen)&&<HomeSearch manifest={manifest} catalog={catalog} onApartment={searchMapApartment} onRegion={item=>{if(item.dongs.length)searchMapRegion(item);else{setSelectedApartments([]);setSearchRegionId(item.region_id);setApartmentFilters({province:'',city:'',district:'',search:''});savePreferences('apartmentSearch',{...readPreferences('apartmentSearch'),query:''});setTab('apartments');document.getElementById('query-controls')?.scrollIntoView({block:'start'});}}}/>}
     {undo&&<div className="undo-notice" role="status"><span>{undo.kind==='favorites'?'즐겨찾기를 삭제했습니다.':'조회 설정을 초기화했습니다. 즐겨찾기는 유지했습니다.'}</span><button onClick={onUndo}>되돌리기</button></div>}

@@ -17,7 +17,7 @@ import ApartmentMapPage from '../src/ApartmentMapPage.jsx';
 import ApartmentMapPopup from '../src/ApartmentMapPopup.jsx';
 import {mapApartment} from '../server/apartment-boundaries.mjs';
 import {useStoredState,readPreferences,restoreExplorer} from '../src/preferences.js';
-import {validApartmentFavorites,makeApartmentFavorite} from '../src/apartment-favorites.js';
+import {validApartmentFavorites,makeApartmentFavorite,sameApartmentFavorite} from '../src/apartment-favorites.js';
 import {buildCatalog} from '../src/domain.mjs';
 const one=mapApartment({region_code:'41117',apartment:'단지 하나',dong:'영통동',jibun:'1',road_address:'도로명주소 1',longitude:127.001,latitude:37.001},'경기도 수원시 영통구',2000);
 const two=mapApartment({...one,apartment:'단지 둘',jibun:'2',dong:'다른동',road_address:'도로명주소 2'},one.region_name);
@@ -32,9 +32,9 @@ it('polygon popup favorite add/remove keeps map and popup alive and persists in 
  const user=userEvent.setup();function Harness(){const [favorites,setFavorites]=useStoredState('viewer','apartments',[],validApartmentFavorites);return <ApartmentMapPage manifest={manifest} mapLoader={mapLoader} favorites={favorites} onToggleFavorite={item=>setFavorites(previous=>previous.some(p=>p.id===item.id)?previous.filter(p=>p.id!==item.id):[...previous,item])}/>;}
  const view=render(<Harness/>);await waitFor(()=>expect(mock.polygons.length).toBe(1));expect(mock.markers.length).toBe(1);
  act(()=>mock.polygons[0].click({latlng:[37.001,127.001]}));await screen.findByRole('dialog',{name:'단지 하나 아파트 정보'});expect(screen.getByText('도로명주소 1')).toBeTruthy();expect(screen.getByText('2000')).toBeTruthy();expect(screen.queryByText('유효 거래')).toBeNull();expect(screen.queryByText('최저가')).toBeNull();expect(screen.queryByText('최고가')).toBeNull();expect(screen.queryByRole('button',{name:'실거래 상세'})).toBeNull();
- expect(screen.getAllByRole('button',{name:/단지 하나.*즐겨찾기 추가/}).at(-1).textContent).toBe('');
+ expect(screen.getAllByRole('button',{name:/단지 하나.*즐겨찾기 추가/}).at(-1).textContent).toBe('즐겨찾기 추가');
  const popup=mock.popup,map=mock.maps[0],fits=map.fitBounds.mock.calls.length;
- await user.click(screen.getAllByRole('button',{name:/단지 하나.*즐겨찾기 추가/}).at(-1));expect(screen.getAllByRole('button',{name:/단지 하나.*즐겨찾기 해제/}).at(-1)).toBeTruthy();expect(readPreferences('viewer').apartments[0].id).toBe(one.id);expect(mock.popup).toBe(popup);expect(mock.polygons).toHaveLength(1);expect(map.fitBounds.mock.calls.length).toBe(fits);
+ await user.click(screen.getAllByRole('button',{name:/단지 하나.*즐겨찾기 추가/}).at(-1));expect(screen.getAllByRole('button',{name:/단지 하나.*즐겨찾기 해제/}).at(-1).textContent).toBe('즐겨찾기 저장됨');expect(readPreferences('viewer').apartments[0].id).toBe(one.id);expect(mock.popup).toBe(popup);expect(mock.polygons).toHaveLength(1);expect(map.fitBounds.mock.calls.length).toBe(fits);
  await user.click(screen.getAllByRole('button',{name:/단지 하나.*즐겨찾기 해제/}).at(-1));expect(readPreferences('viewer').apartments).toEqual([]);expect(mock.popup).toBe(popup);
  await user.click(screen.getAllByRole('button',{name:/단지 하나.*즐겨찾기 추가/}).at(-1));view.unmount();render(<Harness/>);await waitFor(()=>expect(mock.polygons.length).toBe(2));act(()=>mock.polygons.at(-1).click({latlng:[37.001,127.001]}));expect(screen.getAllByRole('button',{name:/단지 하나.*즐겨찾기 해제/}).at(-1)).toBeTruthy();
 });
@@ -77,4 +77,38 @@ it('senior housing displays confirmed residential units instead of a misleading 
  render(<ApartmentMapPopup apartments={[senior]} favorites={[]}/>);
  expect(screen.getByText('주거 호수')).toBeTruthy();expect(screen.getByText('537호')).toBeTruthy();
  expect(screen.queryByText('0세대')).toBeNull();
+});
+
+it('recognizes an existing cohort favorite on its declared map root and removes the original scope',async()=>{
+ const rootRef={kind:'root',id:'hub:existing-cohort'},cohortRef={kind:'cohort',id:'cohort:hub:existing-cohort:road'};
+ const root={...makeApartmentFavorite({...one,master_id:rootRef.id,identity_ref:rootRef},one),latitude:one.latitude,longitude:one.longitude,map_member_refs:[cohortRef]};
+ const saved=makeApartmentFavorite({...one,master_id:rootRef.id,identity_ref:cohortRef,identity_coverage:{entity_ids:[],cohort_ids:[cohortRef.id],root_ids:[rootRef.id]}},one);
+ expect(sameApartmentFavorite(root,saved)).toBe(false);
+ const loader=async()=>({...data,apartments:[root],boundaries:{type:'FeatureCollection',features:[{...boundary,properties:{...boundary.properties,apartment_ids:[root.id]}}]}}),toggle=vi.fn();
+ function Harness(){const [favorites,setFavorites]=useStoredState('viewer','apartments',[saved],validApartmentFavorites);return <ApartmentMapPage manifest={manifest} mapLoader={loader} favorites={favorites} onToggleFavorite={item=>{toggle(item);return setFavorites(previous=>previous.filter(favorite=>!sameApartmentFavorite(favorite,item)));}}/>;}
+ render(<Harness/>);await waitFor(()=>expect(mock.markers).toHaveLength(1));
+ expect(mock.markers[0].getElement().classList.contains('favorite')).toBe(true);
+ act(()=>mock.polygons[0].click({latlng:[37.001,127.001]}));
+ const remove=screen.getAllByRole('button',{name:/단지 하나.*즐겨찾기 해제/}).at(-1);
+ expect(remove.textContent).toBe('즐겨찾기 저장됨');await userEvent.setup().click(remove);
+ expect(toggle).toHaveBeenCalledTimes(1);expect(toggle.mock.calls[0][0].identity_ref).toEqual(cohortRef);
+ expect(readPreferences('viewer').apartments).toEqual([]);
+ expect(mock.markers[0].getElement().classList.contains('favorite')).toBe(false);
+ expect(screen.getByRole('dialog',{name:'단지 하나 아파트 정보'})).toBeTruthy();
+});
+
+it('passes the common information generation to the map loader',async()=>{
+ const generation='a'.repeat(64),loader=vi.fn(async()=>data);
+ render(<ApartmentMapPage manifest={{...manifest,apartment_information:{generation}}} mapLoader={loader}/>);
+ await waitFor(()=>expect(mock.markers).toHaveLength(1));expect(loader).toHaveBeenCalledWith(generation);
+});
+
+it('does not remove an arbitrary saved area when a map root contains multiple favorites',async()=>{
+ const rootRef={kind:'root',id:'hub:multiple-areas'},refs=[{kind:'cohort',id:'cohort:hub:multiple-areas:first'},{kind:'cohort',id:'cohort:hub:multiple-areas:second'}];
+ const root={...makeApartmentFavorite({...one,master_id:rootRef.id,identity_ref:rootRef},one),map_member_refs:refs};
+ const favorites=refs.map(identity_ref=>makeApartmentFavorite({...one,master_id:rootRef.id,identity_ref},one)),onToggle=vi.fn();
+ render(<ApartmentMapPopup apartments={[root]} favorites={favorites} onToggleFavorite={onToggle}/>);
+ const mixed=screen.getByRole('button',{name:/저장한 구역 2곳/});
+ expect(mixed.getAttribute('aria-pressed')).toBe('mixed');expect(mixed.disabled).toBe(true);
+ await userEvent.setup().click(mixed);expect(onToggle).not.toHaveBeenCalled();
 });

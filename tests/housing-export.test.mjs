@@ -12,6 +12,7 @@ import {readTradeSnapshot,verifyTradeExport} from '../server/verify-trade-export
 import {browserPayloads,checkBrowserData,readHousingPayload} from '../server/browser-export.mjs';
 import {buildSearchIndex} from '../src/search-index.mjs';
 import {validateIdentitySearch} from '../src/apartment-identity.mjs';
+import {readApartmentInformationFile,writeApartmentInformationFile} from '../server/apartment-information-files.mjs';
 import {loadDistrict} from '../src/data.js';
 import {sourceIdentityId,selectIdentityRows} from '../src/housing-identity.mjs';
 const read=file=>JSON.parse(fs.readFileSync(file));
@@ -31,7 +32,7 @@ function fixture(t,{legacyInventory=false}={}){
 test('export migrates a restored scanned inventory without housing tables before creating source routes',t=>{
  const f=fixture(t,{legacyInventory:true});assert(f.manifest.housing);
  const payload=readHousingPayload(f.target,f.manifest);assert.equal(payload.assignments.length,2);
- const catalog=read(path.join(f.root,'public/apartment-identity/catalog.json')),index=read(path.join(f.queries,f.manifest.districts['11110'].browser.file));
+ const catalog=readApartmentInformationFile(path.join(f.root,'public'),f.manifest,{required:true}),index=read(path.join(f.queries,f.manifest.districts['11110'].browser.file));
  const search=buildSearchIndex(new Map([['11110',index.catalog]]),f.manifest.regions,catalog.apartments);
  assert.equal(search.length,1);assert.equal(search[0].identity_default_sources.length,1);
  const again=exportData({source:f.source,target:f.target,secretsFile:path.join(f.root,'.env'),favorites:path.join(f.root,'absent.json')});
@@ -43,7 +44,7 @@ test('export keeps original district and duplicate contracts intact while publis
  const payload=readHousingPayload(f.target,f.manifest);assert.equal(payload.assignments.length,2);assert.equal(payload.dictionary.length,1);assert.equal(payload.dictionary[0].precision,'unresolved');
  const index=read(path.join(f.queries,f.manifest.districts['11110'].browser.file)),monthly=read(path.join(f.queries,index.months['202601']));
  assert.deepEqual(monthly.map(row=>row.id),[2,1]);assert(monthly.every(row=>row.identity.entity_id===sourceIdentityId(row)));assert(monthly.every(row=>!('untouched' in row.raw)));
- const catalog=read(path.join(f.root,'public/apartment-identity/catalog.json'));const search=buildSearchIndex(new Map([['11110',index.catalog]]),f.manifest.regions,catalog.apartments);
+ const catalog=readApartmentInformationFile(path.join(f.root,'public'),f.manifest,{required:true});const search=buildSearchIndex(new Map([['11110',index.catalog]]),f.manifest.regions,catalog.apartments);
  assert.equal(validateIdentitySearch(search,catalog).length,1);assert.equal(search[0].identity_ref.kind,'source');assert.equal(selectIdentityRows(monthly,search[0]).length,2);
  assert.equal(verifyTradeExport({target:f.target,source:f.source}).rows,2);checkBrowserData(f.queries,f.manifest);
  const oldFetch=globalThis.fetch;t.after(()=>{globalThis.fetch=oldFetch;});globalThis.fetch=async url=>({ok:true,text:async()=>fs.readFileSync(path.join(f.root,'public',url.replace(/^\//,'')),'utf8')});
@@ -62,6 +63,14 @@ test('stale original snapshots and source hashes are rejected even with valid si
  const f=fixture(t),snapshot=readTradeSnapshot(f.source);snapshot.rows[0].raw_json=JSON.stringify({...raw,untouched:'changed'});
  assert.throws(()=>verifyTradeExport({target:f.target,snapshot}),/데이터 검증 실패/);
  f.manifest.housing.sources['11110']='0'.repeat(64);assert.throws(()=>readHousingPayload(f.target,f.manifest),/원본 버전/);
+});
+test('rehashed common catalog coverage cannot grant a different scope than the authoritative housing assignments',t=>{
+ const f=fixture(t),catalog=readApartmentInformationFile(path.join(f.root,'public'),f.manifest,{required:true});
+ catalog.apartments.find(item=>item.identity_ref.kind==='source').identity_coverage.entity_ids=[];
+ catalog.generation=sha256(JSON.stringify({schema_version:2,apartments:catalog.apartments}));
+ f.manifest.apartment_information=writeApartmentInformationFile(path.join(f.root,'public'),catalog,{housingSha256:f.manifest.housing.sha256});
+ write(path.join(f.target,'manifest.json'),f.manifest);
+ assert.throws(()=>verifyTradeExport({target:f.target,source:f.source}),/공통 아파트 정보.*조회 범위/);
 });
 test('modern search uses one explicit source route and never grants stale trade keys authority',()=>{
  const source={region_code:'11110',dong:'시험동',jibun:'1',apartment:'공유원본',deal_date:'2026-01-01'},entity=sourceIdentityId(source),region={region_code:'11110',region_name:'서울특별시 종로구'};

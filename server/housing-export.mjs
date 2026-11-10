@@ -40,7 +40,7 @@ export function packHousingIdentity(catalog,bindings,rows) {
 }
 
 export function housingQueryInformation(base,payload) {
-  const byRoot=new Map((base?.apartments||[]).map(item=>[item.master_id||item.id,item]));
+  const byRoot=new Map((base?.apartments||[]).filter(item=>!item.identity_ref||item.identity_ref.kind==='root').map(item=>[item.master_id||item.id,item]));
   const roots=new Map(payload.roots.map(item=>[item.root_id,item]));
   const entities=new Map(payload.entities.map(item=>[item.entity_id,item]));
   const cohorts=new Map(payload.cohorts.map(item=>[item.cohort_id,item]));

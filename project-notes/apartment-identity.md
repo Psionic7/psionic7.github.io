@@ -1,5 +1,7 @@
 # 아파트 식별 정보 통합
 
+위치·구역 정보 통합과 상록마을 오류 해결은 사용자 승인 후 구현했다. 현재 구조·API·파일 버전·이관 검증·재실행 방법은 [공통 정보 아키텍처의 구현 기록](apartment-information-architecture.md#10-구현-기록--2026-11-10)을 참조한다. 아래 내용은 이전 식별 정보 이관의 배경 기록이다.
+
 ## 문제와 구현 계획
 
 삼성1차가 건축물대장에는 `삼성아파트`, 실거래에는 `삼성1`, 주소 API에는 `삼성래미안1차아파트`, 네이버에는 `삼성1차`로 기록되어 매물 검색에서 누락됐다. 기존 건축물대장 ID를 공통 키로 유지한다.
@@ -23,20 +25,20 @@
 
 ## 테이블과 조회
 
-실제 SQL 테이블은 작업 DB `local/my_real_estate.sqlite3`에 있다. 정적 웹 화면은 비밀 값 검사를 통과한 `public/apartment-identity/catalog.json`을 참조한다. 원본 주소 API 응답과 작업 DB 전체는 공개하지 않는다.
+실제 SQL 테이블은 작업 DB `local/my_real_estate.sqlite3`에 있다. 정적 웹 화면은 `public/data/manifest.json`의 `apartment_information`이 지정한 불변 `public/apartment-identity/catalog-<SHA앞12자리>.json`을 참조한다. 고정 `catalog.json`은 새 metadata가 없는 이전 자료의 호환 읽기에만 사용한다. 원본 주소 API 응답과 작업 DB 전체는 공개하지 않는다.
 
 | 테이블·뷰 | 내용 |
 | --- | --- |
-| `apartment_identity` | 단지 ID, 대표 이름, 행정구역·법정동, 대표 지번·도로명주소, 확인한 우편번호와 출처, 검증된 네이버 번호·이름, 활성 상태·갱신 시각 |
+| `apartment_identity` | 단지 ID, 대표 이름, 행정구역·법정동, 대표 지번·도로명주소, 확인한 우편번호와 출처, 검증된 네이버 번호·이름, 주거 판정, 대표 출입구 참조, 공간 해시·분류 근거, 활성 상태·갱신 시각 |
 | `apartment_aliases` | 단지 ID에 연결한 여러 이름과 검증 출처. 기존 테이블을 공유한다. |
 | `apartment_identity_addresses` | 같은 단지의 여러 실제 주소, 건물관리번호·도로명코드, 우편번호, 출처·관찰 시각 |
-| `apartment_information` | 대표 정보와 이름 사전을 함께 읽는 SQL 뷰 |
+| `apartment_information` | root·cohort·source의 선택 ID·범위, 대표 정보·이름 사전·실제 출입구 위치를 읽는 SQL 뷰. 구역 요약과 도형은 공통 API로 조회한다. |
 
 ```sql
 SELECT apartment_id, canonical_name, name_aliases_json,
        road_address, postal_code, naver_complex_no
 FROM apartment_information
-WHERE apartment_id = 'hub:11161181462';
+WHERE scope_kind = 'root' AND apartment_id = 'hub:11161181462';
 ```
 
 이름·주소·우편번호로 후보를 확인한다.

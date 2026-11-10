@@ -59,7 +59,15 @@ export function registryCoordinateCodes(row){
 export const isResidentialClassification = value => ['apartment', 'senior_housing'].includes(value);
 export function buildingClassification(row,floors=[]){
  if(text(row.mainAtchGbCd)==='1')return 'other'; // Ancillary guardhouses/garages remain linked buildings, not apartment dwellings.
- const rows=[row,...floors],uses=rows.map(p=>[p.mainPurpsCdNm,p.etcPurps].map(text).join(' '));
+ // Parking and guard rooms can inherit an apartment purpose code on their floor records.
+ const rows=[row,...floors].filter(p=>{
+  const use=text(p.etcPurps).replace(/\s/g,'');
+  const support=/주차장|경비실|관리사무소|기계실|전기실|방재실|펌프실|저수조|변전실|발전기실|보일러실|열교환실|노인정|경로당|입주자집회소|주민공동시설|공중변소|부대시설|부속시설/.test(use);
+  const actual=use.replace(/(?:아파트|공동주택|노인복지주택)(?:의)?(?:부대|부속)시설/g,'');
+  return !support||/아파트(?!형공장)|노인복지주택|공동주택|연립|다세대|오피스텔|기숙사|도시형생활주택|주거/.test(actual);
+ });
+ if(!rows.length)return 'other';
+ const uses=rows.map(p=>[p.mainPurpsCdNm,p.etcPurps].map(text).join(' '));
  if(uses.some(s=>/노인복지주택/.test(s)))return 'senior_housing';
  if(rows.some(p=>text(p.mainPurpsCd)==='02001')||uses.some(s=>/아파트(?!\s*형\s*공장)/.test(s)))return 'apartment';
  if(uses.some(s=>/공동주택/.test(s))&&!uses.some(s=>/연립|다세대|기숙사/.test(s)))return 'review';

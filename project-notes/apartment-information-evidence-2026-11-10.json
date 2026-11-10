@@ -1,0 +1,240 @@
+{
+  "observed_on": "2026-11-10",
+  "scope": "경기도 성남시 분당구 정자동 상록마을",
+  "status": "구현 전 원인 분석 기록",
+  "counts_include_cancelled": true,
+  "published_snapshot": {
+    "published_at": "2026-11-07T21:08:23.750Z",
+    "map_apartments_file": "apartments-f18419a44fa9.json",
+    "map_apartments_sha256": "f18419a44fa9fedc2d1555e765b4c809248447a5024e883e6090f7de67601bb4",
+    "map_boundaries_file": "boundaries-200938ec8fda.geojson",
+    "map_boundaries_sha256": "200938ec8fdaa551a31fe553c470e26bac0f2e837b27ff77617d6372aafb30a7",
+    "housing_sha256": "153bbedf876fb03a0f95d87b623c0c91a8ae05bcfee5b5e3446d0d5950e488fd"
+  },
+  "map_favorite_checks": [
+    {
+      "root_id": "hub:10891118014",
+      "name": "상록마을",
+      "jibun": "124",
+      "road_address": "경기도 성남시 분당구 정자로 56 (정자동)",
+      "map_identity_ref": null,
+      "saved_favorite_valid": true,
+      "refreshed_selection_id": "cohort:hub:10891118014:565c6b72ddd8a331e90d",
+      "refreshed_identity_ref": {
+        "kind": "cohort",
+        "id": "cohort:hub:10891118014:565c6b72ddd8a331e90d"
+      },
+      "trade_rows": 0,
+      "trade_groups": []
+    },
+    {
+      "root_id": "hub:10891118021",
+      "name": "상록마을",
+      "jibun": "121",
+      "road_address": "경기도 성남시 분당구 내정로 55 (정자동)",
+      "map_identity_ref": null,
+      "saved_favorite_valid": true,
+      "refreshed_selection_id": "cohort:hub:10891118021:1656a44decd21ee863bf",
+      "refreshed_identity_ref": {
+        "kind": "cohort",
+        "id": "cohort:hub:10891118021:1656a44decd21ee863bf"
+      },
+      "trade_rows": 1704,
+      "trade_groups": [
+        {
+          "apartment": "상록마을(우성)1",
+          "jibun": "121",
+          "count": 1704,
+          "latest": "2026-10-30"
+        }
+      ]
+    },
+    {
+      "root_id": "hub:10891118022",
+      "name": "상록마을",
+      "jibun": "124",
+      "road_address": "경기도 성남시 분당구 정자로 56 (정자동)",
+      "map_identity_ref": null,
+      "saved_favorite_valid": true,
+      "refreshed_selection_id": "cohort:hub:10891118022:565c6b72ddd8a331e90d",
+      "refreshed_identity_ref": {
+        "kind": "cohort",
+        "id": "cohort:hub:10891118022:565c6b72ddd8a331e90d"
+      },
+      "trade_rows": 296,
+      "trade_groups": [
+        {
+          "apartment": "상록마을(라이프1차)",
+          "jibun": "124",
+          "count": 296,
+          "latest": "2026-10-16"
+        }
+      ]
+    },
+    {
+      "root_id": "hub:10891118023",
+      "name": "상록마을",
+      "jibun": "125",
+      "road_address": "경기도 성남시 분당구 정자로76번길 10 (정자동)",
+      "map_identity_ref": null,
+      "saved_favorite_valid": true,
+      "refreshed_selection_id": "cohort:hub:10891118023:efb1a8daebae02b11144",
+      "refreshed_identity_ref": {
+        "kind": "cohort",
+        "id": "cohort:hub:10891118023:efb1a8daebae02b11144"
+      },
+      "trade_rows": 356,
+      "trade_groups": [
+        {
+          "apartment": "상록마을(라이프2차)",
+          "jibun": "125",
+          "count": 356,
+          "latest": "2026-07-24"
+        }
+      ]
+    },
+    {
+      "root_id": "hub:10891118130",
+      "name": "상록마을",
+      "jibun": "121",
+      "road_address": "경기도 성남시 분당구 내정로 55 (정자동)",
+      "map_identity_ref": null,
+      "saved_favorite_valid": true,
+      "refreshed_selection_id": "cohort:hub:10891118130:1656a44decd21ee863bf",
+      "refreshed_identity_ref": {
+        "kind": "cohort",
+        "id": "cohort:hub:10891118130:1656a44decd21ee863bf"
+      },
+      "trade_rows": 0,
+      "trade_groups": []
+    },
+    {
+      "root_id": "hub:10891118137",
+      "name": "상록마을",
+      "jibun": "181",
+      "road_address": "경기도 성남시 분당구 정자일로 80 (정자동)",
+      "map_identity_ref": null,
+      "saved_favorite_valid": true,
+      "refreshed_selection_id": "cohort:hub:10891118137:7afa6dbf10b541c90af1",
+      "refreshed_identity_ref": {
+        "kind": "cohort",
+        "id": "cohort:hub:10891118137:7afa6dbf10b541c90af1"
+      },
+      "trade_rows": 743,
+      "trade_groups": [
+        {
+          "apartment": "상록마을(보성)",
+          "jibun": "181",
+          "count": 348,
+          "latest": "2026-10-22"
+        },
+        {
+          "apartment": "상록마을(임광)",
+          "jibun": "181",
+          "count": 395,
+          "latest": "2026-09-08"
+        }
+      ]
+    }
+  ],
+  "source_trades": [
+    {
+      "region_code": "41135",
+      "dong": "정자동",
+      "jibun": "121",
+      "apartment": "상록마을(우성)1",
+      "count": 1704,
+      "earliest": "2006-01-03",
+      "latest": "2026-10-30"
+    },
+    {
+      "region_code": "41135",
+      "dong": "정자동",
+      "jibun": "124",
+      "apartment": "상록마을(라이프1차)",
+      "count": 296,
+      "earliest": "2006-03-07",
+      "latest": "2026-10-16"
+    },
+    {
+      "region_code": "41135",
+      "dong": "정자동",
+      "jibun": "125",
+      "apartment": "상록마을(라이프2차)",
+      "count": 356,
+      "earliest": "2006-01-02",
+      "latest": "2026-07-24"
+    },
+    {
+      "region_code": "41135",
+      "dong": "정자동",
+      "jibun": "181",
+      "apartment": "상록마을(보성)",
+      "count": 348,
+      "earliest": "2006-01-25",
+      "latest": "2026-10-22"
+    },
+    {
+      "region_code": "41135",
+      "dong": "정자동",
+      "jibun": "181",
+      "apartment": "상록마을(임광)",
+      "count": 395,
+      "earliest": "2006-01-16",
+      "latest": "2026-09-08"
+    }
+  ],
+  "ui_reproduction": {
+    "total": 4,
+    "passed": 0,
+    "failed": 4,
+    "cases": [
+      {
+        "name": "keeps the map star selected after common information refresh: hub:10891118021",
+        "status": "failed"
+      },
+      {
+        "name": "keeps the map star selected after common information refresh: hub:10891118022",
+        "status": "failed"
+      },
+      {
+        "name": "keeps the map star selected after common information refresh: hub:10891118023",
+        "status": "failed"
+      },
+      {
+        "name": "keeps the map star selected after common information refresh: hub:10891118137",
+        "status": "failed"
+      }
+    ],
+    "note": "공통 정보 갱신 뒤 지도 별표가 선택 상태여야 한다는 검사가 4개 모두 실패했다. 수정 후 통과 결과가 아니다."
+  },
+  "auxiliary_classification": [
+    {
+      "root_id": "hub:10891118014",
+      "building_id": "10891120476",
+      "recorded_use": "지하주차장",
+      "title_purpose_code": "02000",
+      "floor_purpose_code": "02001",
+      "floor_actual_use": "지하주차장",
+      "main_accessory_code": "0",
+      "households": 0,
+      "units": 0,
+      "title_only_classification": "review",
+      "with_floor_classification": "apartment"
+    },
+    {
+      "root_id": "hub:10891118130",
+      "building_id": "10891121410",
+      "recorded_use": "경비실",
+      "title_purpose_code": "02000",
+      "floor_purpose_code": "02001",
+      "floor_actual_use": "경비실",
+      "main_accessory_code": "0",
+      "households": 0,
+      "units": 0,
+      "title_only_classification": "review",
+      "with_floor_classification": "apartment"
+    }
+  ],
+  "exclusions": "원본 DB, API 키, 원본 주소 응답, 전체 원천 JSON, 브라우저 개인 즐겨찾기는 이 문서 자료에 포함하지 않는다."
+}

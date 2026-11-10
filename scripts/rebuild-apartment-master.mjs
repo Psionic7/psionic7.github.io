@@ -2,21 +2,25 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {parseArgs} from 'node:util';
 import {backup} from 'node:sqlite';
-import {ROOT,paths,connect} from '../server/storage.mjs';
+import {ROOT,paths,connect,regions,savedIds} from '../server/storage.mjs';
 import {rebuildApartmentMaster,linkMasterTrades,masterCollectionRunning} from '../server/apartment-master.mjs';
 import {enrichApartmentMaster,vworldKey,vworldDomain} from '../server/apartment-master-enrichment.mjs';
 import {coordinateKey} from '../server/coordinates.mjs';
 import {exportApartmentMap} from '../server/export-apartment-map.mjs';
+import {synchronizeHousingIdentity,publicApartmentInformation} from '../server/apartment-identity.mjs';
 
-const {values}=parseArgs({options:{'enrich-new':{type:'boolean',default:false}}});
+const {values}=parseArgs({options:{'enrich-new':{type:'boolean',default:false},source:{type:'string'},target:{type:'string'},'favorites-file':{type:'string'},'secrets-file':{type:'string'}}});
+const source=path.resolve(values.source||paths.db),target=path.resolve(values.target||path.join(ROOT,'public/apartment-map'));
+const favorites=path.resolve(values['favorites-file']||paths.favorites),secretsFile=path.resolve(values['secrets-file']||paths.env);
 let db;
 try {
-  if(!fs.existsSync(paths.db))throw new Error('저장된 작업 DB가 없습니다.');
-  db=connect();
+  if(!fs.existsSync(source))throw new Error('저장된 작업 DB가 없습니다.');
+  db=connect(source);
   if(masterCollectionRunning(db))throw new Error('전체 아파트 수집이 실행 중입니다.');
   const before=db.prepare('SELECT count(*) AS n FROM trades').get().n;
   const existing=new Set(db.prepare('SELECT apartment_id FROM apartment_complexes WHERE active=1').all().map(p=>p.apartment_id));
-  const backupPath=path.join(ROOT,'local',`before-housing-map-${Date.now()}.sqlite3`);
+  const backupPath=path.join(path.dirname(source),`before-housing-map-${Date.now()}-${process.pid}.sqlite3`);
+  if(fs.existsSync(backupPath))throw new Error('작업 DB 백업 파일이 이미 있습니다. 기존 백업을 보존합니다.');
   await backup(db,backupPath);
   console.log('작업 DB 백업: '+path.basename(backupPath));
   rebuildApartmentMaster(db);
@@ -31,15 +35,18 @@ try {
         OR EXISTS(SELECT 1 FROM apartment_parcels p WHERE p.apartment_id=c.apartment_id AND p.boundary_status!='exact'))`).all();
   const enrichIds=[...new Set([...added,...pendingSenior].map(p=>p.apartment_id))];
   if(values['enrich-new']&&enrichIds.length)await enrichApartmentMaster(db,{
-    coordinateKey:coordinateKey(),vworldKey:vworldKey(),domain:vworldDomain(),
+    coordinateKey:coordinateKey(secretsFile),vworldKey:vworldKey(secretsFile),domain:vworldDomain(secretsFile),
     apartmentIds:enrichIds,
     onProgress:p=>console.log(`새 단지 보강 ${p.completed}/${p.total} · ${p.kind}`),
   });
   linkMasterTrades(db);
+  const catalog=regions(db),selected=new Set(savedIds(favorites,catalog));
+  synchronizeHousingIdentity(db,{scopes:catalog.filter(region=>selected.has(region.region_id))});
+  const generation=publicApartmentInformation(db).generation;
   if(db.prepare('SELECT count(*) AS n FROM trades').get().n!==before)throw new Error('거래 원본 건수가 달라졌습니다.');
   if(Object.values(db.prepare('PRAGMA quick_check').get())[0]!=='ok')throw new Error('작업 DB 무결성 검사 실패');
   db.close();db=null;
-  const result=exportApartmentMap();
+  const result=exportApartmentMap({source,target,favorites,secretsFile,generation});
   if(!result)throw new Error('지역 수집 상태가 미완료여서 기존 지도를 유지했습니다.');
   console.log(`지도 갱신: ${result.count}개 항목 · 거래 원본 ${before}건 유지`);
 }catch(error){

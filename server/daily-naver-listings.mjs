@@ -7,7 +7,6 @@ import {listingQueryName} from './naver-listing-names.mjs';
 import {normalizeRoadAddress} from '../src/address-identity.mjs';
 import {listingBuildingMembers} from '../src/housing-identity.mjs';
 import {apartmentInformation,publicApartmentInformation,resolveApartmentIdentity,synchronizeApartmentIdentity,synchronizeHousingIdentity,housingIdentityCatalog} from './apartment-identity.mjs';
-import {housingQueryInformation} from './housing-export.mjs';
 import {synchronizeNaverMatches,readNaverMatch,recordNaverMatch,recordNaverMatchFailure,applyNaverMatchSeed} from './apartment-naver-matches.mjs';
 
 const hasTable=(db,name)=>Boolean(db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name=?").get(name));
@@ -103,8 +102,8 @@ export function listingExport(db,{initialSnapshot,now=new Date()}={}) {
   const cohortById=new Map(catalog.cohorts.map(cohort=>[cohort.cohort_id,cohort]));
   for(const [id,group]of groups){const cohort=cohortById.get(group.favorite.identity_ref?.kind==='cohort'?group.favorite.id:null);if(cohort&&!cohort.legal_types.some(type=>['아파트','노인복지주택'].includes(type))&&!cohort.entity_ids.length&&!cohort.partial_entity_ids.length)groups.delete(id);}
   if(catalog.cohorts.length){
-    const information=new Map(housingQueryInformation(publicApartmentInformation(db),catalog).apartments.map(item=>[item.id,item]));
-    for(const [id,group]of groups){const favorite=information.get(id);if(favorite)groups.set(id,{...group,favorite});}
+    const information=new Map(publicApartmentInformation(db).apartments.map(item=>[item.id,item]));
+    for(const [id,group]of groups){const info=information.get(id);if(info)groups.set(id,{...group,favorite:makeApartmentFavorite(info,info)});}
   }
   const currentTargets=new Set(collection?.results.map(row=>row.favoriteId)||[]);
   for(const group of groups.values()){

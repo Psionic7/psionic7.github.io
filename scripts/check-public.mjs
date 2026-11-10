@@ -12,24 +12,29 @@ import {validBounds} from '../src/map-bounds.mjs';
 import {checkBrowserData} from '../server/browser-export.mjs';
 import {validListingSnapshot,validListingCollection} from '../src/naver-listings.mjs';
 import {validRegionalListingReport} from '../src/naver-listing-report.mjs';
-import {validateApartmentInformation,validateIdentitySearch} from '../src/apartment-identity.mjs';
+import {validateIdentityMap,validateIdentitySearch} from '../src/apartment-identity.mjs';
+import {readApartmentInformationFile} from '../server/apartment-information-files.mjs';
 const privateName=name=>name.split('/').some(p=>['local','admin-dist','.venv','.streamlit'].includes(p)) || /(^|\/)(\.env[^/]*|collection_regions\.json|my_real_estate\.sqlite3|secrets\.toml)$/.test(name);
 export function checkPublic(root=ROOT,secretsFile=paths.env,{checkIndex=true}={}) {
   const secrets=secretValues(secretsFile);
+  const informationByFolder=new Map(),manifests=new Map(),informationBytes=new Map();
   for(const sub of ['public','docs']){
-    const file=path.join(root,sub,'apartment-identity/catalog.json');
+    const publicRoot=path.join(root,sub),manifest=readJson(path.join(publicRoot,'data/manifest.json'));
     const mapFile=path.join(root,sub,'apartment-map/manifest.json');
-    if(fs.existsSync(mapFile)&&readJson(mapFile).version===2&&!fs.existsSync(file))throw Error('건축물대장 기반 조회에는 공통 아파트 식별 정보가 필요합니다.');
-    if(fs.existsSync(file)){
-      const information=validateApartmentInformation(readJson(file)),registryFile=path.join(root,sub,'query-data/manifest.json');
+    const information=readApartmentInformationFile(publicRoot,manifest,{required:fs.existsSync(mapFile)&&readJson(mapFile).version===2});
+    manifests.set(sub,manifest);
+    if(information){
+      informationByFolder.set(sub,information);
+      informationBytes.set(sub,fs.readFileSync(path.join(publicRoot,'apartment-identity',manifest.apartment_information?.file||'catalog.json')));
+      const registryFile=path.join(publicRoot,'query-data/manifest.json');
       if(fs.existsSync(registryFile)){
-        const meta=readJson(registryFile).search;
+        const registry=readJson(registryFile),meta=registry.search;
+        if(manifest.apartment_information&&(registry.apartment_information_generation!==information.generation||meta?.apartment_information_generation!==information.generation))throw Error('검색과 공통 아파트 정보 생성 버전이 다릅니다.');
         if(meta)validateIdentitySearch(readJson(path.join(root,sub,'query-data',meta.file)),information);
       }
     }
   }
-  const identityFile='apartment-identity/catalog.json';
-  if(fs.existsSync(path.join(root,'public',identityFile))&&(!fs.existsSync(path.join(root,'docs',identityFile))||!fs.readFileSync(path.join(root,'public',identityFile)).equals(fs.readFileSync(path.join(root,'docs',identityFile)))))throw Error('아파트 식별 정보를 내보낸 뒤 공개 빌드를 다시 실행하세요.');
+  if(informationBytes.has('public')&&(!informationBytes.has('docs')||!informationBytes.get('public').equals(informationBytes.get('docs'))))throw Error('아파트 식별 정보를 내보낸 뒤 공개 빌드를 다시 실행하세요.');
   const git=(...args)=>execFileSync('git',['-c',`safe.directory=${root.replaceAll('\\','/')}`,'-C',root,...args],{maxBuffer:100*1024*1024});
   const tracked=git('ls-files','-z').toString().split('\0').filter(Boolean);
   if(checkIndex) for(const name of tracked) {if(privateName(name))throw new Error('Git 인덱스에 비공개 파일이 있습니다.');checkedBytes(git('show',':'+name),secrets);}
@@ -89,11 +94,19 @@ export function checkPublic(root=ROOT,secretsFile=paths.env,{checkIndex=true}={}
     const apartments=checkedBytes(fs.readFileSync(path.join(folder,info.apartments.file)),secrets),boundaries=checkedBytes(fs.readFileSync(path.join(folder,info.boundaries.file)),secrets);
     if(sha256(apartments)!==info.apartments.sha256||sha256(boundaries)!==info.boundaries.sha256)throw new Error('아파트 지도 체크섬 오류');
     const data=validateApartmentMap({apartments:JSON.parse(apartments),boundaries:JSON.parse(boundaries)});
+    const publicFolder=path.dirname(sub),information=informationByFolder.get(publicFolder),informationMeta=manifests.get(publicFolder).apartment_information;
+    if(info.version===2)validateIdentityMap(data.apartments,information);
+    if(informationMeta){
+      if(info.apartment_information_generation!==information.generation)throw Error('지도와 공통 아파트 정보 생성 버전이 다릅니다.');
+      const byId=new Map(information.apartments.map(item=>[item.id,item]));
+      if(data.boundaries.features.some(feature=>feature.properties.apartment_ids.some(id=>!byId.get(id)?.area?.boundary_ids?.includes(feature.id))))throw Error('지도 경계가 공통 아파트 구역에 연결되지 않았습니다.');
+    }
     if(data.apartments.length!==info.count||data.boundaries.features.length!==info.boundary_count)throw new Error('아파트 지도 건수 오류');
     const tilesFolder=path.join(root,path.dirname(sub),'map-data');
     if(!fs.existsSync(tilesFolder))throw new Error('지도 경계 조각이 없습니다. 공개 빌드를 다시 실행하세요.');
     if(fs.existsSync(tilesFolder)){
       const tiles=readJson(path.join(tilesFolder,'manifest.json')),allowed=new Set(['manifest.json']);let features=0;const identities=new Set();
+      if(informationMeta&&tiles.apartment_information_generation!==information.generation)throw Error('지도 경계 조각과 공통 아파트 정보 생성 버전이 다릅니다.');
       if(tiles.version!==1||tiles.source_sha256!==info.boundaries.sha256||!Array.isArray(tiles.tiles))throw new Error('지도 경계 조각 버전 오류');
       for(const tile of tiles.tiles){
         if(!/^tile-\d+_\d+-[a-f0-9]{12}\.json$/.test(tile.file)||!validBounds(tile.bbox)||allowed.has(tile.file))throw new Error('지도 경계 조각 경로 오류');
@@ -104,7 +117,7 @@ export function checkPublic(root=ROOT,secretsFile=paths.env,{checkIndex=true}={}
       }
       if(features!==info.boundary_count||tiles.feature_count!==features||fs.readdirSync(tilesFolder).some(file=>!allowed.has(file)))throw new Error('지도 경계 조각 건수 오류');
     }
-    if(info.version===2){if(info.data_mode!=='registry_master'||typeof info.coverage?.complete!=='boolean'||info.coverage.complexes!==info.count||!Array.isArray(info.coverage.regions)||!info.coverage.regions.length||info.coverage.regions.some(r=>r.status!=='scanned')||!info.attribution?.includes('V-World')||!info.license?.includes('kogl.or.kr'))throw new Error('아파트 마스터 수집 완전성 / 출처 오류');}
+    if(info.version===2){if(info.data_mode!=='registry_master'||typeof info.coverage?.complete!=='boolean'||(informationMeta?info.coverage.mapEligible!==info.count||info.coverage.complexes!==info.coverage.mapEligible+info.coverage.mapExcluded:info.coverage.complexes!==info.count)||!Array.isArray(info.coverage.regions)||!info.coverage.regions.length||info.coverage.regions.some(r=>r.status!=='scanned')||!info.attribution?.includes('V-World')||!info.license?.includes('kogl.or.kr'))throw new Error('아파트 마스터 수집 완전성 / 출처 오류');}
     else if(!info.attribution?.includes('OpenStreetMap')||!info.license?.includes('opendatacommons.org'))throw new Error('아파트 지도 출처 누락');
   }
   if(!fs.existsSync(path.join(root,'docs/.nojekyll')))throw new Error('Pages .nojekyll 누락');

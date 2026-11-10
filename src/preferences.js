@@ -5,6 +5,8 @@ import {dateBounds,monthBounds,publishedDay,weekBounds} from './weekly.mjs';
 export const PREFERENCES_KEY='home-records.preferences.v1';
 const MAX_PREFERENCE_CHARACTERS=2*1024*1024;
 const STORAGE_EVENT='home-records:storage-status';
+const PREFERENCES_EVENT='home-records:preferences-change';
+const favoriteRevision=value=>Number.isSafeInteger(value.favoritesRevision)?value.favoritesRevision:0;
 let storageProblem='';
 const reportStorageFailure=()=>{storageProblem='일부 설정을 이 브라우저에 저장하지 못했습니다. 저장 공간과 사이트 데이터 허용 설정을 확인해 주세요. 창을 닫으면 이번 변경이 남지 않을 수 있습니다.';window.dispatchEvent(new Event(STORAGE_EVENT));};
 export const preferenceStorageProblem=()=>storageProblem;
@@ -36,22 +38,23 @@ export function savePreferences(scope,value) {
     const retained=entries.filter(([key])=>persistent.has(key));
     const scopes=[...retained,...entries.filter(([key])=>!persistent.has(key)).slice(-(79-retained.length))];
     scopes.push([scope,value]);
-    return writeDocument({version:1,scopes:Object.fromEntries(scopes)});
+    return writeDocument({version:1,scopes:Object.fromEntries(scopes)},scope);
   }catch{reportStorageFailure();return false;}
 }
 
-function writeDocument(document){
+function writeDocument(document,scope){
   const raw=JSON.stringify(document);
   if(raw.length>MAX_PREFERENCE_CHARACTERS)throw new Error('설정 크기 초과');
-  window.localStorage.setItem(PREFERENCES_KEY,raw);return true;
+  window.localStorage.setItem(PREFERENCES_KEY,raw);
+  window.dispatchEvent(new CustomEvent(PREFERENCES_EVENT,{detail:{scope}}));return true;
 }
 export function clearPreferences() {
-  try{window.localStorage.removeItem(PREFERENCES_KEY);storageProblem='';window.dispatchEvent(new Event(STORAGE_EVENT));}catch{reportStorageFailure();}
+  try{window.localStorage.removeItem(PREFERENCES_KEY);storageProblem='';window.dispatchEvent(new Event(STORAGE_EVENT));window.dispatchEvent(new CustomEvent(PREFERENCES_EVENT,{detail:{}}));}catch{reportStorageFailure();}
 }
 export function snapshotPreferences(){try{return readDocument(true);}catch{reportStorageFailure();return null;}}
 export function restorePreferences(document){try{return writeDocument(document);}catch{reportStorageFailure();return false;}}
 export function resetQueries(){const document=snapshotPreferences();return !!document&&restorePreferences({version:1,scopes:{viewer:document.scopes.viewer||{}}});}
-export function clearFavorites(){return savePreferences('viewer',{...readPreferences('viewer'),apartments:[],regions:[]});}
+export function clearFavorites(){const viewer=readPreferences('viewer');return savePreferences('viewer',{...viewer,apartments:[],regions:[],favoritesRevision:favoriteRevision(viewer)+1});}
 
 export const textPreference=value=>typeof value==='string' && value.length<=200;
 export const areaPreference=value=>typeof value==='number' && Number.isFinite(value) && value>=0 && value<=100000;
@@ -115,27 +118,39 @@ export function useStoredState(scope,field,fallback,validate,initialValue) {
     const saved=readPreferences(scope)[field];
     if(!validator.current(saved))savePreferences(scope,{...readPreferences(scope),[field]:initial.current});
     const sync=event=>{
-      if(event.key!==PREFERENCES_KEY&&event.key!==null||unsaved.current)return;
+      if(unsaved.current)return;
+      if(event.type==='storage'&&event.key!==PREFERENCES_KEY&&event.key!==null)return;
+      if(event.type===PREFERENCES_EVENT&&event.detail.scope&&event.detail.scope!==scope)return;
       const saved=readPreferences(scope)[field],next=validator.current(saved)?saved:defaultValue;
+      if(JSON.stringify(current.current)===JSON.stringify(next))return;
       current.current=next;setValue(next);
     };
     window.addEventListener('storage',sync);
-    return()=>window.removeEventListener('storage',sync);
+    window.addEventListener(PREFERENCES_EVENT,sync);
+    return()=>{window.removeEventListener('storage',sync);window.removeEventListener(PREFERENCES_EVENT,sync);};
   },[scope,field,defaultValue]);
   const change=useCallback(update=>{
+    const revision=scope==='viewer'?favoriteRevision(readPreferences(scope)):null;
+    let applied=false;
     const apply=()=>{
-      const saved=readPreferences(scope)[field];
+      applied=true;
+      const preferences=readPreferences(scope);
+      if(scope==='viewer'&&favoriteRevision(preferences)!==revision)return false;
+      const saved=preferences[field];
       const previous=!unsaved.current&&validator.current(saved)?saved:current.current;
       const next=typeof update==='function'?update(previous):update;
-      if(!validator.current(next))return;
+      if(!validator.current(next))return false;
       current.current=next;setValue(next);
       unsaved.current=!savePreferences(scope,{...readPreferences(scope),[field]:next});
+      return !unsaved.current;
     };
     // Serialize favorite operations across tabs as well as reading their latest
     // value. Deletions remain deletions; stale arrays are never blindly merged.
     if(scope==='viewer'&&window.navigator.locks?.request){
-      void window.navigator.locks.request(PREFERENCES_KEY+':viewer',apply).catch(reportStorageFailure);
-    }else apply();
+      const failed=()=>{if(!applied)return apply();reportStorageFailure();return false;};
+      try{return window.navigator.locks.request(PREFERENCES_KEY+':viewer',apply).catch(failed);}catch{return failed();}
+    }
+    return apply();
   },[scope,field]);
   return [value,change];
 }

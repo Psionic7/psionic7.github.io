@@ -23,6 +23,11 @@ it('keeps large selections out of the server request and restores every selectio
  expect(apartmentUrlIds(readRouteParams(url))).toHaveLength(1000);
  expect(readRouteParams(url).get('month')).toBe('2026-10');
 });
+it('restores compact selections without copying catalog position or area into saved state',()=>{
+ const information={...root,location:{latitude:37.5,longitude:127,anchors:[{building_id:'one'}]},area:{parcels:[{pnu:'one'}],boundary_refs:[{id:'one'}]}};
+ expect(readApartmentUrlValue('@hub:test',[information])).toEqual(root);
+ expect(readApartmentUrlValue(JSON.stringify(information))).toEqual(root);
+});
 it('shares dashboard apartments with IDs and retains explicit empty selections',()=>{
  const overview={regions:[region],apartments:[root,source]},params=new URLSearchParams({tab:'dashboard'});
  appendSharedOverview(params,overview);

@@ -7,10 +7,12 @@ import {connect} from './storage.mjs';
 import {normalize,verifyCollectionHistory} from './collector.mjs';
 import {normalizedTradeFields,assertTradeRows,assertSameValues} from './trade-integrity.mjs';
 import {housingIdentityCatalog,housingTradeBindings} from './housing-identity.mjs';
-import {packHousingIdentity,housingSourceFingerprint} from './housing-export.mjs';
+import {packHousingIdentity,housingSourceFingerprint,housingQueryInformation} from './housing-export.mjs';
 import {readHousingPayload,assertHousingRows} from './browser-export.mjs';
 import {housingBindingsMap} from '../src/housing-wire.mjs';
 import {sourceIdentityId} from '../src/housing-identity.mjs';
+import {readApartmentInformationFile} from './apartment-information-files.mjs';
+import {validateIdentityMap,validateIdentitySearch} from '../src/apartment-identity.mjs';
 
 const hash=bytes=>createHash('sha256').update(bytes).digest('hex');
 const key=row=>JSON.stringify([row.dong,row.jibun,row.apartment]);
@@ -88,8 +90,15 @@ export function verifyTradeExport({target,snapshot,source,requireSearch=false}={
     if(expected.housing&&!housing)fail('주거 연결 자료 누락');
     if(housing&&housing.source_fingerprint!==housingSourceFingerprint(expected.rows))fail('주거 연결 원본 스냅샷 불일치');
     if(expected.housing&&JSON.stringify(expected.housing)!==JSON.stringify(housing))fail('주거 연결 작업 DB 배정 불일치');
+    const information=manifest.apartment_information?readApartmentInformationFile(path.dirname(folder),manifest,{required:true}):null;
+    if(information&&housing){
+      const selections=new Map(housingQueryInformation(information,housing).apartments.map(item=>[item.id,item]));
+      const fields=['identity_ref','identity_coverage','identity_related_sources','identity_listing_members','identity_reported_buildings','identity_default_sources'];
+      if(selections.size!==information.apartments.length||information.apartments.some(item=>!selections.has(item.id)||fields.some(field=>JSON.stringify(item[field])!==JSON.stringify(selections.get(item.id)[field]))))fail('공통 아파트 정보와 주거 배정의 조회 범위 불일치');
+    }
     const registry=json(path.join(queryFolder,'manifest.json'));
     if(registry.version!==1)fail('조회 자료 형식 오류');
+    if(information&&registry.apartment_information_generation!==information.generation)fail('조회 자료와 공통 아파트 정보 버전 불일치');
     if(!sameSet(groups.keys(),Object.keys(registry.districts)))fail('조회용 지역 누락');
     let months=0;
     const publicGroups=new Map();
@@ -125,6 +134,10 @@ export function verifyTradeExport({target,snapshot,source,requireSearch=false}={
     if(requireSearch||registry.search){
       if(!registry.search)fail('통합 검색 자료 없음. 조회 자료를 다시 준비하세요.');
       const search=checkedJson(queryFolder,registry.search,/^search-[a-f0-9]{12}\.json$/),matches=new Map();
+      if(information){
+        if(registry.search.apartment_information_generation!==information.generation)fail('통합 검색과 공통 아파트 정보 버전 불일치');
+        validateIdentitySearch(search,information);
+      }
       if(!Array.isArray(search)||new Set(search.map(item=>item.id)).size!==search.length)fail('통합 검색 식별자 중복');
       for(const [code,meta] of Object.entries(manifest.districts))if(registry.search.sources?.[code]!==meta.sha256)fail('통합 검색 버전 불일치');
       if(housing){
@@ -137,7 +150,11 @@ export function verifyTradeExport({target,snapshot,source,requireSearch=false}={
       }
       const mapFolder=path.join(path.dirname(folder),'apartment-map'),mapMeta=json(path.join(mapFolder,'manifest.json'));
       const masters=checkedJson(mapFolder,mapMeta.apartments,/^apartments-[a-f0-9]{12}\.json$/),byId=new Map(masters.map(item=>[item.id,item]));
-      const scopes=new Set(mapMeta.scope_region_ids||[]),expectedMasters=new Set((expected.memberships||[]).filter(row=>scopes.has(row.region_id)).map(row=>row.apartment_id));
+      const scopes=new Set(mapMeta.scope_region_ids||[]),expectedMasters=information?new Set(information.apartments.filter(item=>item.map_visible&&item.area.region_ids.some(id=>scopes.has(id))).map(item=>item.id)):new Set((expected.memberships||[]).filter(row=>scopes.has(row.region_id)).map(row=>row.apartment_id));
+      if(information&&mapMeta.version===2){
+        if(mapMeta.apartment_information_generation!==information.generation)fail('지도와 공통 아파트 정보 버전 불일치');
+        validateIdentityMap(masters,information);
+      }
       if(expectedMasters.size&&!sameSet(expectedMasters,byId.keys()))fail('지도 수집 범위의 단지 누락·초과');
       for(const item of search)if(item.master_id&&!byId.has(item.master_id))fail('통합 검색 지도 단지 누락');
       for(const link of housing?[]:expected.links||[]){

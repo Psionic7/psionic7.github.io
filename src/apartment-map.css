@@ -5,7 +5,7 @@
 
 @media(max-width:700px){.public-apartment-map-wrap.popup-open .leaflet-control-zoom{visibility:hidden}}
 
-.apartment-info-popup{position:relative}.map-popup-favorite{position:absolute;top:0;right:6px}.map-popup-favorite .apartment-favorite-button.compact{display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;min-height:40px;padding:8px;border:0;border-radius:8px;background:transparent}.map-popup-favorite .apartment-favorite-button svg{width:22px;height:22px}.map-popup-favorite .apartment-favorite-button:hover{background:#fff8e7}.apartment-info-popup .map-popup-eyebrow,.apartment-info-popup .map-popup-select{margin-right:52px!important}.apartment-info-popup h3{margin-right:52px}
+.apartment-info-popup{position:relative}.map-popup-favorite{display:flex;justify-content:flex-end;margin-bottom:8px}.map-popup-favorite .apartment-favorite-button{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:44px;padding:8px 12px;border-radius:8px}.map-popup-favorite .apartment-favorite-button svg{width:20px;height:20px;flex-shrink:0}.map-popup-favorite .apartment-favorite-button:hover{background:#fff8e7}.apartment-info-popup h3{margin-right:0}
 
 .map-popup-building-age{color:#758995;white-space:nowrap}
 

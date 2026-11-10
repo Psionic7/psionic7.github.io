@@ -5,7 +5,7 @@ import 'leaflet/dist/leaflet.css';
 import ApartmentMapPopup from './ApartmentMapPopup.jsx';
 import {geometryBounds,intersects} from './map-bounds.mjs';
 import {hasMapPosition} from './apartment-map-data.js';
-import {sameApartmentFavorite} from './apartment-favorites.js';
+import {mapApartmentFavoriteMatches} from './apartment-favorites.js';
 export const boundaryStyle=(ids,saved,kind='cadastral_parcels')=>({color:ids.some(id=>saved.has(id))?'#b87916':kind==='building_footprint'?'#6251bd':'#2858df',weight:kind==='building_footprint'?1.5:2,fillColor:ids.some(id=>saved.has(id))?'#e8bb54':kind==='building_footprint'?'#9c8fe8':'#7399f5',fillOpacity:kind==='building_footprint'?.38:.23});
 export default function ApartmentMapCanvas({data,visible,filters,favorites,onToggleFavorite,onOpenApartment,focusApartmentId,onSelectApartment}){
   const container=useRef(null),mapRef=useRef(null),groupRef=useRef(null),layersRef=useRef([]),latest=useRef({favorites}),popupRef=useRef(null),openRef=useRef(null),pendingFocus=useRef(null);
@@ -33,7 +33,7 @@ export default function ApartmentMapCanvas({data,visible,filters,favorites,onTog
   useEffect(()=>{mapRef.current?.closePopup();setSelection(null);},[visible]);
   useEffect(()=>{
     const map=mapRef.current;if(!map)return;
-    const group=L.layerGroup().addTo(map),byId=new Map(visible.map(p=>[p.id,p])),saved=new Set(visible.filter(p=>latest.current.favorites.some(f=>sameApartmentFavorite(p,f))).map(p=>p.id));groupRef.current=group;layersRef.current=[];
+    const group=L.layerGroup().addTo(map),byId=new Map(visible.map(p=>[p.id,p])),saved=new Set(visible.filter(p=>latest.current.favorites.some(f=>mapApartmentFavoriteMatches(p,f))).map(p=>p.id));groupRef.current=group;layersRef.current=[];
     const open=(apartments,latlng,boundaryName='',boundarySource='OpenStreetMap',boundaryKind='',buildingAttributes=null)=>{
       latest.current.onSelectApartment?.(apartments[0]?.id);
       const popupContainer=document.createElement('div');
@@ -89,7 +89,7 @@ export default function ApartmentMapCanvas({data,visible,filters,favorites,onTog
     return()=>{observer.disconnect();cancelAnimationFrame(frame);};
   },[selection]);
   useEffect(()=>{
-    const saved=new Set(visible.filter(p=>favorites.some(f=>sameApartmentFavorite(p,f))).map(p=>p.id));
+    const saved=new Set(visible.filter(p=>favorites.some(f=>mapApartmentFavoriteMatches(p,f))).map(p=>p.id));
     for(const record of layersRef.current){record.polygon?.setStyle(boundaryStyle(record.ids,saved,record.kind));const icon=record.marker?.getElement();icon?.classList.toggle('favorite',record.ids.some(id=>saved.has(id)));}
   },[favorites,visible]);
   return <div className={"public-apartment-map-wrap"+(selection?" popup-open":"")}><div ref={container} className="public-apartment-map" role="region" aria-label="아파트 단지 경계 지도"/>{tileError&&<p className="map-tile-warning">배경 지도 일부를 불러오지 못했습니다. 아파트 경계와 선택은 사용할 수 있습니다.</p>}{boundaryLoading&&<p className="map-detail-status" role="status">이 영역의 상세 경계를 불러오는 중입니다.</p>}{boundaryError&&<p className="map-detail-status error" role="alert">{boundaryError}<button onClick={()=>setRetry(value=>value+1)}>경계 다시 불러오기</button></p>}<div className="public-map-legend"><span><i className="complex-swatch"/>필지 경계</span><span><i className="building-outline-swatch"/>건물 외곽선 · V-World</span><span><i className="favorite-swatch"/>즐겨찾기 아파트</span><span><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 7h6M9 11h6M10 21v-6h4v6"/></svg>출입구 위치</span></div>

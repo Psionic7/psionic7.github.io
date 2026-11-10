@@ -1,4 +1,4 @@
-export const HOUSING_IDENTITY_SCHEMA=`
+export const HOUSING_IDENTITY_DATA_SCHEMA=`
 CREATE TABLE IF NOT EXISTS housing_identity_entities (
  entity_id TEXT PRIMARY KEY,favorite_json TEXT NOT NULL,state TEXT NOT NULL,method TEXT NOT NULL,
  cohort_ids_json TEXT NOT NULL,root_ids_json TEXT NOT NULL,legal_types_json TEXT NOT NULL,
@@ -19,8 +19,8 @@ CREATE TABLE IF NOT EXISTS housing_identity_bindings (
     OR (precision IN ('complex','unresolved') AND root_id IS NULL AND cohort_id IS NULL AND building_id IS NULL)));
 CREATE INDEX IF NOT EXISTS housing_binding_entity ON housing_identity_bindings(entity_id,trade_id);
 CREATE INDEX IF NOT EXISTS housing_binding_cohort ON housing_identity_bindings(cohort_id,trade_id);
-CREATE TABLE IF NOT EXISTS housing_identity_meta (key TEXT PRIMARY KEY,value TEXT NOT NULL);
 `;
+export const HOUSING_IDENTITY_SCHEMA=HOUSING_IDENTITY_DATA_SCHEMA+`CREATE TABLE IF NOT EXISTS housing_identity_meta (key TEXT PRIMARY KEY,value TEXT NOT NULL);`;
 
 export const HOUSING_IDENTITY_INVALIDATION_SCHEMA=`
 CREATE TRIGGER IF NOT EXISTS housing_identity_trade_insert AFTER INSERT ON trades BEGIN

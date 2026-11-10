@@ -5,7 +5,7 @@ import App from '../src/App.jsx';
 import {makeApartmentFavorite} from '../src/apartment-favorites.js';
 import {readRouteParams} from '../src/apartment-url.js';
 const state=vi.hoisted(()=>({information:[],load:vi.fn(),map:vi.fn()}));
-vi.mock('../src/useApartmentInformation.js',()=>({default:()=>state.information,loadApartmentInformation:()=>state.load()}));
+vi.mock('../src/useApartmentInformation.js',async importOriginal=>({...await importOriginal(),default:()=>state.information,loadApartmentInformation:()=>state.load()}));
 vi.mock('../src/apartment-map-data.js',()=>({loadApartmentMap:()=>state.map()}));
 afterEach(()=>{cleanup();vi.restoreAllMocks();localStorage.clear();state.load.mockReset();});
 it('refreshes stored selections from shared identity information and keeps complex-level historical trades',async()=>{

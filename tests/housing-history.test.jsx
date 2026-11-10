@@ -4,7 +4,7 @@ import {cleanup,fireEvent,render,screen} from '@testing-library/react';
 import ApartmentPage from '../src/ApartmentPage.jsx';
 import {makeApartmentFavorite} from '../src/apartment-favorites.js';
 const state=vi.hoisted(()=>({information:[]}));
-vi.mock('../src/useApartmentInformation.js',()=>({default:()=>state.information}));
+vi.mock('../src/useApartmentInformation.js',async importOriginal=>({...await importOriginal(),default:()=>state.information}));
 const region={region_id:'dong_41135103',region_code:'41135',region_name:'경기도 성남시 분당구',label:'분당구 정자동',dongs:['정자동']};
 const entity=JSON.stringify(['41135','정자동','199','동아2']);
 const create=(kind,id,extra={})=>makeApartmentFavorite({apartment:'동아2',dong:'정자동',jibun:'199',road_address:'불정로 179',identity_ref:{kind,id},...extra},region);

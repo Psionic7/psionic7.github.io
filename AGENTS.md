@@ -10,7 +10,7 @@
 - 아파트를 찾거나 실거래·매물·지도·주소 데이터를 연결하기 전에 `server/apartment-identity.mjs`의 `apartmentInformation`, `searchApartmentInformation`, `resolveApartmentIdentity`를 사용하세요. `apartment_identity`와 기존 `apartment_aliases`, `apartment_identity_addresses`가 공통 아파트 정보입니다.
 - 대장 기본키는 기존 `apartment_complexes.apartment_id`입니다. 실거래 원천 단지·주소 구획·대장 root는 서로 다른 조회 범위이므로 `synchronizeHousingIdentity`와 `housingIdentityCatalog`의 명시적 참조를 사용하세요. 단지명이 다르다는 이유로 대장 ID를 만들거나, 이름·부분 일치·우편번호만으로 단지를 병합하지 마세요. 같은 이름이나 주소에 후보가 여러 개면 자동 연결하지 말고 미확정 상태를 보존하세요.
 - 거래 조회는 `src/housing-identity.mjs`의 `identityTradeMatches`를 사용하세요. `trade_keys`를 조회 권한으로 되살리지 마세요. 동 정보가 없는 과거 거래를 모든 하위 단지에 복사하지 말고, 원천 단지 전체 내역과 이동 경로를 보존하세요. 원본 거래 ID마다 배정은 정확히 하나여야 합니다.
-- 저장한 선택의 갱신에는 공통 아파트 정보를 사용하세요. 지도용 단지 목록으로 `identity_coverage`를 덮어쓰지 마세요. 아파트 정보 캐시·통합 검색·월별 조회는 `manifest.housing.sha256` 버전을 함께 확인해야 합니다.
+- 저장한 선택의 갱신에는 공통 아파트 정보를 사용하세요. 지도용 단지 목록으로 `identity_coverage`를 덮어쓰지 마세요. 공통 정보는 `manifest.apartment_information`이 지정한 불변 카탈로그의 파일·SHA·생성 버전과 `housing_sha256` 연결을 확인해야 합니다. 검색·지도·경계 조각은 같은 `apartment_information_generation`을 사용하고, 월별 거래 배정은 `manifest.housing.sha256`도 확인하세요. `location`·`area`·GeoJSON은 즐겨찾기·조회 선택·공유 URL에 복사하지 마세요.
 - 네이버 단지 번호 하나가 여러 주소 구획을 묶을 수 있습니다. 원본 광고 관측은 보존하고, 같은 제공자 번호에 여러 구획과 서로 겹치지 않는 등록 동 집합이 확인된 경우 조회 범위에 맞게 나누세요. 제공자 동 표기가 대장과 다르다는 사실 하나만으로 다른 단지로 단정하거나 광고를 삭제하지 마세요. 여러 선택을 API로 읽을 때 특정 선택의 필터 결과로 공통 원본 광고를 덮어쓰지 마세요.
 - 대장 건물 연결이 미확정이어도 실거래 원천 단지의 매물을 별도로 확인할 수 있습니다. 대장 주소의 후보 힌트를 원천 단지의 건물 연결 확정으로 바꾸지 말고, 공통 검증기를 통과한 실제 매물 관측만 원천 단지 ID에 저장하세요.
 - 좌표는 후보 탐색에 사용하세요. 네이버에서 실제 관측한 주소·위치와 공식 도로명·주필지 경계 또는 출입구를 함께 검증해야 합니다. 기대 좌표를 관측 좌표로 채우거나, 최근접·공유 출입구·부속 필지·필지 전체 건물 도형만으로 연결하지 마세요. 수집 대상의 `location`은 즐겨찾기·공유 URL 밖에 전달하세요.
@@ -19,7 +19,7 @@
 - 공식 주소 응답의 건물관리번호와 여러 도로명주소를 보존하세요. 확인되지 않은 우편번호는 NULL로 두세요. 같은 우편번호라는 이유로 주소나 단지가 같다고 판단하지 마세요.
 - 주소 비교에는 `src/address-identity.mjs`를 사용하세요. 도로명주소의 공백·끝 괄호 참고항목과 지번의 공백·숫자 표기를 통일하되 산 지번과 건물 본번·부번을 구분하세요. 도로명주소만으로 연결하지 말고 검증된 별칭·기존 주지번·준공연도와 충돌하는지 확인하세요.
 - 연결 규칙이나 수집기를 바꾼 뒤 `pnpm audit:matches --output local/data-validation/apartment-matches.json`으로 범위 안·밖의 실거래 미연결, 매물 검색 미확정, 수집 오류, 저장 매물의 공통 ID 미연결을 따로 검사하세요. 검색 미확정을 매물 0건으로 보고하지 마세요.
-- 대장·주소·별칭·매물 연결을 갱신한 뒤 `pnpm data:identities`로 정보를 갱신하고, `pnpm data:export`의 필수 검증을 통해 검색·지도 데이터를 생성하세요. `public/apartment-identity/catalog.json`을 직접 편집하지 마세요.
+- 대장·주소·별칭·매물 연결을 갱신한 뒤 `pnpm data:identities`로 정보를 갱신하고, `pnpm data:export`의 필수 검증을 통해 검색·지도 데이터를 생성하세요. `public/apartment-identity/catalog-<SHA앞12자리>.json`을 직접 편집하지 마세요. 고정 `catalog.json`은 새 메타데이터가 없는 이전 자료의 읽기 호환용입니다. 대장 재구성·내보내기는 복사본에서 먼저 검증하고, 대장 원천이 없는 DB로 기존 대장 지도와 공통 세대를 덮어쓰지 마세요.
 - 연결 규칙 변경 시 `tests/apartment-identity.test.mjs`의 삼성1차 명칭 차이, 동명이인 단지·다른 지번·우편번호 단독 연결 금지와 재실행 검증을 유지하세요. `pnpm test:data`, `pnpm data:verify`, `pnpm build`, `pnpm check:publish`를 통과해야 완료로 보고하세요.
 - 스키마와 사용 방법은 [아파트 식별 정보 통합](project-notes/apartment-identity.md)을 참조하세요.
 

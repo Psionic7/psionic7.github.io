@@ -5,10 +5,14 @@ import {parseRegistryPage,readRegistryRegion,fetchRegistryPage,REGISTRY_DATASETS
 import {initializeApartmentMaster,startMasterRun,saveRegistrySnapshot,rebuildApartmentMaster,masterStats,linkMasterTrades,masterMapData} from '../server/apartment-master.mjs';
 import {enrichApartmentMaster,parseParcelResult,parseMasterEntrances,VWORLD_LAYERS} from '../server/apartment-master-enrichment.mjs';
 import {enrichVworldApartmentData,fetchVworldLayer,geometryWkt} from '../server/vworld-apartment-data.mjs';
+import {synchronizeHousingIdentity} from '../server/apartment-identity.mjs';
+import {PUBLIC_SCHEMA} from '../server/storage.mjs';
+import {normalize} from '../server/collector.mjs';
 const scope={region_id:'dong_41117102',legal_code:'4111710200',region_code:'41117',region_name:'경기도 수원시 영통구',dong:'원천동'};
 const title=(id,name='거래없는아파트',changes={})=>({mgmBldrgstPk:id,sigunguCd:'41117',bjdongCd:'10200',platGbCd:'0',bun:'0001',ji:'0000',bldNm:name,dongNm:id,mainAtchGbCd:'0',mainPurpsCd:'02000',mainPurpsCdNm:'공동주택',etcPurps:'아파트',newPlatPlc:'경기도 수원시 영통구 시험로 1',useAprDay:'20000103',hhldCnt:'50',grndFlrCnt:'15',naRoadCd:'411173012345',naBjdongCd:'10200',naUgrndCd:'0',naMainBun:'1',naSubBun:'0',...changes});
 const snapshot=(titles,basis=[],recap=[],attached=[],floors=[])=>Object.fromEntries(REGISTRY_DATASETS.map((key,i)=>{const items=[titles,basis,recap,attached,floors][i];return[key,{total:items.length,items,pages:[{page:1,total:items.length,items}]}];}));
 function fixture(){const db=new DatabaseSync(':memory:');initializeApartmentMaster(db);return db;}
+function insertCollectedTrade(db,apartment,jibun){const raw={aptNm:apartment,umdNm:scope.dong,jibun,dealAmount:'10,000',excluUseAr:'84.5',dealYear:'2026',dealMonth:'01',dealDay:'09',sggCd:scope.region_code,floor:'3',buildYear:'2000',cdealType:'',cdealDay:''};db.prepare('INSERT INTO trades VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)').run(1,...normalize(raw,scope.region_code,'202601'));}
 
 test('registry retry exhaustion always rejects even when body-read failures follow network failures',async()=>{
  let attempts=0;
@@ -47,7 +51,7 @@ test('missing dates and unclassified housing remain visible as issues rather tha
  const db=fixture();try{populate(db,snapshot([title('b1','신규',{useAprDay:''}),title('b2','용도모름',{etcPurps:''})]));assert.equal(db.prepare("SELECT build_year FROM apartment_complexes WHERE apartment_id='hub:b1'").get().build_year,null);const codes=masterStats(db).issueList.map(i=>i.code);assert.ok(codes.includes('missing_approval'));assert.ok(codes.includes('use_review'));}finally{db.close();}
 });
 test('coordinate enrichment groups common address codes and preserves all entrances, including multi-entrance results',async()=>{
- const db=fixture();try{populate(db);let requests=0;await enrichApartmentMaster(db,{coordinateKey:'local-key',vworldKey:'local-vworld',pause:0,coordinateFetcher:async()=>{requests++;return[{latitude:37.005,longitude:127.005,entX:950000,entY:1950000},{latitude:37.006,longitude:127.006,entX:950001,entY:1950001}];},parcelFetcher:async()=>polygon});assert.equal(requests,1);assert.equal(db.prepare('SELECT count(*) AS n FROM apartment_entrances').get().n,4);assert.equal(masterStats(db,[scope.region_id]).readyToComplete,false);assert.equal(masterStats(db,[scope.region_id]).complete,false);db.prepare("UPDATE apartment_inventory_runs SET status='complete'").run();assert.equal(masterStats(db,[scope.region_id]).complete,false);const data=masterMapData(db,[scope],[scope.region_id]);assert.equal(data.apartments.length,1);assert.equal(data.apartments[0].trade_keys.length,0);assert.equal(data.boundaries.features.length,2);assert.equal(data.apartments[0].build_year,2000);}finally{db.close();}
+ const db=fixture();try{populate(db);let requests=0;await enrichApartmentMaster(db,{coordinateKey:'local-key',vworldKey:'local-vworld',pause:0,coordinateFetcher:async()=>{requests++;return[{latitude:37.005,longitude:127.005,entX:950000,entY:1950000},{latitude:37.006,longitude:127.006,entX:950001,entY:1950001}];},parcelFetcher:async()=>polygon});assert.equal(requests,1);assert.equal(db.prepare('SELECT count(*) AS n FROM apartment_entrances').get().n,4);assert.equal(masterStats(db,[scope.region_id]).readyToComplete,false);assert.equal(masterStats(db,[scope.region_id]).complete,false);db.prepare("UPDATE apartment_inventory_runs SET status='complete'").run();assert.equal(masterStats(db,[scope.region_id]).complete,false);synchronizeHousingIdentity(db,{scopes:[{...scope,dongs:[scope.dong]}]});const data=masterMapData(db,[scope],[scope.region_id]);assert.equal(data.apartments.length,1);assert.equal(data.apartments[0].trade_keys.length,0);assert.equal(data.boundaries.features.length,2);assert.equal(data.apartments[0].build_year,2000);}finally{db.close();}
 });
 test('transient geometry failures preserve previously verified data',async()=>{
  const db=fixture();try{populate(db);await enrichApartmentMaster(db,{coordinateKey:'k',vworldKey:'v',pause:0,coordinateFetcher:async()=>[{latitude:37,longitude:127,entX:950000,entY:1950000}],parcelFetcher:async()=>polygon});const before=db.prepare('SELECT geometry_json FROM apartment_parcels').get().geometry_json;await assert.rejects(enrichApartmentMaster(db,{coordinateKey:'k',vworldKey:'v',pause:0,refresh:true,coordinateFetcher:async()=>[{latitude:37,longitude:127,entX:950000,entY:1950000}],parcelFetcher:async()=>{throw new Error('HTTP 503');}}));assert.equal(db.prepare('SELECT geometry_json FROM apartment_parcels').get().geometry_json,before);}finally{db.close();}
@@ -74,10 +78,10 @@ test('equivalent road observations do not create an address conflict',()=>{
 test('master export links duplicate building roots without merging IDs or assigning attached neighbours their trades',()=>{
  const db=fixture();try{
   populate(db,snapshot([title('b1','주공'),title('b2','주공'),title('b3','주공',{bun:'0002',newPlatPlc:'경기도 수원시 영통구 이웃로 2'})],[],[],[{mgmBldrgstPk:'b3',atchSigunguCd:'41117',atchBjdongCd:'10200',atchPlatGbCd:'0',atchBun:'0001',atchJi:'0000'}]));
-  db.exec('CREATE TABLE trades(region_code TEXT,dong TEXT,jibun TEXT,apartment TEXT,build_year INTEGER)');
-  db.prepare('INSERT INTO trades VALUES(?,?,?,?,?)').run(scope.region_code,scope.dong,'1','주공',2000);
+  db.exec(PUBLIC_SCHEMA);
+  insertCollectedTrade(db,'주공','1');
   assert.deepEqual(linkMasterTrades(db),{matched:1,ambiguous:0,unmatched:0});
-  const data=masterMapData(db,[scope],[scope.region_id]),key=JSON.stringify([scope.dong,'1','주공']);
+  synchronizeHousingIdentity(db,{scopes:[{...scope,dongs:[scope.dong]}]});const data=masterMapData(db,[scope],[scope.region_id]),key=JSON.stringify([scope.dong,'1','주공']);
   assert.equal(data.apartments.length,3);
   assert.deepEqual(data.apartments.find(p=>p.id==='hub:b1').trade_keys,[key]);
   assert.deepEqual(data.apartments.find(p=>p.id==='hub:b2').trade_keys,[key]);
@@ -85,7 +89,7 @@ test('master export links duplicate building roots without merging IDs or assign
   db.prepare('UPDATE apartment_complexes SET road_address=? WHERE apartment_id=?').run('다른 주소','hub:b2');
   assert.equal(linkMasterTrades(db).ambiguous,1);
   assert(data.apartments.every(p=>p.id.startsWith('hub:')));
-  assert(masterMapData(db,[scope],[scope.region_id]).apartments.every(p=>p.trade_keys.length===0));
+  synchronizeHousingIdentity(db,{scopes:[{...scope,dongs:[scope.dong]}]});assert(masterMapData(db,[scope],[scope.region_id]).apartments.every(p=>p.trade_keys.length===0));
  }finally{db.close();}
 });
 
@@ -154,7 +158,7 @@ test('V-World enriches apartment parcels in restartable batches before loading b
   assert.equal(db.prepare('SELECT count(*) AS n FROM apartment_district_boundaries').get().n,1);
   const stats=masterStats(db,[scope.region_id]);
   assert.equal(stats.vworldDataComplete,true);assert.equal(stats.withDistrictBoundary,1);assert.equal(stats.withFootprints,1);assert.equal(stats.withLandPrice,1);assert.equal(stats.withZoning,1);
-  const data=masterMapData(db,[scope],[scope.region_id]);
+  synchronizeHousingIdentity(db,{scopes:[{...scope,dongs:[scope.dong]}]});const data=masterMapData(db,[scope],[scope.region_id]);
   assert.equal(data.apartments[0].land_price_per_m2,50500);
   assert.deepEqual(data.apartments[0].zoning_names,['제2종일반주거지역']);
   assert.equal(data.boundaries.features.length,3);
@@ -167,11 +171,11 @@ test('scanned master exports every apartment despite missing fields and preserve
  const source=path.join(root,'master.sqlite3'),target=path.join(root,'map'),favorites=path.join(root,'regions.json'),secretsFile=path.join(root,'.env');
  fs.writeFileSync(favorites,JSON.stringify({version:1,regions:[{region_id:scope.region_id}]}));fs.writeFileSync(secretsFile,'VWORLD_API_KEY=privatefixturepartialkey');
  const db=new DatabaseSync(source);initializeApartmentMaster(db);
- db.exec('CREATE TABLE regions(region_id TEXT,label TEXT,region_code TEXT,region_name TEXT,dongs_json TEXT,lat REAL,lon REAL); CREATE TABLE trades(region_code TEXT,dong TEXT,jibun TEXT,apartment TEXT,build_year INTEGER)');
+ db.exec(PUBLIC_SCHEMA);
  db.prepare('INSERT INTO regions VALUES(?,?,?,?,?,?,?)').run(scope.region_id,'원천동',scope.region_code,scope.region_name,JSON.stringify([scope.dong]),37,127);
  populate(db,snapshot([title('b1','삼성아파트'),title('b2','',{bun:'0002'})]));
  db.prepare('INSERT INTO apartment_entrances VALUES(?,?,?,?,?,?,?,?)').run('b1',0,37.005,127.005,950000,1950000,'test','today');
- db.prepare('INSERT INTO trades VALUES(?,?,?,?,?)').run(scope.region_code,scope.dong,'1','삼성1',2000);linkMasterTrades(db);db.close();
+ insertCollectedTrade(db,'삼성1','1');linkMasterTrades(db);db.close();
  const result=exportApartmentMap({source,target,favorites,secretsFile});
  assert.equal(result.count,2);assert.equal(result.coverage.complete,false);
  const apartments=JSON.parse(fs.readFileSync(path.join(target,result.apartments.file))),boundaries=JSON.parse(fs.readFileSync(path.join(target,result.boundaries.file)));
@@ -212,7 +216,7 @@ test('cached senior records rebuild into a labeled map entry without reclassifyi
   // Emulate a cache created before senior housing was supported.
   db.prepare("UPDATE apartment_building_inventory SET classification='other' WHERE building_id='senior'").run();
   rebuildApartmentMaster(db);
-  const data=masterMapData(db,[scope],[scope.region_id]);
+  synchronizeHousingIdentity(db,{scopes:[{...scope,dongs:[scope.dong]}]});const data=masterMapData(db,[scope],[scope.region_id]);
   const item=data.apartments.find(p=>p.master_id==='hub:senior');
   assert.equal(item.housing_type,'senior_housing');assert.equal(item.housing_type_label,'노인복지주택');
   assert.equal(item.dwelling_unit_count,32);assert.equal(item.household_count,0);assert.equal(item.apartment,'수지광교산아이파크');assert.equal(item.location_status,'missing');

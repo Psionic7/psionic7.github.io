@@ -20,7 +20,11 @@ export function apartmentUrlIds(params){
   return [...new Set(selectionKeys.flatMap(key=>params.getAll(key)).filter(value=>value.startsWith('@')).map(value=>value.slice(1)))];
 }
 export function readApartmentUrlValue(value,information=[],catalog=[]){
-  if(!value.startsWith('@'))return JSON.parse(value);
+  if(!value.startsWith('@')){
+    const item=JSON.parse(value);
+    if(!validApartmentFavorites([item]))throw Error('공유 주소의 아파트 선택 형식을 확인하세요.');
+    return makeApartmentFavorite(item,item);
+  }
   const id=value.slice(1),item=information.find(item=>item.id===id);
   if(!item){
     try{
@@ -31,6 +35,6 @@ export function readApartmentUrlValue(value,information=[],catalog=[]){
       }
     }catch{}
   }
-  if(!item)throw Error('공유 주소의 아파트 정보를 찾지 못했습니다.');
-  return item;
+  if(!item||!validApartmentFavorites([item]))throw Error('공유 주소의 아파트 정보를 찾지 못했습니다.');
+  return makeApartmentFavorite(item,item);
 }

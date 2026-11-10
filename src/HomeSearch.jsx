@@ -1,20 +1,20 @@
 import React,{useEffect,useMemo,useState} from 'react';
 import {Search,ArrowUpRight,MapPin,Building2} from 'lucide-react';
-import {cachedJson,loadDistrict} from './data.js';
+import {verifiedJson,loadDistrict} from './data.js';
 import {buildSearchIndex} from './search-index.mjs';
 import {hasTradeCoverage} from './coverage.js';
-import {loadApartmentInformation} from './useApartmentInformation.js';
+import {loadApartmentInformation,apartmentInformationVersion} from './useApartmentInformation.js';
 
 export const normalizeSearch=value=>String(value||'').toLocaleLowerCase().replace(/[\s·()_-]/g,'');
 export async function loadSearchIndex(manifest){
   const meta=typeof __SEARCH_DATA__==='undefined'?null:__SEARCH_DATA__;
-  if(meta&&(!manifest.housing||meta.housing_sha256===manifest.housing.sha256)&&Object.entries(manifest.districts).every(([code,d])=>meta.sources[code]===d.sha256)){
-    if(!/^search-[a-f0-9]{12}\.json$/.test(meta.file))throw new Error('검색 목록을 확인할 수 없습니다.');
-    const items=await cachedJson('/query-data/'+meta.file);if(!Array.isArray(items))throw new Error('검색 목록을 확인할 수 없습니다.');return items;
+  if(meta&&(!manifest.housing||meta.housing_sha256===manifest.housing.sha256)&&(!manifest.apartment_information||meta.apartment_information_generation===manifest.apartment_information.generation)&&meta.sources&&Object.entries(manifest.districts).every(([code,d])=>meta.sources[code]===d.sha256)){
+    if(!/^[a-f0-9]{64}$/.test(meta.sha256||'')||meta.file!==`search-${meta.sha256.slice(0,12)}.json`)throw new Error('검색 목록을 확인할 수 없습니다.');
+    const items=await verifiedJson('/query-data/'+meta.file,meta.sha256);if(!Array.isArray(items)||new TextEncoder().encode(JSON.stringify(items)).byteLength!==meta.bytes)throw new Error('검색 목록을 확인할 수 없습니다.');return items;
   }
   // Compatibility for a newly published manifest while an older page is still open.
-  const groups=await Promise.all(Object.keys(manifest.districts).map(async code=>[code,(await loadDistrict(manifest,code,{catalogOnly:true})).catalog||[]]));
-  const information=await loadApartmentInformation(manifest.housing?.sha256||manifest.published_at);
+  const groups=await Promise.all(Object.keys(manifest.districts).map(async code=>{const dataset=await loadDistrict(manifest,code,{catalogOnly:true});return [code,Array.isArray(dataset)?dataset:dataset.catalog||dataset.rows||[]];}));
+  const information=await loadApartmentInformation(manifest.apartment_information||apartmentInformationVersion(manifest));
   return buildSearchIndex(new Map(groups),manifest.regions,information);
 }
 export default function HomeSearch({manifest,catalog,onApartment,onRegion,loader=loadSearchIndex}){

@@ -5,7 +5,7 @@ export const apartmentFavoriteId=item=>item.identity_ref?.id||item.master_id||so
 export const apartmentFavoriteLabel=item=>`${item.apartment} ${item.region_name} ${item.dong} 지번 ${item.jibun||'미상'}`;
 export function makeApartmentFavorite(item,region) {
   const favorite={region_code:region.region_code,region_name:region.region_name,apartment:item.apartment,dong:item.dong,jibun:item.jibun||'',road_address:item.road_address||''};
-  const metadata={...identityMetadata(item),...(item.housing_source_kind?{housing_source_kind:item.housing_source_kind}:{}),...(item.housing_legal_types?{housing_legal_types:[...item.housing_legal_types]}:{})};
+  const metadata={...identityMetadata(item),...(item.active!==undefined?{active:Boolean(item.active)}:{}),...(item.residential_status?{residential_status:item.residential_status}:{}),...(item.housing_source_kind?{housing_source_kind:item.housing_source_kind}:{}),...(item.housing_legal_types?{housing_legal_types:[...item.housing_legal_types]}:{})};
   return {...favorite,id:apartmentFavoriteId({...favorite,master_id:item.master_id,...metadata}),key:apartmentKey(favorite),...(item.master_id?{master_id:item.master_id,trade_keys:[...(item.trade_keys||[])]}:{}),...metadata};
 }
 function identityMetadata(item) {
@@ -37,10 +37,20 @@ export function refreshApartmentFavorites(saved, current) {
       latest={...item,identity_ref:{kind:'root',id:item.master_id},identity_coverage:{entity_ids:[],cohort_ids:[],root_ids:[item.master_id]},identity_related_sources:[]};
     }
     if(!item.master_id&&!item.identity_ref&&!latest.identity_ref)return item;
-    const updated={...latest,...identityMetadata(latest),...(latest.master_id?{trade_keys:[...(latest.trade_keys||[])]}:{}),identity_ref:{...identityRef(latest)}};
+    const updated={...makeApartmentFavorite(latest,latest),identity_ref:{...identityRef(latest)}};
     if(JSON.stringify(item)===JSON.stringify(updated))return item;
     changed=true;return updated;
   });
-  return changed?next:saved;
+  return changed?[...new Map(next.map(item=>[item.id,item])).values()]:saved;
 }
 export const sameApartmentFavorite=identitySelectionEqual;
+export function mapApartmentFavoriteMatches(apartment,favorite){
+  const selected=identityRef(favorite);
+  return sameApartmentFavorite(apartment,favorite)||Boolean(selected&&apartment.map_member_refs?.some(ref=>ref.kind===selected.kind&&ref.id===selected.id));
+}
+export function mapApartmentFavorite(apartment,favorites){
+  const exact=favorites.find(favorite=>sameApartmentFavorite(apartment,favorite));
+  if(exact)return exact;
+  const related=favorites.filter(favorite=>mapApartmentFavoriteMatches(apartment,favorite));
+  return related.length===1?related[0]:null;
+}

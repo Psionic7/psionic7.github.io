@@ -1,5 +1,8 @@
 import fs from 'node:fs';
-import {APARTMENT_IDENTITY_SCHEMA} from './apartment-identity-schema.mjs';
+import {initializeApartmentIdentity} from './apartment-identity-schema.mjs';
+import {createHash} from 'node:crypto';
+import {readApartmentSpatialContext,scopeApartmentSpatialContext} from './apartment-spatial.mjs';
+import {housingQueryInformation} from './housing-export.mjs';
 import {validListingSnapshot} from '../src/naver-listings.mjs';
 import {makeApartmentFavorite} from '../src/apartment-favorites.js';
 import {normalizeRoadAddress,normalizeParcel} from '../src/address-identity.mjs';
@@ -27,22 +30,50 @@ const addressParcel=(value,regionName,dong)=>{
 };
 export const apartmentAliasOverrides=()=>JSON.parse(fs.readFileSync(new URL('../automation/apartment-aliases.json',import.meta.url),'utf8'));
 
-export function apartmentInformation(db,{activeOnly=true}={}) {
+const digest=value=>createHash('sha256').update(JSON.stringify(value)).digest('hex');
+function readRootInformation(db,{activeOnly=true,contexts=readApartmentSpatialContext(db)}={}) {
   if(!has(db,'apartment_information'))return [];
-  return db.prepare('SELECT * FROM apartment_information'+(activeOnly?' WHERE active=1':'')+' ORDER BY apartment_id').all().map(({name_aliases_json,sources_json,...row})=>({...row,name_aliases:JSON.parse(name_aliases_json),sources:JSON.parse(sources_json),trade_keys:has(db,'apartment_trade_links')?db.prepare("SELECT dong,jibun,trade_name FROM apartment_trade_links WHERE region_code=? AND status='matched' AND (apartment_id=? OR (method='shared_registry_address' AND EXISTS(SELECT 1 FROM json_each(candidates_json) WHERE value=?)))").all(row.region_code,row.apartment_id,row.apartment_id).map(t=>JSON.stringify([t.dong,t.jibun,t.trade_name])):[],addresses:db.prepare('SELECT * FROM apartment_identity_addresses WHERE apartment_id=? ORDER BY road_address,building_management_no').all(row.apartment_id)}));
+  const modern=db.prepare('PRAGMA table_info(apartment_information)').all().some(row=>row.name==='scope_kind');
+  return db.prepare('SELECT * FROM apartment_information WHERE '+(modern?"scope_kind='root' AND ":'')+(activeOnly?'active=1':'1')+' ORDER BY apartment_id').all().map(({name_aliases_json,sources_json,classification_evidence_json,root_ids_json,...row})=>{
+    const context=contexts.get(row.apartment_id);
+    return {...row,selection_id:row.apartment_id,scope_kind:'root',root_ids:root_ids_json?JSON.parse(root_ids_json):[row.apartment_id],name_aliases:JSON.parse(name_aliases_json),sources:JSON.parse(sources_json),classification_evidence:JSON.parse(classification_evidence_json||'{}'),
+      ...(context?{...context.facts,residential_status:context.residential_status,location:context.location,area:context.area,primary_building_id:context.primary_building_id,primary_entrance_index:context.primary_entrance_index}:{}),
+      trade_keys:has(db,'apartment_trade_links')?db.prepare("SELECT dong,jibun,trade_name FROM apartment_trade_links WHERE region_code=? AND status='matched' AND (apartment_id=? OR (method='shared_registry_address' AND EXISTS(SELECT 1 FROM json_each(candidates_json) WHERE value=?)))").all(row.region_code,row.apartment_id,row.apartment_id).map(t=>JSON.stringify([t.dong,t.jibun,t.trade_name])):[],addresses:db.prepare('SELECT * FROM apartment_identity_addresses WHERE apartment_id=? ORDER BY road_address,building_management_no').all(row.apartment_id)};
+  });
+}
+
+export function apartmentInformation(db,{activeOnly=true,kind='root',geometry='summary'}={}) {
+  if(!['root','cohort','source','all'].includes(kind)||!['summary','full'].includes(geometry))throw Error('공통 아파트 정보의 조회 범위를 확인하세요.');
+  if(kind==='root'){
+    const contexts=readApartmentSpatialContext(db,{geometry});
+    return readRootInformation(db,{activeOnly,contexts}).map(row=>({...row,...(geometry==='full'?{boundaries:contexts.get(row.apartment_id)?.boundaries}:{})}));
+  }
+  const catalog=publicApartmentInformation(db),contexts=geometry==='full'?readApartmentSpatialContext(db,{geometry}):null;
+  const housing=contexts?housingIdentityCatalog(db):null,cohorts=new Map((housing?.cohorts||[]).map(cohort=>[cohort.cohort_id,cohort]));
+  const scoped=cohort=>cohort&&contexts.has(cohort.root_id)?scopeApartmentSpatialContext(contexts.get(cohort.root_id),cohort).boundaries?.features||[]:[];
+  return catalog.apartments.filter(item=>(!activeOnly||item.active!==false)&&(kind==='all'||item.identity_ref.kind===kind)).map(item=>{
+    let boundaries;
+    if(contexts){
+      const source=item.identity_ref.kind==='source'?housing.entities.find(entity=>entity.entity_id===item.id&&entity.state==='verified'):null;
+      const features=item.identity_ref.kind==='root'?contexts.get(item.id)?.boundaries?.features||[]:item.identity_ref.kind==='cohort'?scoped(cohorts.get(item.id)):source?.cohort_ids.flatMap(id=>scoped(cohorts.get(id)))||[];
+      boundaries={type:'FeatureCollection',features:[...new Map(features.map(feature=>[feature.id,feature])).values()]};
+    }
+    return {...item,canonical_name:item.apartment,apartment_id:item.identity_ref.kind==='root'?item.id:item.master_id||(item.root_ids.length===1?item.root_ids[0]:null),selection_id:item.id,scope_kind:item.identity_ref.kind,...(boundaries?{boundaries}:{})};
+  });
 }
 
 export function synchronizeApartmentIdentity(db,{snapshot,overrides=apartmentAliasOverrides(),apartmentIds,now=new Date().toISOString()}={}) {
   if(!has(db,'apartment_complexes'))return {apartments:0,withPostalCode:0};
   if(snapshot&&!validListingSnapshot(snapshot))throw Error('아파트 정보에 연결할 매물 스냅샷 검증 실패');
   if(!Array.isArray(overrides)||overrides.some(row=>!row||!Array.isArray(row.names)||[row.canonical_name,...row.names].some(name=>typeof name!=='string'||!name.trim()||name.length>500)||!row.source))throw Error('검토한 아파트 별칭 형식을 확인하세요.');
-  db.exec(APARTMENT_IDENTITY_SCHEMA);
+  initializeApartmentIdentity(db);
   const old=new Map(apartmentInformation(db,{activeOnly:false}).map(row=>[row.apartment_id,row]));
   const complexes=db.prepare('SELECT * FROM apartment_complexes ORDER BY apartment_id').all();
   const regions=has(db,'regions')?db.prepare('SELECT region_code,region_name FROM regions ORDER BY rowid').all():[];
   const lookups=has(db,'address_lookups')?db.prepare("SELECT * FROM address_lookups WHERE status IN ('exact','ambiguous')").all():[];
   const trades=has(db,'apartment_trade_links')?db.prepare("SELECT * FROM apartment_trade_links WHERE status='matched'").all():[];
   const parcels=has(db,'apartment_parcels')?db.prepare('SELECT apartment_id,legal_code,jibun FROM apartment_parcels').all():[];
+  const spatial=readApartmentSpatialContext(db);
   const observations=new Map((snapshot?.groups||[]).map(group=>[group.favorite.id,group]));
   if(has(db,'naver_listing_snapshots'))for(const row of db.prepare('SELECT group_json FROM naver_listing_snapshots').all()){
     const group=JSON.parse(row.group_json);
@@ -51,7 +82,7 @@ export function synchronizeApartmentIdentity(db,{snapshot,overrides=apartmentAli
     if(!previous||group.attemptedAt>=previous.attemptedAt)observations.set(group.favorite.id,group);
   }
   const addAlias=db.prepare('INSERT OR IGNORE INTO apartment_aliases(apartment_id,name,source) VALUES(?,?,?)');
-  const fields=['apartment_id','canonical_name','region_code','region_name','legal_code','dong','jibun','road_address','postal_code','postal_source','naver_complex_no','naver_name','active','sources_json'];
+  const fields=['apartment_id','canonical_name','region_code','region_name','legal_code','dong','jibun','road_address','postal_code','postal_source','naver_complex_no','naver_name','active','sources_json','residential_status','primary_building_id','primary_entrance_index','spatial_generation','classification_evidence_json'];
   const save=db.prepare(`INSERT INTO apartment_identity(${fields.join(',')},updated_at) VALUES(${fields.map(()=>'?').join(',')},?) ON CONFLICT(apartment_id) DO UPDATE SET ${fields.slice(1).map(name=>`${name}=excluded.${name}`).join(',')},updated_at=excluded.updated_at`);
   const saveAddress=db.prepare('INSERT INTO apartment_identity_addresses VALUES(?,?,?,?,?,?,?,?)');
   db.exec('SAVEPOINT apartment_identity_refresh');
@@ -85,9 +116,10 @@ export function synchronizeApartmentIdentity(db,{snapshot,overrides=apartmentAli
       const postals=[...new Set((primary.length?primary:addresses).map(item=>item.postal_code).filter(Boolean))];
       const postal=postals.length===1&&(primary.length?primary:addresses).every(item=>item.postal_code===postals[0])?postals[0]:null;
       const sources=JSON.stringify({name:overrides.find(row=>row.apartment_id===c.apartment_id)?.source||c.source,address:addresses.length?'주소정보누리집':c.source,postal:postal?'주소정보누리집':null,naver:latest?'주소 검증한 브라우저 관찰':old.get(c.apartment_id)?.sources.naver||null});
-      const values=[c.apartment_id,canonicalName,c.region_code,regionName,c.legal_code,c.dong,c.jibun,c.road_address,postal,postal?'주소정보누리집':null,latest?.complexNo||old.get(c.apartment_id)?.naver_complex_no||null,latest?.complexName||old.get(c.apartment_id)?.naver_name||null,c.active,sources];
+      const context=spatial.get(c.apartment_id),evidence={buildings:context?.buildings.map(item=>({building_id:item.building_id,classification:item.classification}))||[]};
+      const values=[c.apartment_id,canonicalName,c.region_code,regionName,c.legal_code,c.dong,c.jibun,c.road_address,postal,postal?'주소정보누리집':null,latest?.complexNo||old.get(c.apartment_id)?.naver_complex_no||null,latest?.complexName||old.get(c.apartment_id)?.naver_name||null,c.active,sources,context?.residential_status||'unresolved',context?.primary_building_id||null,context?.primary_entrance_index??null,digest(context?{location:context.location,area:context.area,facts:context.facts}:{}),JSON.stringify(evidence)];
       const previous=old.get(c.apartment_id);
-      const unchanged=previous&&fields.every((name,index)=>(name==='sources_json'?JSON.stringify(previous.sources):previous[name])===values[index]);
+      const unchanged=previous&&fields.every((name,index)=>(name==='sources_json'?JSON.stringify(previous.sources):name==='classification_evidence_json'?JSON.stringify(previous.classification_evidence):previous[name])===values[index]);
       save.run(...values,unchanged?previous.updated_at:now);
       db.prepare('DELETE FROM apartment_identity_addresses WHERE apartment_id=?').run(c.apartment_id);
       const unique=new Map(addresses.map(item=>[item.road_address+'|'+item.building_management_no,item]));
@@ -99,9 +131,9 @@ export function synchronizeApartmentIdentity(db,{snapshot,overrides=apartmentAli
   return {apartments:rows.length,withPostalCode:rows.filter(row=>row.postal_code).length};
 }
 
-export function searchApartmentInformation(db,query) {
+export function searchApartmentInformation(db,query,options={}) {
   const needle=identityName(query);
-  return apartmentInformation(db).filter(row=>[row.canonical_name,...row.name_aliases,row.region_name+' '+row.dong+' '+row.jibun,row.road_address,row.postal_code,...row.addresses.map(item=>item.road_address)].some(value=>identityName(value).includes(needle)));
+  return apartmentInformation(db,options).filter(row=>[row.canonical_name,...row.name_aliases,row.region_name+' '+row.dong+' '+row.jibun,row.road_address,row.postal_code,...row.addresses.map(item=>item.road_address)].some(value=>identityName(value).includes(needle)));
 }
 
 export function resolveApartmentIdentity(db,input,information=apartmentInformation(db)) {
@@ -111,5 +143,49 @@ export function resolveApartmentIdentity(db,input,information=apartmentInformati
 }
 
 export function publicApartmentInformation(db) {
-  return {version:1,apartments:apartmentInformation(db).map(row=>({...makeApartmentFavorite({apartment:row.canonical_name,dong:row.dong,jibun:row.jibun,road_address:row.road_address,master_id:row.apartment_id,trade_keys:row.trade_keys},row),name_aliases:row.name_aliases,postal_code:row.postal_code,naver_complex_no:row.naver_complex_no,addresses:row.addresses.map(({apartment_id,...address})=>address),sources:row.sources}))};
+  const contexts=readApartmentSpatialContext(db),rows=readRootInformation(db,{activeOnly:false,contexts});
+  const base={version:1,apartments:rows.map(row=>({...makeApartmentFavorite({apartment:row.canonical_name,dong:row.dong,jibun:row.jibun,road_address:row.road_address,master_id:row.apartment_id,trade_keys:row.trade_keys,identity_ref:{kind:'root',id:row.apartment_id}},row),name_aliases:row.name_aliases,postal_code:row.postal_code,naver_complex_no:row.naver_complex_no,addresses:row.addresses.map(({apartment_id,...address})=>address),sources:row.sources}))};
+  const hasGeneration=has(db,'housing_identity_meta')&&db.prepare("SELECT 1 FROM housing_identity_meta WHERE key='generation'").get();
+  if(!hasGeneration&&has(db,'housing_identity_entities')&&db.prepare('SELECT 1 FROM housing_identity_entities LIMIT 1').get())throw Error('공통 아파트 정보가 원천 변경으로 만료됐습니다. 식별 정보를 재구성하세요.');
+  const housing=hasGeneration?housingIdentityCatalog(db):{entities:[],cohorts:[],roots:[]};
+  const catalog=hasGeneration?housingQueryInformation(base,housing):base,byRoot=new Map(rows.map(row=>[row.apartment_id,row]));
+  const cohorts=new Map(housing.cohorts.map(item=>[item.cohort_id,item]));
+  const empty=id=>({residential_status:'unresolved',location:{status:'missing',precision:'unknown',latitude:null,longitude:null,building_id:null,entrance_index:null,source:null,observed_at:null,anchors:[]},area:{identity_ref:id,geometry_scope:null,legal_code:'',region_ids:[],parcels:[],boundary_refs:[],boundary_ids:[],bbox:null,zoning_refs:[]},facts:{}});
+  const scoped=new Map(housing.cohorts.map(cohort=>[cohort.cohort_id,contexts.has(cohort.root_id)?scopeApartmentSpatialContext(contexts.get(cohort.root_id),cohort):empty({kind:'cohort',id:cohort.cohort_id})]));
+  const apartments=catalog.apartments.map(item=>{
+    const kind=item.identity_ref.kind,root=kind==='root'?byRoot.get(item.id):kind==='cohort'?byRoot.get(cohorts.get(item.id)?.root_id):null;
+    let context=kind==='root'?contexts.get(item.id):kind==='cohort'?scoped.get(item.id):null;
+    if(kind==='source'){
+      const entity=housing.entities.find(entity=>entity.entity_id===item.id),members=entity?.state==='verified'?entity.cohort_ids.map(id=>scoped.get(id)).filter(Boolean):[];
+      if(members.length===1)context=members[0];
+      else if(members.length>1){
+        const unique=(items,key)=>[...new Map(items.map(value=>[key(value),value])).values()];
+        context=empty(item.identity_ref);context.residential_status='residential';
+        context.location.status='ambiguous';
+        context.area={...context.area,region_ids:[...new Set(members.flatMap(member=>member.area.region_ids))].sort(),parcels:unique(members.flatMap(member=>member.area.parcels),p=>p.pnu),boundary_refs:unique(members.flatMap(member=>member.area.boundary_refs),r=>r.id),zoning_refs:unique(members.flatMap(member=>member.area.zoning_refs),r=>r.id),geometry_scopes:unique(members.map(member=>member.area.geometry_scope).filter(Boolean),r=>r.id)};
+      }
+    }
+    context||=empty(item.identity_ref);
+    const area={...context.area,identity_ref:item.identity_ref,boundary_ids:context.area.boundary_refs.map(ref=>ref.id)};
+    const active=root?Boolean(root.active):true,residential_status=context.residential_status;
+    const memberRefs=kind==='root'?[item.identity_ref,...housing.cohorts.filter(c=>c.root_id===item.id).map(c=>({kind:'cohort',id:c.cohort_id})),...housing.entities.filter(e=>e.state==='verified'&&e.root_ids.length===1&&e.root_ids[0]===item.id).map(e=>({kind:'source',id:e.entity_id}))]:[item.identity_ref];
+    const root_ids=item.identity_coverage?.root_ids||((kind==='root')?[item.id]:[]);
+    return {...item,...context.facts,selection_id:item.id,scope_kind:kind,root_ids,active,residential_status,map_visible:kind==='root'&&active&&residential_status==='residential',map_member_refs:memberRefs,location:context.location,area,latitude:context.location.latitude,longitude:context.location.longitude,location_status:context.location.status==='confirmed'?'confirmed':'missing'};
+  });
+  return {version:1,schema_version:2,generation:digest({schema_version:2,apartments}),apartments};
+}
+
+export function apartmentMapInformation(db,{scopeIds=[],generation}={}){
+  const catalog=publicApartmentInformation(db);
+  if(generation&&generation!==catalog.generation)throw Error('공통 아파트 정보와 지도 자료의 생성 버전이 다릅니다.');
+  const contexts=readApartmentSpatialContext(db,{geometry:'full'}),selected=new Set(scopeIds);
+  const apartments=catalog.apartments.filter(item=>item.identity_ref.kind==='root'&&item.map_visible&&(!selected.size||item.area.region_ids.some(id=>selected.has(id))));
+  const features=new Map();
+  for(const item of apartments)for(const feature of contexts.get(item.id)?.boundaries?.features||[]){
+    const previous=features.get(feature.id);
+    if(previous){previous.properties.apartment_ids.push(item.id);previous.properties.shared_parcel=true;previous.properties.name=[previous.properties.name,item.apartment].filter(Boolean).join(' · ');}
+    else features.set(feature.id,{...feature,properties:{...feature.properties,name:item.apartment,apartment_ids:[item.id]}});
+  }
+  for(const feature of features.values())if(feature.properties.apartment_ids.length>1){feature.properties.geometry_scopes=feature.properties.apartment_ids.map(id=>({kind:'root',id}));delete feature.properties.identity_ref;}
+  return {apartments,boundaries:{type:'FeatureCollection',features:[...features.values()],matchedApartments:new Set([...features.values()].flatMap(feature=>feature.properties.apartment_ids)).size}};
 }
