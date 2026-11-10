@@ -14,7 +14,9 @@ import {collectConfigured,prepareListingExport} from '../scripts/automation.mjs'
 import {linkMasterTrades} from '../server/apartment-master.mjs';
 import {encryptState,decryptState} from '../server/cloud-state.mjs';
 import {synchronizeHousingIdentity,housingTradeBindings} from '../server/apartment-identity.mjs';
-import {readNaverMatch} from '../server/apartment-naver-matches.mjs';
+import {readNaverMatch,synchronizeNaverMatches,recordNaverMatch} from '../server/apartment-naver-matches.mjs';
+import {housingIdentityCatalog} from '../server/apartment-identity.mjs';
+import {complexUrl} from '../src/naver-listings.mjs';
 
 const config={version:1,time_kst:'01:00',recent_months:1,address_limit:1000,region_ids:['dong_41135103']};
 test('deployment refreshes invalidated housing identity after legacy links and before reading listing groups',t=>{
@@ -22,15 +24,17 @@ test('deployment refreshes invalidated housing identity after legacy links and b
  linkMasterTrades(db);assert.throws(()=>listingExport(db),/만료/);
  const snapshot=prepareListingExport(db);assert(validListingSnapshot(snapshot));assert(validListingSnapshot(prepareListingExport(db)));
 });
-test('daily collection resolves once, saves match before stock timeout, and next day goes directly to stored Naver ID',async t=>{
+test('daily collection uses approved IDs without resolving again and stock failures preserve approvals',async t=>{
  const db=fixture(t);let tick=Date.parse('2026-11-08T00:00:00Z'),resolves=0,collects=0;
  const factory=async()=>({close:async()=>{},resolve:async target=>{
   resolves++;const complexNo=target.favorite.jibun==='1'?'111':'222';
   return {complexNo,observation:{complex_no:complexNo,name:target.favorite.apartment,road_address:target.favorite.road_address||'',parcel_address:target.favorite.region_name+' '+target.favorite.dong+' '+target.favorite.jibun,latitude:37.36,longitude:127.12,coordinate_role:'provider_label',source_url:`https://new.land.naver.com/complexes/${complexNo}`,observed_at:new Date(tick).toISOString()}};
  },collect:async(target,{complexNo})=>{collects++;assert.equal(complexNo,target.favorite.jibun==='1'?'111':'222');throw new BrowserListingError('timeout');}});
- await collectDailyListings(db,config,{now:()=>tick,sourceFactory:factory});assert.equal(resolves,2);
+ const before=db.prepare('SELECT * FROM apartment_naver_matches ORDER BY target_id').all();
+ await collectDailyListings(db,config,{now:()=>tick,sourceFactory:factory});assert.equal(resolves,0);
  const target=dailyListingTargets(db,config)[0];assert.equal(readNaverMatch(db,target).state,'verified');
- tick+=86400000;await collectDailyListings(db,config,{now:()=>tick,sourceFactory:factory});assert.equal(resolves,2);assert.equal(collects,4);
+ tick+=86400000;await collectDailyListings(db,config,{now:()=>tick,sourceFactory:factory});assert.equal(resolves,0);assert.equal(collects,4);
+ assert.deepEqual(db.prepare('SELECT * FROM apartment_naver_matches ORDER BY target_id').all(),before);
 });
 function fixture(t){
   const db=new DatabaseSync(':memory:');t.after(()=>db.close());db.exec(PUBLIC_SCHEMA+LOCAL_SCHEMA+APARTMENT_MASTER_SCHEMA);
@@ -43,17 +47,21 @@ function fixture(t){
   insert.run('hub:b','b','41135','4113510300','정자동',null,'2','',1,'2026-01-01Z',1);
   insert.run('hub:inactive','inactive','41135','4113510300','정자동','폐쇄단지','3','',0,'2026-01-01Z',1);
   insert.run('hub:other','other','41465','4146510100','풍덕천동','다른지역','4','',1,'2026-01-01Z',1);
+  synchronizeHousingIdentity(db);
+  const targets=dailyListingTargets(db,config);synchronizeNaverMatches(db,targets,housingIdentityCatalog(db));
+  for(const target of targets){const complexNo=target.favorite.jibun==='1'?'111':'222';recordNaverMatch(db,target,{complexNo,observation:observation(target,complexNo,'2026-11-06T00:00:00.000Z')});db.prepare('INSERT INTO naver_listing_connections VALUES(?,?,?)').run(target.favorite.id,complexNo,'2026-11-06T00:00:00.000Z');}
   return db;
 }
+function observation(target,complexNo,at){return {complex_no:complexNo,name:target.favorite.apartment,road_address:target.favorite.road_address||'',parcel_address:target.favorite.region_name+' '+target.favorite.dong+' '+target.favorite.jibun,latitude:37.36,longitude:127.12,coordinate_role:'provider_label',source_url:complexUrl(complexNo),observed_at:at};}
 function source({onCollect=()=>{},now=()=>Date.parse('2026-11-06T00:00:00.000Z')}={}){
   return {close:async()=>{},collect:async(target,connection)=>{
     onCollect(target,connection);const at=new Date(now()).toISOString();
-    return {favorite:target.favorite,complexNo:target.favorite.jibun==='1'?'111':'222',complexName:target.favorite.apartment,tradeType:'A1',status:'ready',attemptedAt:at,collectedAt:at,errorCode:null,articles:[],collectionMethod:'browser',coverage:'complete',pageCount:1,sourceUrl:`https://new.land.naver.com/complexes/${target.favorite.jibun==='1'?'111':'222'}`};
+    const complexNo=target.favorite.jibun==='1'?'111':'222';return {favorite:target.favorite,complexNo,complexName:target.favorite.apartment,tradeType:'A1',status:'ready',attemptedAt:at,collectedAt:at,errorCode:null,articles:[],collectionMethod:'browser',coverage:'complete',pageCount:1,sourceUrl:complexUrl(complexNo),observation:observation(target,complexNo,at)};
   }};
 }
 
 test('regional targets include unnamed and untraded apartments without personal favorites and exclude inactive/out-of-region rows',t=>{
-  const db=fixture(t),targets=dailyListingTargets(db,config);assert.deepEqual(targets.map(t=>t.favorite.id),['hub:a','hub:b']);assert.match(targets[1].favorite.apartment,/이름 미확인/);assert.match(targets[1].query,/정자동 2/);
+  const db=fixture(t),targets=dailyListingTargets(db,config);assert.deepEqual(targets.map(t=>t.favorite.id),['hub:a','hub:b']);assert.match(targets[1].favorite.apartment,/미확인/);assert.match(targets[1].query,/정자동 2/);
   db.prepare("UPDATE apartment_inventory_regions SET status='pending' WHERE region_id=?").run(config.region_ids[0]);assert.throws(()=>dailyListingTargets(db,config),/전체 아파트 목록/);
 });
 
@@ -163,13 +171,14 @@ test('a known office-only sibling cohort without reported APT membership is not 
  const scopes=dailyListingTargets(db,config).filter(target=>target.favorite.master_id==='hub:a');
  assert.equal(scopes.length,1);assert.equal(scopes[0].favorite.identity_ref.kind,'cohort');assert.equal(scopes[0].favorite.road_address,'경기도 성남시 분당구 불정로 1');
 });
-test('unmatched scopes are retried weekly or explicitly, rather than searched every day',async t=>{
+test('unapproved scopes are never searched or promoted even when forced or retried',async t=>{
  const db=fixture(t);let tick=Date.parse('2026-11-08T00:00:00Z'),calls=0;
+ db.exec("UPDATE apartment_naver_matches SET state='unmatched'");
  const factory=async()=>({close:async()=>{},collect:async()=>{calls++;throw new BrowserListingError('unmatched');}});
- await collectDailyListings(db,config,{now:()=>tick,sourceFactory:factory});assert.equal(calls,2);
- tick+=86400000;const next=await collectDailyListings(db,config,{now:()=>tick,sourceFactory:factory});assert.equal(next.unmatchedCount,2);assert.equal(calls,2);
- tick+=7*86400000;await collectDailyListings(db,config,{now:()=>tick,sourceFactory:factory});assert.equal(calls,4);
- await collectDailyListings(db,config,{now:()=>tick,sourceFactory:factory,retryUnresolved:true});assert.equal(calls,6);
+ await collectDailyListings(db,config,{now:()=>tick,sourceFactory:factory});assert.equal(calls,0);
+ tick+=86400000;const next=await collectDailyListings(db,config,{now:()=>tick,sourceFactory:factory});assert.equal(next.unmatchedCount,2);assert.equal(calls,0);
+ tick+=7*86400000;await collectDailyListings(db,config,{now:()=>tick,sourceFactory:factory});assert.equal(calls,0);
+ await collectDailyListings(db,config,{now:()=>tick,sourceFactory:factory,retryUnresolved:true,force:true});assert.equal(calls,0);
 });
 
 test('verified source APT inventory-only residential cohorts remain typed without activating apartment masters',t=>{
@@ -209,10 +218,10 @@ test('the shared trade job collects sale listings once per Korean day and its sa
   assert.match(workflow,/node --dns-result-order=ipv4first scripts\/automation.mjs collect/);
 });
 
-test('new apartments added in the same day are attempted while existing targets remain untouched',async t=>{
+test('new apartments without local approval remain unmatched while existing targets remain untouched',async t=>{
   const db=fixture(t),calls=[],options={now:()=>Date.parse('2026-11-06T00:00:00.000Z'),sourceFactory:async()=>source({onCollect:target=>calls.push(target.favorite.id)})};
   await collectDailyListings(db,config,options);db.prepare("UPDATE apartment_complexes SET active=1 WHERE apartment_id='hub:inactive'").run();
-  const report=await collectDailyListings(db,config,options);assert.equal(report.targetCount,3);assert.deepEqual(calls,['hub:a','hub:b','hub:inactive']);
+  const report=await collectDailyListings(db,config,options);assert.equal(report.targetCount,3);assert.equal(report.unmatchedCount,1);assert.deepEqual(calls,['hub:a','hub:b']);
 });
 
 test('removing a target and resuming after the final checkpoint finalize correct counts without recollecting',async t=>{
@@ -232,12 +241,14 @@ test('cancellation does not save a result returned after cancellation or silentl
 test('ambiguous generic official names use verified trade aliases for search',t=>{
   const db=fixture(t);db.prepare("UPDATE apartment_complexes SET name='정든마을' WHERE apartment_id IN ('hub:a','hub:b')").run();
   db.prepare('INSERT INTO apartment_trade_links VALUES(?,?,?,?,?,?,?,?,?)').run('41135','정자동','1','정든마을(2단지)(동아)','hub:a','matched','address','[]','2026-11-06Z');
+  synchronizeHousingIdentity(db);
   assert.equal(dailyListingTargets(db,config)[0].query,'정자동 정든마을2단지');
 });
 
 test('a generic official name uses the numbered phase from its verified trade alias in the search query',t=>{
   const db=fixture(t);db.prepare("UPDATE apartment_complexes SET name='삼성아파트' WHERE apartment_id='hub:a'").run();
   db.prepare('INSERT INTO apartment_trade_links VALUES(?,?,?,?,?,?,?,?,?)').run('41135','정자동','1','삼성1','hub:a','matched','address','[]','2026-11-06Z');
+  synchronizeHousingIdentity(db);
   assert.equal(dailyListingTargets(db,config)[0].query,'정자동 삼성1차');
 });
 
@@ -251,4 +262,24 @@ test('encrypted working DB restore retains daily attempts, connections and snaps
     assert.equal(listingExport(reopened).groups.length,2);
     const result=await collectDailyListings(reopened,config,{...options,sourceFactory:async()=>{throw new Error('already collected');}});assert.equal(result.alreadyCollected,true);
   }finally{reopened.close();}
+});
+
+test('stale or inactive local approvals never launch a browser, including a forced run',async t=>{
+ const db=fixture(t);db.exec("UPDATE apartment_naver_matches SET scope_hash='stale' WHERE target_id='hub:a'; UPDATE apartment_naver_matches SET active=0 WHERE target_id='hub:b'");
+ const report=await collectDailyListings(db,config,{force:true,sourceFactory:async()=>{throw Error('must not launch');}});assert.equal(report.unmatchedCount,2);assert.equal(report.successCount,0);
+});
+
+test('address mismatch preserves approved links, registry information and the previous observation',async t=>{
+ const db=fixture(t);let tick=Date.parse('2026-11-06T00:00:00.000Z');await collectDailyListings(db,config,{now:()=>tick,sourceFactory:async()=>source()});
+ const tables=['apartment_identity','apartment_complexes','apartment_naver_matches','naver_listing_connections'];
+ const before=tables.map(table=>db.prepare('SELECT * FROM '+table).all());
+ tick+=86400000;await collectDailyListings(db,config,{now:()=>tick,sourceFactory:async()=>({close:async()=>{},collect:async()=>{throw new BrowserListingError('address_mismatch');}})});
+ assert.deepEqual(tables.map(table=>db.prepare('SELECT * FROM '+table).all()),before);
+ assert(db.prepare('SELECT collected_at FROM naver_listing_snapshots').all().every(row=>row.collected_at==='2026-11-06T00:00:00.000Z'));
+});
+
+test('a pre-migration same-day report cannot skip collection with the current service',async t=>{
+ const db=fixture(t);let calls=0;const options={now:()=>Date.parse('2026-11-06T00:00:00.000Z'),sourceFactory:async()=>source({onCollect:()=>calls++})};
+ await collectDailyListings(db,config,options);const saved=readListingCollection(db);delete saved.sourceVersion;db.prepare('UPDATE naver_listing_days SET report_json=?').run(JSON.stringify(saved));
+ const result=await collectDailyListings(db,config,options);assert.equal(calls,4);assert.equal(result.sourceVersion,'fin-land-v1');
 });

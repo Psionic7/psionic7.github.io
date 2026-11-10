@@ -1,16 +1,15 @@
 import {makeApartmentFavorite,validApartmentFavorites,sameApartmentFavorite} from '../src/apartment-favorites.js';
-import fs from 'node:fs';
 import {LISTING_ERRORS,LISTING_TRADE_TYPE,saleListingGroup,kstListingDay,listingSnapshot,validListingCollection,validListingGroup,validListingSnapshot,listingGroupForFavorite} from '../src/naver-listings.mjs';
 import {NAVER_LISTING_SCHEMA} from './naver-listing-schema.mjs';
 import {createDailyListingSource} from './naver-listing-source.mjs';
 import {listingQueryName} from './naver-listing-names.mjs';
 import {normalizeRoadAddress} from '../src/address-identity.mjs';
 import {listingBuildingMembers} from '../src/housing-identity.mjs';
-import {apartmentInformation,publicApartmentInformation,resolveApartmentIdentity,synchronizeApartmentIdentity,synchronizeHousingIdentity,housingIdentityCatalog} from './apartment-identity.mjs';
-import {synchronizeNaverMatches,readNaverMatch,recordNaverMatch,recordNaverMatchFailure,applyNaverMatchSeed} from './apartment-naver-matches.mjs';
+import {apartmentInformation,publicApartmentInformation,resolveApartmentIdentity,housingIdentityCatalog} from './apartment-identity.mjs';
+import {rebuildHousingIdentity} from './housing-identity.mjs';
+import {readNaverMatch,verifyNaverObservation} from './apartment-naver-matches.mjs';
 
 const hasTable=(db,name)=>Boolean(db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name=?").get(name));
-const UNMATCHED_RETRY_MS=7*24*60*60*1000;
 const missingInventory=message=>{const error=new Error(message);error.code='inventory_unavailable';throw error;};
 function listingScopes(db,config) {
   if(!hasTable(db,'apartment_complexes')||!hasTable(db,'apartment_inventory_regions'))missingInventory('매물 수집 대상 아파트 대장이 없습니다.');
@@ -118,25 +117,23 @@ export function listingExport(db,{initialSnapshot,now=new Date()}={}) {
 export async function collectDailyListings(db,config,{browserSource=process.env.NAVER_LISTING_SOURCE||'system-chrome',sourceFactory=()=>createDailyListingSource({initialSnapshot,source:browserSource}),now=()=>Date.now(),force=false,retryUnresolved=false,maxDurationMs=3*60*60*1000,onProgress=()=>{},initialSnapshot,signal}={}) {
   signal?.throwIfAborted();
   if(!['system-chrome','playwright'].includes(browserSource))throw Error('매물 브라우저 소스를 확인하세요.');
+  const sourceVersion=browserSource==='system-chrome'?'fin-land-v1':'legacy';
   db.exec(NAVER_LISTING_SCHEMA);
-  synchronizeApartmentIdentity(db,{snapshot:initialSnapshot});
   const started=now(),dayKst=kstListingDay(started),regionIds=[...config.region_ids].sort();let targets;
   try{
     const scopes=listingScopes(db,config);
-    synchronizeHousingIdentity(db,{scopes});
+    if(!hasTable(db,'apartment_identity'))missingInventory('로컬 확정 아파트 정보가 없습니다.');
+    rebuildHousingIdentity(db,{information:apartmentInformation(db),scopes});
     targets=dailyListingTargets(db,config);
   }catch(error){
     if(error.code!=='inventory_unavailable')throw error;
-    const report=summarize({dayKst,tradeType:LISTING_TRADE_TYPE,browserSource,status:'failed',startedAt:new Date(started).toISOString(),finishedAt:new Date(now()).toISOString(),regionIds,results:[],errorCode:'inventory_unavailable'});
+    const report=summarize({dayKst,tradeType:LISTING_TRADE_TYPE,browserSource,sourceVersion,status:'failed',startedAt:new Date(started).toISOString(),finishedAt:new Date(now()).toISOString(),regionIds,results:[],errorCode:'inventory_unavailable'});
     saveReport(db,report);onProgress(LISTING_ERRORS.inventory_unavailable);return report;
   }
-  synchronizeNaverMatches(db,targets,housingIdentityCatalog(db));
-  const seedFile=new URL('../automation/naver-verified-matches.json',import.meta.url);
-  if(fs.existsSync(seedFile))applyNaverMatchSeed(db,targets,JSON.parse(fs.readFileSync(seedFile,'utf8')));
   const saved=force?null:readListingCollection(db,dayKst);
-  const previous=saved?.tradeType===LISTING_TRADE_TYPE&&saved.browserSource===browserSource?saved:null;
+  const previous=saved?.tradeType===LISTING_TRADE_TYPE&&saved.browserSource===browserSource&&saved.sourceVersion===sourceVersion?saved:null;
   const byPrevious=new Map((previous?.results||[]).filter(r=>r.attemptedAt!==null&&(!retryUnresolved||r.status==='ready'||['blocked','rate_limited','unauthorized','site_unavailable'].includes(r.errorCode))).map(r=>[r.favoriteId,r]));
-  let report=summarize({dayKst,tradeType:LISTING_TRADE_TYPE,browserSource,status:'running',startedAt:previous?.startedAt||new Date(started).toISOString(),finishedAt:null,regionIds,results:targets.map(({favorite})=>({...byPrevious.get(favorite.id),favorite,favoriteId:favorite.id,...(byPrevious.has(favorite.id)?{}:{status:'not_attempted',errorCode:null,attemptedAt:null})}))});
+  let report=summarize({dayKst,tradeType:LISTING_TRADE_TYPE,browserSource,sourceVersion,status:'running',startedAt:previous?.startedAt||new Date(started).toISOString(),finishedAt:null,regionIds,results:targets.map(({favorite})=>({...byPrevious.get(favorite.id),favorite,favoriteId:favorite.id,...(byPrevious.has(favorite.id)?{}:{status:'not_attempted',errorCode:null,attemptedAt:null})}))});
   if(report.results.every(r=>r.attemptedAt!==null)&&previous){
     const finished={...report,finishedAt:previous.finishedAt||new Date(now()).toISOString(),status:report.successCount===report.targetCount?'complete':report.successCount?'partial':'failed'};
     saveReport(db,finished);return {...finished,alreadyCollected:true};
@@ -151,29 +148,21 @@ export async function collectDailyListings(db,config,{browserSource=process.env.
       if(stoppedCode){report.results[index]={favoriteId:target.favorite.id,favorite:target.favorite,status:'not_attempted',errorCode:stoppedCode,attemptedAt:null};continue;}
       const attemptedAt=new Date(now()).toISOString();
       const match=readNaverMatch(db,target);
-      let connection=match?.state==='verified'?match.complex_no:match?.complex_no||target.complexNo;
-      const unmatchedAge=match?.last_attempted_at?now()-Date.parse(match.last_attempted_at):Infinity;
-      if(match?.state==='unmatched'&&!force&&!retryUnresolved&&unmatchedAge>=0&&unmatchedAge<UNMATCHED_RETRY_MS){
+      const connection=match?.state==='verified'&&match.scopeCurrent&&match.active===1?match.complex_no:null;
+      if(!connection){
         report.results[index]={favoriteId:target.favorite.id,favorite:target.favorite,status:'unmatched',errorCode:'unmatched',attemptedAt};
         report=summarize(report);saveReport(db,report);
-        onProgress(`${target.favorite.apartment}: 저장된 단지 연결 미확정 · 재검색 생략`);continue;
+        onProgress(`${target.favorite.apartment}: 로컬 확정 연결 없음 · 수집 생략`);continue;
       }
       try {
         source??=await sourceFactory();
-        if(source.resolve&&match?.state!=='verified'){
-          const resolved=await source.resolve(target,{complexNo:connection,signal});
-          recordNaverMatch(db,target,resolved,{at:attemptedAt});
-          connection=resolved.complexNo;
-        }
         const group=await source.collect(target,{complexNo:connection,signal});
         signal?.throwIfAborted();
-        if(!validListingGroup(group)||group.tradeType!==LISTING_TRADE_TYPE||group.status!=='ready'||group.favorite.id!==target.favorite.id||group.collectionMethod!=='browser'||group.coverage!=='complete')throw new Error('매매 매물 브라우저 전체 수집 결과 검증 실패');
+        if(!validListingGroup(group)||group.tradeType!==LISTING_TRADE_TYPE||group.status!=='ready'||group.favorite.id!==target.favorite.id||group.complexNo!==connection||group.collectionMethod!=='browser'||group.coverage!=='complete')throw new Error('매매 매물 브라우저 전체 수집 결과 검증 실패');
+        verifyNaverObservation(target,group);
         db.exec('BEGIN IMMEDIATE');
         try{
-          if(group.observation)recordNaverMatch(db,target,group,{at:attemptedAt});
-          db.prepare('INSERT OR REPLACE INTO naver_listing_connections VALUES(?,?,?)').run(target.favorite.id,group.complexNo,group.collectedAt);
           db.prepare('INSERT OR REPLACE INTO naver_listing_snapshots VALUES(?,?,?)').run(target.favorite.id,group.collectedAt,JSON.stringify(group));
-          if(target.favorite.identity_ref?.kind!=='cohort')synchronizeApartmentIdentity(db,{snapshot:listingSnapshot([group]),apartmentIds:[target.favorite.id]});
           db.exec('COMMIT');
         }catch(error){db.exec('ROLLBACK');throw error;}
         report.results[index]={favoriteId:target.favorite.id,favorite:target.favorite,status:'ready',errorCode:null,attemptedAt};
@@ -181,11 +170,6 @@ export async function collectDailyListings(db,config,{browserSource=process.env.
       }catch(error) {
         if(!Object.hasOwn(LISTING_ERRORS,error.code))throw error;
         const code=error.code;
-        recordNaverMatchFailure(db,target,code,{at:attemptedAt});
-        if(code==='address_mismatch'||code==='unmatched'){
-          db.prepare('DELETE FROM naver_listing_connections WHERE apartment_id=?').run(target.favorite.id);
-          db.prepare('UPDATE apartment_identity SET naver_complex_no=NULL,naver_name=NULL,updated_at=? WHERE apartment_id=?').run(attemptedAt,target.favorite.id);
-        }
         report.results[index]={favoriteId:target.favorite.id,favorite:target.favorite,status:code==='unmatched'||code==='address_mismatch'?'unmatched':'failed',errorCode:code,attemptedAt};
         const previousRow=db.prepare('SELECT group_json FROM naver_listing_snapshots WHERE apartment_id=?').get(target.favorite.id);
         const stored=previousRow?JSON.parse(previousRow.group_json):initialSnapshot?listingGroupForFavorite(initialSnapshot.groups,target.favorite):null;
@@ -203,6 +187,5 @@ export async function collectDailyListings(db,config,{browserSource=process.env.
   }finally{await source?.close();}
   report=summarize({...report,finishedAt:new Date(now()).toISOString()});
   report.status=report.successCount===report.targetCount?'complete':report.successCount?'partial':'failed';
-  synchronizeHousingIdentity(db,{scopes:listingScopes(db,config)});
   saveReport(db,report);return report;
 }

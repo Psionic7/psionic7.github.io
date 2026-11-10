@@ -39,12 +39,12 @@ export function parseComplexNo(value) {
   if(validComplexNo(input))return input;
   try {
     const url=new URL(input);
-    if(url.protocol!=='https:'||url.hostname!=='new.land.naver.com'||url.port||url.username||url.password)return '';
+    if(url.protocol!=='https:'||!['new.land.naver.com','fin.land.naver.com'].includes(url.hostname)||url.port||url.username||url.password)return '';
     const id=url.pathname.match(/^\/complexes\/([1-9]\d{0,11})\/?$/)?.[1];
     return id||'';
   }catch{return '';}
 }
-export const complexUrl=id=>`https://new.land.naver.com/complexes/${id}`;
+export const complexUrl=id=>`https://fin.land.naver.com/complexes/${id}`;
 export const articleUrl=id=>`https://fin.land.naver.com/articles/${id}`;
 export const listingSearchUrl=favorite=>`https://m.land.naver.com/search/result/${encodeURIComponent(`${favorite.region_name} ${favorite.dong} ${favorite.apartment}`)}`;
 export function validConnections(value) {
@@ -69,7 +69,7 @@ export function validListingGroup(group) {
   return object(group)&&validApartmentFavorites([group.favorite])&&validComplexNo(group.complexNo)&&text(group.complexName)&&timestamp(group.attemptedAt)&&['ready','failed'].includes(group.status)&&Array.isArray(group.articles)&&group.articles.length<=20000&&new Set(group.articles.map(a=>a?.id)).size===group.articles.length&&group.articles.every(validArticle)&&(group.collectedAt===null?group.articles.length===0&&group.status==='failed':timestamp(group.collectedAt)&&group.collectedAt<=group.attemptedAt)&&(group.status==='ready'?group.collectedAt!==null&&group.errorCode===null:Object.hasOwn(LISTING_ERRORS,group.errorCode))&&(group.collectionMethod===undefined?group.coverage===undefined:group.collectionMethod==='browser'&&(group.coverage==='partial'?group.articles.length>0:group.coverage==='complete'&&Number.isInteger(group.pageCount)&&group.pageCount>0&&group.pageCount<=2000)&&typeof group.sourceUrl==='string'&&group.sourceUrl.startsWith('https://')&&parseComplexNo(group.sourceUrl)===group.complexNo);
 }
 export function validListingObservation(value,group) {
-  if(!object(value)||value.complex_no!==group.complexNo||!text(value.name)||!value.name||!text(value.road_address)||!text(value.parcel_address)||!timestamp(value.observed_at)||value.source_url!==complexUrl(group.complexNo))return false;
+  if(!object(value)||value.complex_no!==group.complexNo||!text(value.name)||!value.name||!text(value.road_address)||!text(value.parcel_address)||!timestamp(value.observed_at)||![complexUrl(group.complexNo),`https://new.land.naver.com/complexes/${group.complexNo}`].includes(value.source_url))return false;
   if(value.verification_method!==undefined&&!text(value.verification_method,100))return false;
   if(value.real_estate_type!==undefined&&!text(value.real_estate_type,40))return false;
   if(value.building_witnesses!==undefined&&(!Array.isArray(value.building_witnesses)||value.building_witnesses.length>1000||value.building_witnesses.some(dong=>!text(dong,100)||!dong)))return false;

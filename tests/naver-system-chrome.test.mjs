@@ -2,10 +2,12 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {EventEmitter} from 'node:events';
 import {PassThrough,Writable} from 'node:stream';
-import {createSystemChromeListingSource} from '../server/naver-system-chrome.mjs';
+import {createSystemChromeListingSource as createCurrentSource} from '../server/naver-system-chrome.mjs';
 import {makeApartmentFavorite} from '../src/apartment-favorites.js';
 import {listingSnapshot} from '../src/naver-listings.mjs';
-import {createDailyListingSource} from '../server/naver-listing-source.mjs';
+import {createDailyListingSource as createDailySource} from '../server/naver-listing-source.mjs';
+const createSystemChromeListingSource=options=>createCurrentSource({baseUrl:'https://new.land.naver.com',...options});
+const createDailyListingSource=options=>createDailySource({baseUrl:'https://new.land.naver.com',...options});
 
 const favorite=makeApartmentFavorite({apartment:'수지테스트',dong:'풍덕천동',jibun:'1191'},{region_code:'41465',region_name:'경기도 용인시 수지구'});
 const detail={complexDetail:{complexNo:'10959',complexName:'수지테스트',cortarAddress:'경기도 용인시 수지구 풍덕천동',detailAddress:'1191'}};
@@ -121,7 +123,7 @@ test('daily source seeds verified snapshot connections but rechecks their addres
   const original=await createSystemChromeListingSource({python:'test-python',spawnWorker:()=>worker(()=>({complexNo:'10959',responses}))});
   let saved;try{saved=await original.collect({favorite},{complexNo:'10959'});}finally{await original.close();}
   const requests=[],child=worker(request=>{requests.push(request);return {complexNo:'10959',responses};});
-  const source=await createDailyListingSource({python:'test-python',initialSnapshot:listingSnapshot([saved]),spawnWorker:()=>child});
+  const source=await createDailyListingSource({baseUrl:'https://new.land.naver.com',python:'test-python',initialSnapshot:listingSnapshot([saved]),spawnWorker:()=>child});
   try{assert.equal((await source.collect({favorite,query:'test'})).articles.length,1);assert.equal(requests.length,1);assert.equal(requests[0].discover,undefined);assert.equal(requests[0].complexNo,'10959');}
   finally{await source.close();}
 });

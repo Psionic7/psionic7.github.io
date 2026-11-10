@@ -31,9 +31,17 @@ class Collector:
         self.error = None
         self.marker_requests,self.marker_pending,self.marker_responses={},{},[]
         self.map_active=False
+        self.fin_started,self.fin_pending,self.fin_responses={},{},[]
 
     async def started(self,event):
         parsed=urlsplit(event.request.url)
+        if parsed.netloc==self.host and parsed.path=='/front-api/v1/complex/article/list':
+            try:
+                request=json.loads(event.request.post_data or '{}')
+                request.pop('seed',None)
+                self.fin_started[event.request_id]=request
+            except (TypeError,ValueError):
+                self.error='invalid_response'
         if parsed.netloc==self.host and parsed.path==MARKERS:self.marker_pending[event.request_id]=str(event.loader_id)
 
     async def failed(self,event):
@@ -43,6 +51,10 @@ class Collector:
 
     async def response(self, event):
         parsed = urlsplit(event.response.url)
+        if parsed.netloc==self.host and parsed.path in ['/front-api/v1/complex','/front-api/v1/complex/article/list']:
+            status=int(event.response.status)
+            if status in (401,403,429):self.error='rate_limited' if status==429 else 'unauthorized'
+            self.fin_pending[event.request_id]=(event.response.url,status,self.fin_started.pop(event.request_id,None))
         if parsed.netloc==self.host and event.response.mime_type=='text/html' and os.environ.get('NAVER_BROWSER_DIAGNOSTICS')=='1':
             print(json.dumps({'stage':'document-response','path':parsed.path,'status':int(event.response.status)}),file=sys.stderr,flush=True)
         if parsed.netloc == self.host and (API.fullmatch(parsed.path) or parsed.path=='/api/articles'):
@@ -51,6 +63,18 @@ class Collector:
             self.marker_requests[event.request_id]=(event.response.url,int(event.response.status),str(event.loader_id))
 
     async def finished(self, event):
+        current=self.fin_pending.pop(event.request_id,None)
+        if current:
+            url,status,request=current
+            if status!=200:
+                self.error=self.error or 'unavailable'
+                return
+            try:
+                body,encoded=await self.tab.send(uc.cdp.network.get_response_body(event.request_id))
+                if encoded:body=base64.b64decode(body).decode('utf-8')
+                self.fin_responses.append({'url':url,'status':status,'request':request,'payload':json.loads(body)})
+            except Exception:self.error='invalid_response'
+            return
         marker=self.marker_requests.pop(event.request_id,None)
         self.marker_pending.pop(event.request_id,None)
         record = marker or self.requests.pop(event.request_id, None)
@@ -199,13 +223,17 @@ class Collector:
             return {"errorCode": "unmatched"}
         if os.environ.get('NAVER_BROWSER_DIAGNOSTICS')=='1':
             print(json.dumps({'stage':'navigate','complexNo':complex_no}),file=sys.stderr,flush=True)
-        await self.tab.send(uc.cdp.page.navigate(f"{self.base_url}/complexes/{complex_no}?a=APT&b=A1&e=RETAIL"))
+        _,loader_id,*_=await self.tab.send(uc.cdp.page.navigate(f"{self.base_url}/complexes/{complex_no}?a=APT&b=A1&e=RETAIL"))
         started = time.monotonic()
         deadline = started + request.get("timeoutSeconds", 45)
         selected = False
         while time.monotonic() < deadline:
             if self.error:
                 return {"errorCode": self.error}
+            frame=await self.tab.send(uc.cdp.page.get_frame_tree())
+            if loader_id and frame.frame.loader_id!=loader_id:
+                await asyncio.sleep(.1)
+                continue
             current = await self.tab.evaluate("location.href")
             match = re.search(r"/complexes/([1-9]\d*)", current or "")
             if match:
@@ -231,6 +259,48 @@ class Collector:
             await asyncio.sleep(1.5)
         print(json.dumps({"captured":[{"path":urlsplit(r['url']).path,"query":urlsplit(r['url']).query,"more":r['payload'].get('isMoreData')} for r in self.responses]}),file=sys.stderr,flush=True)
         return {"errorCode": "incomplete" if complex_no else "unmatched"}
+
+    def fin_complete(self):
+        pages={}
+        for response in self.fin_responses:
+            if urlsplit(response['url']).path!='/front-api/v1/complex/article/list':continue
+            request=response.get('request')
+            payload=response['payload']
+            if not isinstance(request,dict) or not isinstance(request.get('lastInfo'),list):continue
+            if payload.get('isSuccess') is not True or not isinstance(payload.get('result'),dict):continue
+            pages[json.dumps(request['lastInfo'],ensure_ascii=False,separators=(',',':'))]=payload['result']
+        cursor='[]'
+        seen=set()
+        while cursor in pages and cursor not in seen:
+            seen.add(cursor)
+            page=pages[cursor]
+            if page.get('hasNextPage') is False:return True
+            if page.get('hasNextPage') is not True or not isinstance(page.get('lastInfo'),list):return False
+            cursor=json.dumps(page['lastInfo'],ensure_ascii=False,separators=(',',':'))
+        return False
+
+    async def collect_fin(self,request):
+        complex_no=request.get('complexNo','')
+        if not re.fullmatch(r'[1-9]\d{0,11}',complex_no):return {'errorCode':'unmatched'}
+        self.fin_started,self.fin_pending,self.fin_responses={},{},[]
+        self.error=None
+        _,loader_id,*_=await self.tab.send(uc.cdp.page.navigate(f'{self.base_url}/complexes/{complex_no}?articleTradeTypes=A1&tab=article'))
+        deadline=time.monotonic()+request.get('timeoutSeconds',75)
+        while time.monotonic()<deadline:
+            if self.error:return {'errorCode':self.error}
+            if self.fin_complete():
+                return {'apiVersion':'fin-land-v1','complexNo':complex_no,'pageHtml':await self.tab.get_content(),'responses':self.fin_responses}
+            frame=await self.tab.send(uc.cdp.page.get_frame_tree())
+            if loader_id and frame.frame.loader_id!=loader_id:
+                await asyncio.sleep(.1)
+                continue
+            current=await self.tab.evaluate('location.href')
+            text=await self.tab.evaluate("document.body?.innerText||''")
+            if re.search(r'자동입력\s*방지|비정상적인\s*접근|접근이?\s*제한|Too Many Requests|captcha',text,re.I):return {'errorCode':'blocked'}
+            if '/404' in (current or ''):return {'errorCode':'site_unavailable'}
+            await self.tab.evaluate("""(()=>{const links=[...document.querySelectorAll('a[href*="/articles/"]')];const moved=new Set();for(const link of links){for(let e=link.parentElement;e&&e!==document.body;e=e.parentElement){if(e.scrollHeight>e.clientHeight+20&&/auto|scroll/.test(getComputedStyle(e).overflowY)&&!moved.has(e)){e.scrollTop=e.scrollHeight;e.dispatchEvent(new Event('scroll',{bubbles:true}));moved.add(e);}}}return moved.size})()""")
+            await asyncio.sleep(.6)
+        return {'errorCode':'incomplete'}
 
     async def search(self, query):
         _, loader_id, *_ = await self.tab.send(uc.cdp.page.navigate(self.base_url+'/'))
@@ -379,7 +449,7 @@ async def main():
             await asyncio.sleep(1)
     try:
         # Create the site target from the browser connection; do not wait for a cross-site Page.navigate acknowledgement.
-        tab = await asyncio.wait_for(browser.get(args.base_url+'/',new_tab=True),timeout=15)
+        tab = await asyncio.wait_for(browser.get('about:blank',new_tab=True),timeout=15)
         collector = Collector(browser, tab,args.base_url)
         tab.add_handler(uc.cdp.network.ResponseReceived, collector.response)
         tab.add_handler(uc.cdp.network.LoadingFinished, collector.finished)
@@ -392,7 +462,7 @@ async def main():
             if request.get("close"):
                 break
             try:
-                operation=collector.discover(request) if request.get('discover') else collector.inspect(request) if request.get('inspect') else collector.collect(request)
+                operation=collector.collect_fin(request) if request.get('apiVersion')=='fin-land-v1' else collector.discover(request) if request.get('discover') else collector.inspect(request) if request.get('inspect') else collector.collect(request)
                 result = await asyncio.wait_for(operation,timeout=request.get('timeoutSeconds',45))
             except asyncio.TimeoutError:
                 if os.environ.get('NAVER_BROWSER_DIAGNOSTICS')=='1':

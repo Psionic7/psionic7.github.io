@@ -7,10 +7,12 @@ import {browserCaptureGroup} from './naver-browser-capture.mjs';
 import {listingSearchNames,listingFavoritePhase,listingPhaseMatches} from './naver-listing-names.mjs';
 import {verifyComplex,verifyComplexEvidence} from './naver-listings.mjs';
 import {housingMapViewport,housingPoint,housingLocationEvidence,housingObservation} from './housing-location.mjs';
+import {finListingGroup} from './naver-fin-listings.mjs';
 
-export async function createSystemChromeListingSource({python=process.env.NAVER_BROWSER_PYTHON,connections=[],firstPageOnly=false,discover=false,headless=false,baseUrl='https://new.land.naver.com',spawnWorker=spawn,timeoutMs=90000}={}) {
+export async function createSystemChromeListingSource({python=process.env.NAVER_BROWSER_PYTHON,connections=[],firstPageOnly=false,discover=false,headless=false,baseUrl='https://fin.land.naver.com',spawnWorker=spawn,timeoutMs=90000,apiVersion}={}) {
   const origin=new URL(baseUrl).origin;
-  if(baseUrl!==origin||origin!=='https://new.land.naver.com'&&!/^http:\/\/(127\.0\.0\.1|localhost):\d+$/.test(origin))throw Error('매물 브라우저 주소를 확인하세요.');
+  if(baseUrl!==origin||!['https://new.land.naver.com','https://fin.land.naver.com'].includes(origin)&&!/^http:\/\/(127\.0\.0\.1|localhost):\d+$/.test(origin))throw Error('매물 브라우저 주소를 확인하세요.');
+  const current=apiVersion==='fin-land-v1'||origin==='https://fin.land.naver.com';
   if(!Array.isArray(connections)||connections.length>1000||new Set(connections.map(r=>r?.id)).size!==connections.length||connections.some(r=>typeof r?.id!=='string'||r.complexNo!==null&&!/^[1-9]\d{0,11}$/.test(r.complexNo)))throw new Error('매물 단지 연결 파일을 확인하세요.');
   const byFavorite=new Map(connections.filter(r=>r.complexNo).map(r=>[r.id,r.complexNo]));
   const observations=new Map();
@@ -45,10 +47,11 @@ export async function createSystemChromeListingSource({python=process.env.NAVER_
       const abort=()=>child.kill();signal?.addEventListener('abort',abort,{once:true});
       try {
         let observation=observations.get(complexNo);
-        if(!observation){observation={payload:await request({complexNo,firstPageOnly}),observedAt:new Date().toISOString()};observations.set(complexNo,observation);}
+        if(!observation){observation={payload:await request({complexNo,firstPageOnly,...(current?{apiVersion:'fin-land-v1'}:{})}),observedAt:new Date().toISOString()};observations.set(complexNo,observation);}
         const {payload,observedAt}=observation;
         signal?.throwIfAborted();
         if(payload.errorCode){if(!Object.hasOwn(LISTING_ERRORS,payload.errorCode))throw new BrowserListingError('invalid_response');throw new BrowserListingError(payload.errorCode);}
+        if(current)return finListingGroup(target,complexNo,payload,{observedAt});
         if(!/^[1-9]\d*$/.test(payload.complexNo)||complexNo&&payload.complexNo!==complexNo||!Array.isArray(payload.responses))throw new BrowserListingError('invalid_response');
         const pages=new BrowserListingPages();
         for(const response of payload.responses){if(new URL(response.url).origin!==origin)throw new BrowserListingError('invalid_response');pages.consume(response.url,response.status,response.payload);}
@@ -65,6 +68,7 @@ export async function createSystemChromeListingSource({python=process.env.NAVER_
       }catch(error){signal?.throwIfAborted();throw error;}finally{signal?.removeEventListener('abort',abort);}
   }
   async function inspectKnown(target,complexNo,signal) {
+    if(current)return collectKnown(target,complexNo,signal);
     signal?.throwIfAborted();
     const abort=()=>child.kill();signal?.addEventListener('abort',abort,{once:true});
     try{
@@ -86,8 +90,9 @@ export async function createSystemChromeListingSource({python=process.env.NAVER_
   async function execute(target,{complexNo,signal,metadataOnly=false}={}) {
       const fetchKnown=metadataOnly?inspectKnown:collectKnown;
       complexNo??=target.complexNo||byFavorite.get(target.favorite.id);
-      if(complexNo){try{return await fetchKnown(target,complexNo,signal);}catch(error){if(error.code!=='address_mismatch'||!discover||!housingMapViewport(target.location))throw error;byFavorite.delete(target.favorite.id);}}
+      if(complexNo){try{return await fetchKnown(target,complexNo,signal);}catch(error){if(current||error.code!=='address_mismatch'||!discover||!housingMapViewport(target.location))throw error;byFavorite.delete(target.favorite.id);}}
       if(!discover)throw new BrowserListingError('unmatched');
+      if(current)throw new BrowserListingError('unmatched');
       signal?.throwIfAborted();
       const viewport=housingMapViewport(target.location);
       if(!viewport&&(typeof target.query!=='string'||!target.query.trim()||target.query.length>300))throw new BrowserListingError('unmatched');

@@ -1,5 +1,7 @@
 # 시스템 Chrome 무인 매매 수집과 GitHub Actions
 
+2026-11-10에 기본 수집기를 `fin.land.naver.com`의 현재 화면으로 전환했다. 아래는 이전 구현과 검증의 기록이다. 현재 동작·실행 명령과 상록우성 실제 수집 결과는 [현재 수집기 구현 기록](naver-fin-collection-implementation-2026-11-10.md)을 우선 확인한다. 일일 수집은 로컬 확정 연결만 읽고 미확정 후보를 자동 검색·승인하지 않는다.
+
 ## 변경 계획과 실행
 
 1. insane-search의 `protocol_stealth_chrome` 실행 방식인 nodriver + 시스템 Chrome을 일일 매매 수집의 기본 소스로 연결한다.

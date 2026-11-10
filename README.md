@@ -33,16 +33,17 @@ JUSO_ADDRESS_SEARCH_KEY=<주소정보누리집 주소 검색 승인키>
 
 ## 지역 전체 아파트 매매 매물의 일일 수집
 
-기존 **매일 한국 시간 01:00** 실거래가 예약 실행에서 도로명주소 조회 후 저장한 수집 지역의 전체 아파트 **매매 매물만** 수집합니다. 전세·월세는 요청·저장·조회 대상에서 제외합니다. 대상은 `automation/config.json`의 21개 동과 작업 DB의 활성 아파트 대장 **467개 단지**이며 개인 즐겨찾기와 무관합니다. 이름이 미확정인 7개 단지도 삭제하지 않습니다. 관리자에서 수집 지역을 바꾸면 다음 실행의 매물 대상도 같은 지역으로 바뀝니다.
+기존 **매일 한국 시간 01:00** 실거래가 예약 실행에서 저장한 수집 지역의 아파트 **매매 매물만** 수집합니다. 전세·월세는 요청·저장·조회 대상에서 제외합니다. 대상은 `automation/config.json`의 21개 동과 로컬 확정 아파트·구역 정보이며 개인 즐겨찾기와 무관합니다. 이 중 범위가 유효한 활성 확정 네이버 연결만 수집합니다. 연결 미확정은 매물 0건과 구분해 남기며 GitHub에서 자동 검색·승인하지 않습니다.
 
-브라우저가 네이버 화면을 열고 검색·주소 대조·목록 스크롤을 수행하며, 화면이 실제로 받은 목록 응답을 페이지별로 검증합니다. 마지막 페이지까지 확인한 결과만 전체 수집으로 저장합니다. 한국 날짜별 단지 시도 기록, 네이버 단지 연결, 마지막 성공 매물은 작업 SQLite에 저장해 기존 암호화 DB 보관·복원과 함께 유지합니다. 같은 날 실거래 수집을 다시 실행해도 이미 시도한 단지는 재수집하지 않습니다. 매물 외부 연결 실패는 별도 미완료 상태로 기록하고 정상 실거래의 추출·검사·배포를 계속합니다. DB 저장·자료 형식 오류는 실패로 처리합니다.
+브라우저가 확정 단지 화면을 열고 주소 대조·목록 스크롤을 수행하며, 화면이 실제로 받은 목록 응답을 페이지별로 검증합니다. 마지막 페이지까지 확인한 결과만 전체 수집으로 저장합니다. 로컬 확정 연결은 읽기 기준으로 유지하고 한국 날짜별 단지 시도 기록과 마지막 성공 매물은 작업 SQLite에 저장합니다. 같은 수집기 버전의 당일 시도는 재사용하며, 새 서비스 버전 전환 시 기존 서비스의 당일 완료·실패 기록으로 수집을 건너뛰지 않습니다. 매물 외부 연결 실패는 별도 미완료 상태로 기록하고 정상 실거래의 추출·검사·배포를 계속합니다. DB 저장·자료 형식 오류는 실패로 처리합니다.
 
-일일 매물 수집은 insane-search에서 확인한 **nodriver + 시스템 Chrome** 방식으로 실행합니다. GitHub Actions는 Python 3.12와 고정 버전 nodriver를 설치하고 Xvfb 가상 화면에서 일반 Chrome을 실행합니다. 저장한 단지 연결을 재검증하며, 연결이 없는 대상은 검색 후 지도 표식의 단지 번호를 읽고 주소를 검증합니다. 새 PC에서는 별도 Python 환경에 `scripts/requirements-naver-browser.txt`를 설치하고 `NAVER_BROWSER_PYTHON`을 지정하세요. 실행 방법과 검증 기록은 [무인 수집 문서](project-notes/unattended-naver-listings.md)에 있습니다. Playwright Chromium은 기존 수집기의 회귀 테스트에 사용합니다.
+일일 매물 수집은 insane-search에서 확인한 **nodriver + 시스템 Chrome** 방식으로 실행합니다. 기본 경로는 `fin.land.naver.com`의 현재 매매 화면이며, 실제 화면의 응답에서 광고·중개사별 가격·제공자 묶음 관계를 보존합니다. GitHub Actions는 Python 3.12와 고정 버전 nodriver를 설치하고 Xvfb 가상 화면에서 일반 Chrome을 실행합니다. 수집 실패로 로컬 승인 연결을 지우지 않습니다. 새 PC에서는 별도 Python 환경에 `scripts/requirements-naver-browser.txt`를 설치하고 `NAVER_BROWSER_PYTHON`을 지정하세요. [현재 수집기와 실제 검증 기록](project-notes/naver-fin-collection-implementation-2026-11-10.md), [기존 무인 수집 문서](project-notes/unattended-naver-listings.md)를 참조하세요. Playwright Chromium은 기존 수집기의 회귀 테스트에 사용합니다.
 
 ```powershell
 pnpm listings:daily --plan  # DB를 바꾸지 않고 지역 전체 대상 확인
 pnpm listings:daily         # 저장 지역의 당일 미시도 단지 수집·내보내기
 pnpm listings:daily --force # 명시적으로 당일 전체 재시도
+pnpm listings:verified --complex-no 2645 # 확정된 한 단지만 읽기 전용 DB로 검증, 결과는 local에 저장
 pnpm test:listings          # 일일 상태·DB 보존·실제 Chromium 동작 회귀 검사
 ```
 
