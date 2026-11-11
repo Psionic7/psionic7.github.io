@@ -6,6 +6,7 @@ on:
     paths:
       - '.github/workflows/naver-listings-smoke.yml'
       - 'scripts/naver-system-chrome.py'
+      - 'scripts/naver_browser_diagnostics.py'
       - 'scripts/check-naver-live.mjs'
       - 'scripts/requirements-naver-browser.txt'
       - 'server/naver-system-chrome.mjs'
@@ -57,7 +58,7 @@ jobs:
           else
             node --test tests/naver-system-chrome.test.mjs tests/naver-nodriver.integration.mjs
           fi
-      - name: Collect real sale listings by known ID and automatic search
+      - name: Diagnose confirmed Naver complex collection stages
         run: |
           if [[ "$RUNNER_OS" == "Linux" ]]; then
             xvfb-run --auto-servernum --server-args='-screen 0 1280x1000x24' node scripts/check-naver-live.mjs
@@ -70,6 +71,8 @@ jobs:
         if: always()
         with:
           name: naver-live-validation-${{ runner.os }}
-          path: local/data-validation/naver-live.json
+          path: |
+            local/data-validation/naver-live.json
+            local/data-validation/naver-browser/**
           if-no-files-found: warn
           retention-days: 14

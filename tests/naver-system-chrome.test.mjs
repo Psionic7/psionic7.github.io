@@ -58,6 +58,12 @@ test('a hung or crashed browser stops the worker and reports failure',async()=>{
   const child=worker(()=>undefined),source=await createSystemChromeListingSource({python:'test-python',connections:[{id:favorite.id,complexNo:'10959'}],spawnWorker:()=>child,timeoutMs:100});
   try{await assert.rejects(source.collect({favorite,query:'test'}),e=>e.code==='timeout');assert.equal(child.killed,true);}finally{await source.close();}
 });
+
+test('worker timeouts retain the failing stage and response counts without changing the public error code',async()=>{
+ const diagnostics={version:1,phase:'navigation_ack',lastCompleted:null,waitingFor:'document_request',documentRequests:1,documentResponses:0,listRequests:0,listResponses:0};
+ const source=await createCurrentSource({python:'test-python',spawnWorker:()=>worker(()=>({errorCode:'timeout',diagnostics}))});
+ try{await assert.rejects(source.collect({favorite},{complexNo:'10959'}),error=>error.code==='timeout'&&error.diagnostics.phase==='navigation_ack'&&error.diagnostics.documentResponses===0);}finally{await source.close();}
+});
 test('current Naver address field and server-rendered address proof both preserve parcel verification',async()=>{
   const {cortarAddress,...rest}=detail.complexDetail;
   const current={...rest,address:cortarAddress,cortarNo:'4146510100'};

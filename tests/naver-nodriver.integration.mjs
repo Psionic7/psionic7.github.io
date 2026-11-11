@@ -2,8 +2,26 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import http from 'node:http';
 import {once} from 'node:events';
+import fs from 'node:fs';
 import {createDailyListingSource} from '../server/naver-listing-source.mjs';
 import {makeApartmentFavorite} from '../src/apartment-favorites.js';
+
+for(const blocked of ['document','list'])test('diagnostics distinguish a stalled '+blocked+' response without losing the trace',{skip:!process.env.NAVER_BROWSER_PYTHON},async t=>{
+ const server=http.createServer((req,res)=>{
+  if(blocked==='document'||req.url==='/front-api/v1/complex/article/list')return;
+  res.setHeader('content-type','text/html; charset=utf-8');res.end('<html><body>Loading<script>fetch("/front-api/v1/complex/article/list",{method:"POST",body:JSON.stringify({complexNumber:2645,lastInfo:[]})})</script></body></html>');
+ });server.listen(0,'127.0.0.1');await once(server,'listening');let source;
+ t.after(async()=>{await source?.close();server.closeAllConnections();await new Promise(resolve=>server.close(resolve));});
+ source=await createDailyListingSource({baseUrl:`http://127.0.0.1:${server.address().port}`,apiVersion:'fin-land-v1',headless:true,python:process.env.NAVER_BROWSER_PYTHON,timeoutMs:13000,diagnostics:true,discover:false});
+ t.after(()=>{if(fs.existsSync(source.diagnosticsFile))fs.unlinkSync(source.diagnosticsFile);});
+ const favorite=makeApartmentFavorite({apartment:'진단단지',dong:'정자동',jibun:'1'},{region_code:'41135',region_name:'경기도 성남시 분당구'});
+ let failure;await assert.rejects(source.collect({favorite},{complexNo:'2645'}),error=>{failure=error;return error.code==='timeout';});
+ const records=fs.readFileSync(source.diagnosticsFile,'utf8').trim().split('\n').map(JSON.parse);
+ assert(records.some(row=>row.event==='browser_ready'));assert(records.some(row=>row.event==='document_request'));assert(records.some(row=>row.event==='operation_failed'));
+ if(blocked==='document'){assert.equal(failure.diagnostics.phase,'navigation_ack');assert.equal(failure.diagnostics.documentResponses,0);}
+ else{assert.equal(failure.diagnostics.waitingFor,'first_list_response');assert.equal(failure.diagnostics.listRequests,1);assert.equal(failure.diagnostics.listResponses,0);assert(records.some(row=>row.event==='document_response'&&row.status===200));}
+ assert(!records.some(row=>Object.hasOwn(row,'headers')||Object.hasOwn(row,'body')));
+});
 
 test('current Chrome source follows observed cursor pages and preserves broker ads despite anonymous auth errors',{skip:!process.env.NAVER_BROWSER_PYTHON},async t=>{
  const favorite=makeApartmentFavorite({apartment:'검증단지',dong:'정자동',jibun:'121'},{region_code:'41135',region_name:'경기도 성남시 분당구'});

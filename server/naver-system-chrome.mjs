@@ -1,5 +1,9 @@
 import {spawn} from 'node:child_process';
 import {createInterface} from 'node:readline';
+import fs from 'node:fs';
+import path from 'node:path';
+import {randomUUID} from 'node:crypto';
+import {ROOT} from './storage.mjs';
 import {fileURLToPath} from 'node:url';
 import {BrowserListingError,BrowserListingPages} from './naver-browser-collector.mjs';
 import {LISTING_ERRORS,validComplexNo,apartmentListingType} from '../src/naver-listings.mjs';
@@ -9,7 +13,7 @@ import {verifyComplex,verifyComplexEvidence} from './naver-listings.mjs';
 import {housingMapViewport,housingPoint,housingLocationEvidence,housingObservation} from './housing-location.mjs';
 import {finListingGroup} from './naver-fin-listings.mjs';
 
-export async function createSystemChromeListingSource({python=process.env.NAVER_BROWSER_PYTHON,connections=[],firstPageOnly=false,discover=false,headless=false,baseUrl='https://fin.land.naver.com',spawnWorker=spawn,timeoutMs=90000,apiVersion}={}) {
+export async function createSystemChromeListingSource({python=process.env.NAVER_BROWSER_PYTHON,connections=[],firstPageOnly=false,discover=false,headless=false,baseUrl='https://fin.land.naver.com',spawnWorker=spawn,timeoutMs=90000,apiVersion,diagnostics=process.env.NAVER_BROWSER_DIAGNOSTICS==='1',diagnosticScreenshots=false}={}) {
   const origin=new URL(baseUrl).origin;
   if(baseUrl!==origin||!['https://new.land.naver.com','https://fin.land.naver.com'].includes(origin)&&!/^http:\/\/(127\.0\.0\.1|localhost):\d+$/.test(origin))throw Error('매물 브라우저 주소를 확인하세요.');
   const current=apiVersion==='fin-land-v1'||origin==='https://fin.land.naver.com';
@@ -19,10 +23,14 @@ export async function createSystemChromeListingSource({python=process.env.NAVER_
   const discoveries=new Map();
   const details=new Map();
   if(!python)throw new BrowserListingError('browser_unavailable');
-  const child=spawnWorker(python,['-u',fileURLToPath(new URL('../scripts/naver-system-chrome.py',import.meta.url)),'--base-url',baseUrl],{windowsHide:true,stdio:['pipe','pipe',process.env.NAVER_BROWSER_DIAGNOSTICS==='1'?'inherit':'ignore'],env:{...process.env,PYTHONUTF8:'1',PYTHONIOENCODING:'utf-8',NAVER_CHROME_HEADLESS:headless?'1':'0'}});
+  const diagnosticsFile=diagnostics?path.join(ROOT,'local/data-validation/naver-browser',randomUUID()+'.jsonl'):null;
+  if(diagnosticsFile){fs.mkdirSync(path.dirname(diagnosticsFile),{recursive:true});fs.writeFileSync(diagnosticsFile,'',{flag:'wx'});}
+  const diagnosticError=(code,summary={})=>Object.assign(new BrowserListingError(code),{diagnostics:{...summary,...(diagnosticsFile?{file:path.relative(ROOT,diagnosticsFile).replaceAll('\\','/')}:{} )}});
+  const child=spawnWorker(python,['-u',fileURLToPath(new URL('../scripts/naver-system-chrome.py',import.meta.url)),'--base-url',baseUrl],{windowsHide:true,stdio:['pipe','pipe',process.env.NAVER_BROWSER_DIAGNOSTICS==='1'?'inherit':'ignore'],env:{...process.env,PYTHONUTF8:'1',PYTHONIOENCODING:'utf-8',NAVER_CHROME_HEADLESS:headless?'1':'0',NAVER_BROWSER_TRACE_FILE:diagnosticsFile||'',NAVER_BROWSER_SCREENSHOTS:diagnostics&&diagnosticScreenshots?'1':'0'}});
   const lines=createInterface({input:child.stdout});
   let pending,dead=false,closed=false;
-  const failure=()=>{dead=true;pending?.reject(new BrowserListingError('browser_unavailable'));pending=null;};
+  let parentPhase='browser_ready';
+  const failure=()=>{dead=true;pending?.reject(diagnosticError('browser_unavailable',{phase:parentPhase}));pending=null;};
   child.on('error',failure);child.on('exit',failure);
   lines.on('line',line=>{
     if(!pending)return;
@@ -31,15 +39,16 @@ export async function createSystemChromeListingSource({python=process.env.NAVER_
   });
   const receive=()=>new Promise((resolve,reject)=>{
     if(dead)return reject(new BrowserListingError('browser_unavailable'));
-    const timer=setTimeout(()=>{pending=null;child.kill();reject(new BrowserListingError('timeout'));},timeoutMs);
+    const timer=setTimeout(()=>{pending=null;child.kill();reject(diagnosticError('timeout',{phase:'parent_'+parentPhase}));},timeoutMs);
     pending={resolve:value=>{clearTimeout(timer);resolve(value);},reject:error=>{clearTimeout(timer);reject(error);}};
   });
   try{const ready=await receive();if(ready.ready!==true)throw new BrowserListingError('browser_unavailable');}
   catch(error){child.kill();throw error;}
   const request=async input=>{
+    parentPhase='worker_result';
     const result=receive();child.stdin.write(JSON.stringify({...input,timeoutSeconds:Math.floor(timeoutMs/1000)-10})+'\n');
     const payload=await result;
-    if(payload.errorCode)throw new BrowserListingError(Object.hasOwn(LISTING_ERRORS,payload.errorCode)?payload.errorCode:'invalid_response');
+    if(payload.errorCode)throw diagnosticError(Object.hasOwn(LISTING_ERRORS,payload.errorCode)?payload.errorCode:'invalid_response',payload.diagnostics);
     return payload;
   };
   async function collectKnown(target,complexNo,signal) {
@@ -154,6 +163,7 @@ export async function createSystemChromeListingSource({python=process.env.NAVER_
       throw new BrowserListingError('unmatched');
   }
   return {
+    diagnosticsFile,
     collect:(target,options)=>execute(target,options),
     resolve:(target,options)=>execute(target,{...options,metadataOnly:true}),
     async close(){if(closed)return;closed=true;lines.close();if(!dead){child.stdin.end(JSON.stringify({close:true})+'\n');const timer=setTimeout(()=>child.kill(),3000);timer.unref();child.once('exit',()=>clearTimeout(timer));}}

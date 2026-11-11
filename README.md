@@ -51,7 +51,10 @@ pnpm listings:daily         # 저장 지역의 당일 미시도 단지 수집·�
 pnpm listings:daily --force # 명시적으로 당일 전체 재시도
 pnpm listings:verified --complex-no 2645 # 확정된 한 단지만 읽기 전용 DB로 검증, 결과는 local에 저장
 pnpm test:listings          # 일일 상태·DB 보존·실제 Chromium 동작 회귀 검사
+node scripts/check-naver-live.mjs # 확정 단지의 단계별 진단, 결과·추적 파일은 local에 저장
 ```
+
+시간 초과를 조사할 때는 [단계별 진단 기록](project-notes/naver-timeout-diagnostics-2026-11-12.md)을 참조하세요. DNS·TLS, Chrome 준비, 문서 이동·HTTP 응답, 매물 요청·응답을 구분하고 실패한 단계와 마지막 완료 단계를 보존합니다. GitHub 검증도 확정 단지번호를 사용하며 추적 파일과 실패 화면을 아티팩트로 남깁니다.
 
 로컬 수집 관리자의 실거래 수집에도 같은 일일 작업이 연결됩니다. 완료 후 **공개 데이터 내보내기**에서 매물 스냅샷과 상태를 내보냅니다. 공개 화면은 지역 전체의 성공·실패·단지 연결 미확정·미시도 수를 표시하며, 즐겨찾기에서는 일치하는 단지의 저장 매물을 조회합니다. 상세 구현·검증 기록은 [일일 매물 수집 계획](project-notes/daily-naver-listings-plan.md)에 있습니다.
 

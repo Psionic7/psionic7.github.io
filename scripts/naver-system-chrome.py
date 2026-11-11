@@ -17,13 +17,14 @@ import math
 from urllib.parse import urlsplit, parse_qs
 
 import nodriver as uc
+from naver_browser_diagnostics import BrowserTrace, StageTimeout, network_error
 
 API = re.compile(r"^/api/(?:complexes|articles/complex)/([1-9]\d*)$")
 MARKERS='/api/complexes/single-markers/2.0'
 
 
 class Collector:
-    def __init__(self, browser, tab, base_url='https://new.land.naver.com'):
+    def __init__(self, browser, tab, base_url='https://new.land.naver.com', trace=None):
         self.browser, self.tab = browser, tab
         self.base_url = base_url
         self.host = urlsplit(base_url).netloc
@@ -32,29 +33,54 @@ class Collector:
         self.marker_requests,self.marker_pending,self.marker_responses={},{},[]
         self.map_active=False
         self.fin_started,self.fin_pending,self.fin_responses={},{},[]
+        self.trace = trace or BrowserTrace()
+        self.documents = set()
 
     async def started(self,event):
         parsed=urlsplit(event.request.url)
+        if parsed.netloc==self.host and event.type_==uc.cdp.network.ResourceType.DOCUMENT:
+            self.documents.add(event.request_id)
+            self.trace.counters['documentRequests']=self.trace.counters.get('documentRequests',0)+1
+            self.trace.emit('document_request', **self.trace.location(event.request.url))
+            if event.redirect_response:
+                self.trace.emit('document_redirect', status=int(event.redirect_response.status), **self.trace.location(event.redirect_response.url), destination=self.trace.location(event.request.url))
         if parsed.netloc==self.host and parsed.path=='/front-api/v1/complex/article/list':
             try:
                 request=json.loads(event.request.post_data or '{}')
                 request.pop('seed',None)
                 self.fin_started[event.request_id]=request
+                self.trace.counters['listRequests']=self.trace.counters.get('listRequests',0)+1
+                self.trace.emit('list_request', cursorItems=len(request.get('lastInfo',[])))
             except (TypeError,ValueError):
                 self.error='invalid_response'
         if parsed.netloc==self.host and parsed.path==MARKERS:self.marker_pending[event.request_id]=str(event.loader_id)
 
     async def failed(self,event):
+        if event.request_id in self.documents or event.request_id in self.fin_started or event.request_id in self.fin_pending:
+            self.trace.emit('network_failed', document=event.request_id in self.documents, canceled=bool(event.canceled), reason=network_error(event.error_text))
         if self.marker_pending.pop(event.request_id,None) is not None:
             self.marker_requests.pop(event.request_id,None)
             if self.map_active and not event.canceled:self.error='unavailable'
 
+    async def dom_ready(self,event):
+        self.trace.emit('dom_content_loaded')
+
+    async def page_loaded(self,event):
+        self.trace.emit('page_loaded')
+
     async def response(self, event):
         parsed = urlsplit(event.response.url)
+        if event.request_id in self.documents:
+            self.trace.counters['documentResponses']=self.trace.counters.get('documentResponses',0)+1
+            timing=event.response.timing
+            self.trace.emit('document_response', **self.trace.location(event.response.url), status=int(event.response.status), protocol=event.response.protocol,
+                            timing={key:getattr(timing,key,None) for key in ['dns_start','dns_end','connect_start','connect_end','ssl_start','ssl_end','send_start','receive_headers_end']} if timing else None)
         if parsed.netloc==self.host and parsed.path in ['/front-api/v1/complex','/front-api/v1/complex/article/list']:
             status=int(event.response.status)
             if status in (401,403,429):self.error='rate_limited' if status==429 else 'unauthorized'
             self.fin_pending[event.request_id]=(event.response.url,status,self.fin_started.pop(event.request_id,None))
+            if parsed.path.endswith('/article/list'):
+                self.trace.emit('list_response_headers', status=status)
         if parsed.netloc==self.host and event.response.mime_type=='text/html' and os.environ.get('NAVER_BROWSER_DIAGNOSTICS')=='1':
             print(json.dumps({'stage':'document-response','path':parsed.path,'status':int(event.response.status)}),file=sys.stderr,flush=True)
         if parsed.netloc == self.host and (API.fullmatch(parsed.path) or parsed.path=='/api/articles'):
@@ -63,6 +89,8 @@ class Collector:
             self.marker_requests[event.request_id]=(event.response.url,int(event.response.status),str(event.loader_id))
 
     async def finished(self, event):
+        if event.request_id in self.documents:
+            self.trace.emit('document_finished', bytes=int(event.encoded_data_length))
         current=self.fin_pending.pop(event.request_id,None)
         if current:
             url,status,request=current
@@ -70,10 +98,16 @@ class Collector:
                 self.error=self.error or 'unavailable'
                 return
             try:
-                body,encoded=await self.tab.send(uc.cdp.network.get_response_body(event.request_id))
+                body,encoded=await asyncio.wait_for(self.tab.send(uc.cdp.network.get_response_body(event.request_id)),timeout=5)
                 if encoded:body=base64.b64decode(body).decode('utf-8')
                 self.fin_responses.append({'url':url,'status':status,'request':request,'payload':json.loads(body)})
-            except Exception:self.error='invalid_response'
+                if urlsplit(url).path.endswith('/article/list'):
+                    payload=self.fin_responses[-1]['payload'];result=payload.get('result') or {}
+                    self.trace.counters['listResponses']=self.trace.counters.get('listResponses',0)+1
+                    self.trace.emit('list_response_body', success=payload.get('isSuccess') is True, items=len(result.get('list') or []), hasNextPage=result.get('hasNextPage'))
+            except Exception as error:
+                self.trace.emit('response_body_failed', **self.trace.location(url), errorClass=type(error).__name__)
+                self.error='invalid_response'
             return
         marker=self.marker_requests.pop(event.request_id,None)
         self.marker_pending.pop(event.request_id,None)
@@ -284,34 +318,40 @@ class Collector:
         if not re.fullmatch(r'[1-9]\d{0,11}',complex_no):return {'errorCode':'unmatched'}
         self.fin_started,self.fin_pending,self.fin_responses={},{},[]
         self.error=None
-        _,loader_id,*_=await self.tab.send(uc.cdp.page.navigate(f'{self.base_url}/complexes/{complex_no}?articleTradeTypes=A1&tab=article'))
-        deadline=time.monotonic()+request.get('timeoutSeconds',75)
-        while time.monotonic()<deadline:
+        _,loader_id,*_=await self.trace.step('navigation_ack',self.tab.send(uc.cdp.page.navigate(f'{self.base_url}/complexes/{complex_no}?articleTradeTypes=A1&tab=article')),limit=20)
+        last_poll=0
+        while self.trace.remaining()>.05:
             if self.error:return {'errorCode':self.error}
             if self.fin_complete():
-                return {'apiVersion':'fin-land-v1','complexNo':complex_no,'pageHtml':await self.tab.get_content(),'responses':self.fin_responses}
-            frame=await self.tab.send(uc.cdp.page.get_frame_tree())
+                self.trace.waiting='complete'
+                return {'apiVersion':'fin-land-v1','complexNo':complex_no,'pageHtml':await self.trace.step('page_html',self.tab.get_content()),'responses':self.fin_responses}
+            self.trace.waiting='first_list_response' if self.trace.counters.get('listRequests') and not self.trace.counters.get('listResponses') else 'next_list_response' if self.trace.counters.get('listResponses') else 'first_list_request'
+            frame=await self.trace.step('frame_tree',self.tab.send(uc.cdp.page.get_frame_tree()))
             if loader_id and frame.frame.loader_id!=loader_id:
                 await asyncio.sleep(.1)
                 continue
-            current=await self.tab.evaluate('location.href')
-            text=await self.tab.evaluate("document.body?.innerText||''")
+            current=await self.trace.step('document_location',self.tab.evaluate('location.href'))
+            text=await self.trace.step('document_render',self.tab.evaluate("document.body?.innerText||''"))
+            if time.monotonic()-last_poll>=5:
+                self.trace.emit('waiting', **self.trace.summary(), **self.trace.location(current), bodyChars=len(text))
+                last_poll=time.monotonic()
             if re.search(r'자동입력\s*방지|비정상적인\s*접근|접근이?\s*제한|Too Many Requests|captcha',text,re.I):return {'errorCode':'blocked'}
             if '/404' in (current or ''):return {'errorCode':'site_unavailable'}
-            await self.tab.evaluate("""(()=>{const links=[...document.querySelectorAll('a[href*="/articles/"]')];const moved=new Set();for(const link of links){for(let e=link.parentElement;e&&e!==document.body;e=e.parentElement){if(e.scrollHeight>e.clientHeight+20&&/auto|scroll/.test(getComputedStyle(e).overflowY)&&!moved.has(e)){e.scrollTop=e.scrollHeight;e.dispatchEvent(new Event('scroll',{bubbles:true}));moved.add(e);}}}return moved.size})()""")
+            await self.trace.step('scroll',self.tab.evaluate("""(()=>{const links=[...document.querySelectorAll('a[href*="/articles/"]')];const moved=new Set();for(const link of links){for(let e=link.parentElement;e&&e!==document.body;e=e.parentElement){if(e.scrollHeight>e.clientHeight+20&&/auto|scroll/.test(getComputedStyle(e).overflowY)&&!moved.has(e)){e.scrollTop=e.scrollHeight;e.dispatchEvent(new Event('scroll',{bubbles:true}));moved.add(e);}}}return moved.size})()"""))
             await asyncio.sleep(.6)
-        return {'errorCode':'incomplete'}
+        raise StageTimeout(self.trace.waiting)
 
     async def search(self, query):
-        _, loader_id, *_ = await self.tab.send(uc.cdp.page.navigate(self.base_url+'/'))
+        _, loader_id, *_ = await self.trace.step('search_navigation_ack',self.tab.send(uc.cdp.page.navigate(self.base_url+'/')),limit=20)
         opened=False
         for _ in range(30):
             try:
-                frame=await self.tab.send(uc.cdp.page.get_frame_tree())
+                frame=await self.trace.step('search_frame',self.tab.send(uc.cdp.page.get_frame_tree()))
                 if loader_id and frame.frame.loader_id!=loader_id:
                     await asyncio.sleep(0.3)
                     continue
-                opened=await self.tab.evaluate("(()=>{if(document.readyState!=='complete')return false;const b=Array.from(document.querySelectorAll('button')).find(b=>b.textContent.trim()==='단지, 지역검색');if(!b)return false;b.click();return true})()")
+                opened=await self.trace.step('search_open',self.tab.evaluate("(()=>{if(document.readyState!=='complete')return false;const b=Array.from(document.querySelectorAll('button')).find(b=>b.textContent.trim()==='단지, 지역검색');if(!b)return false;b.click();return true})()"))
+            except StageTimeout:raise
             except Exception:
                 opened=False
             if opened:break
@@ -319,13 +359,14 @@ class Collector:
         if not opened:raise asyncio.TimeoutError()
         for _ in range(30):
             try:
-                focused=await self.tab.evaluate("(()=>{const field=document.querySelector('#land_search');if(!field?.getClientRects().length)return false;Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(field,'');field.dispatchEvent(new Event('input',{bubbles:true}));field.focus();return true})()")
+                focused=await self.trace.step('search_focus',self.tab.evaluate("(()=>{const field=document.querySelector('#land_search');if(!field?.getClientRects().length)return false;Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(field,'');field.dispatchEvent(new Event('input',{bubbles:true}));field.focus();return true})()"))
+            except StageTimeout:raise
             except Exception:
                 focused=False
             if focused:break
             await asyncio.sleep(0.3)
         if not focused:raise asyncio.TimeoutError()
-        await self.tab.send(uc.cdp.input_.insert_text(query))
+        await self.trace.step('search_input',self.tab.send(uc.cdp.input_.insert_text(query)))
         previous=None
         for _ in range(30):
             choices=json.loads(await self.tab.evaluate("JSON.stringify(Array.from(document.querySelectorAll('li.search_item:not(.type_recent) button.search_button')).map(b=>b.getClientRects().length?b.innerText.trim():''))"))
@@ -432,9 +473,12 @@ async def main():
     parser=argparse.ArgumentParser()
     parser.add_argument('--base-url',default='https://new.land.naver.com')
     args=parser.parse_args()
+    trace=BrowserTrace()
+    trace.emit('browser_start')
     for attempt in range(3):
         try:
             browser = await uc.start(headless=os.environ.get('NAVER_CHROME_HEADLESS')=='1',browser_executable_path=os.environ.get('NAVER_CHROME_PATH') or None,browser_args=['--lang=ko-KR','--window-size=1280,1000'])
+            trace.emit('browser_started', attempt=attempt+1)
             break
         except Exception:
             for instance in list(uc.util.get_registered_instances()):
@@ -450,26 +494,32 @@ async def main():
     try:
         # Create the site target from the browser connection; do not wait for a cross-site Page.navigate acknowledgement.
         tab = await asyncio.wait_for(browser.get('about:blank',new_tab=True),timeout=15)
-        collector = Collector(browser, tab,args.base_url)
+        trace.emit('blank_tab_ready')
+        collector = Collector(browser, tab,args.base_url,trace)
         tab.add_handler(uc.cdp.network.ResponseReceived, collector.response)
         tab.add_handler(uc.cdp.network.LoadingFinished, collector.finished)
         tab.add_handler(uc.cdp.network.RequestWillBeSent,collector.started)
         tab.add_handler(uc.cdp.network.LoadingFailed,collector.failed)
+        tab.add_handler(uc.cdp.page.DomContentEventFired,collector.dom_ready)
+        tab.add_handler(uc.cdp.page.LoadEventFired,collector.page_loaded)
+        await asyncio.wait_for(tab.send(uc.cdp.page.enable()),timeout=5)
         await tab.send(uc.cdp.network.enable(max_total_buffer_size=64000000, max_resource_buffer_size=8000000, enable_durable_messages=True))
+        trace.emit('browser_ready')
         print(json.dumps({"ready": True}), flush=True)
         while line := await asyncio.to_thread(sys.stdin.readline):
             request = json.loads(line)
             if request.get("close"):
                 break
+            trace.begin(request.get('timeoutSeconds',45),'fin' if request.get('apiVersion')=='fin-land-v1' else 'search' if request.get('discover') else 'inspect' if request.get('inspect') else 'legacy',request.get('complexNo',''))
+            phase=trace.phase
+            diagnostics_summary=None
             try:
                 operation=collector.collect_fin(request) if request.get('apiVersion')=='fin-land-v1' else collector.discover(request) if request.get('discover') else collector.inspect(request) if request.get('inspect') else collector.collect(request)
                 result = await asyncio.wait_for(operation,timeout=request.get('timeoutSeconds',45))
-            except asyncio.TimeoutError:
-                if os.environ.get('NAVER_BROWSER_DIAGNOSTICS')=='1':
-                    try:
-                        state=await asyncio.wait_for(tab.evaluate("JSON.stringify({path:location.pathname,title:document.title,body:document.body?.innerText.slice(0,300)})"),timeout=3)
-                        print(json.dumps({'stage':'navigation-timeout','state':json.loads(state),'responses':len(collector.responses)}),file=sys.stderr,flush=True)
-                    except Exception:pass
+            except asyncio.TimeoutError as error:
+                phase=error.stage if isinstance(error,StageTimeout) else trace.waiting if trace.completed==trace.phase else trace.phase
+                diagnostics_summary=trace.summary(phase)
+                await trace.failure_state(tab,phase)
                 result = {"errorCode": "timeout"}
             except PermissionError:
                 result = {"errorCode": "blocked"}
@@ -479,6 +529,13 @@ async def main():
                 print(type(error).__name__+": "+str(error)[:180], file=sys.stderr, flush=True)
                 result = {"errorCode": "unavailable"}
             if collector.error in ['rate_limited','unauthorized','blocked']:result={'errorCode':collector.error}
+            if result.get('errorCode')!='timeout':
+                phase=trace.phase
+                if result.get('errorCode'):
+                    diagnostics_summary=trace.summary(phase)
+                    await trace.failure_state(tab,phase)
+                else:trace.emit('operation_complete', **trace.summary())
+            result['diagnostics']=diagnostics_summary or trace.summary(phase)
             print(json.dumps(result, ensure_ascii=False), flush=True)
     finally:
         browser.stop()
