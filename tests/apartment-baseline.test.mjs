@@ -15,7 +15,7 @@ import {housingQueryInformation,packHousingIdentity} from '../server/housing-exp
 import {housingIdentityCatalog,housingTradeBindings} from '../server/housing-identity.mjs';
 import {housingBindingsMap} from '../src/housing-wire.mjs';
 import {dailyListingTargets,collectDailyListings,listingExport} from '../server/daily-naver-listings.mjs';
-import {synchronizeNaverMatches,recordNaverMatch} from '../server/apartment-naver-matches.mjs';
+import {synchronizeNaverMatches,recordNaverMatch,naverMatchScope} from '../server/apartment-naver-matches.mjs';
 import {listingSnapshot,complexUrl} from '../src/naver-listings.mjs';
 import {exportData} from '../server/export.mjs';
 import {verifyTradeExport} from '../server/verify-trade-export.mjs';
@@ -119,6 +119,28 @@ test('restored market observation wins over an older checkout snapshot with a la
  const f=await listingFixture(t),old={...f.group,status:'failed',errorCode:'timeout',collectedAt:'2026-11-10T08:00:00.000Z',attemptedAt:'2026-11-11T10:00:00.000Z'};
  f.db.prepare('INSERT INTO naver_listing_snapshots VALUES(?,?,?)').run(f.target.favorite.id,f.group.collectedAt,JSON.stringify(f.group));
  const snapshot=listingExport(f.db,{initialSnapshot:listingSnapshot([old])});assert.equal(snapshot.groups.length,1);assert.equal(snapshot.groups[0].collectedAt,f.group.collectedAt);assert.equal(snapshot.groups[0].status,'ready');
+ const wrong={...f.group,complexNo:'88',sourceUrl:complexUrl('88'),observation:{...f.group.observation,complex_no:'88',source_url:complexUrl('88')}};
+ f.db.prepare('UPDATE naver_listing_snapshots SET group_json=?').run(JSON.stringify(wrong));
+ assert.equal(listingExport(f.db,{initialSnapshot:listingSnapshot([old])}).groups[0].complexNo,'77');
+});
+
+test('explicit shared provider scopes use the newest complete observation while preserving attempts and source snapshots',async t=>{
+ const f=await listingFixture(t),payload=structuredClone(f.baseline.payload),first=payload.targets[0];
+ const addTarget=(lot,shared)=>{
+  const favorite=makeApartmentFavorite({...first.favorite,identity_ref:undefined,id:undefined,key:undefined,jibun:lot},first.favorite);
+  const target={...first,favorite,...(shared?{location:{shared_provider:{complexNo:'77',representative:first}}}:{})};
+  const table=payload.tables.apartment_naver_matches,original=table.rows[0],row=[...original];
+  row[table.columns.indexOf('target_id')]=favorite.id;row[table.columns.indexOf('favorite_json')]=JSON.stringify(favorite);row[table.columns.indexOf('scope_hash')]=naverMatchScope(target);table.rows.push(row);payload.targets.push(target);return target;
+ };
+ const second=addTarget('2',true),unlinked=addTarget('3',false);installApartmentBaseline(f.db,envelope(payload));
+ const article=id=>({id,tradeType:'A1',name:'검증단지',priceText:'1억',rentText:'',priceMan:10000,rentMan:0,areaM2:84,supplyAreaM2:null,floor:'3',building:'101',direction:'남',description:'',realtor:'중개사',confirmedOn:'2026-11-11'});
+ const old={...f.group,status:'failed',errorCode:'timeout',attemptedAt:'2026-11-11T11:00:00.000Z',articles:[article('1')]};
+ const latest={...f.group,favorite:second.favorite,collectedAt:'2026-11-11T10:00:00.000Z',attemptedAt:'2026-11-11T10:00:00.000Z',articles:[article('1'),article('2')]};
+ const unrelated={...f.group,favorite:unlinked.favorite,articles:[article('3')]};
+ for(const group of [old,latest,unrelated])f.db.prepare('INSERT INTO naver_listing_snapshots VALUES(?,?,?)').run(group.favorite.id,group.collectedAt,JSON.stringify(group));
+ const before=f.db.prepare('SELECT * FROM naver_listing_snapshots ORDER BY apartment_id').all(),result=listingExport(f.db),byId=new Map(result.groups.map(group=>[group.favorite.id,group]));
+ assert.deepEqual(byId.get(first.favorite.id).articles,latest.articles);assert.equal(byId.get(first.favorite.id).collectedAt,latest.collectedAt);assert.equal(byId.get(first.favorite.id).attemptedAt,old.attemptedAt);assert.equal(byId.get(first.favorite.id).status,'failed');
+ assert.deepEqual(byId.get(unlinked.favorite.id).articles,unrelated.articles);assert.deepEqual(f.db.prepare('SELECT * FROM naver_listing_snapshots ORDER BY apartment_id').all(),before);
 });
 
 test('daily attempts resume only under the same local baseline generation without resolving providers',async t=>{

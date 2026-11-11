@@ -98,16 +98,34 @@ export function readListingCollection(db,day) {
 export function listingExport(db,{initialSnapshot,now=new Date()}={}) {
   const groups=new Map();
   const baseline=readInstalledBaseline(db);
-  if(initialSnapshot){if(!validListingSnapshot(initialSnapshot))throw new Error('기존 매물 스냅샷 검증 실패');for(const group of initialSnapshot.groups)groups.set(group.favorite.id,group);}
+  const approved=baseline?new Map(baseline.payload.targets.map(target=>[target.favorite.id,readNaverMatch(db,target)])):null;
+  const allowed=group=>{const match=approved?.get(group.favorite.id);return !baseline||match?.state==='verified'&&match.active===1&&match.scopeCurrent&&match.complex_no===group.complexNo;};
+  if(initialSnapshot){if(!validListingSnapshot(initialSnapshot))throw new Error('기존 매물 스냅샷 검증 실패');for(const group of initialSnapshot.groups)if(allowed(group))groups.set(group.favorite.id,group);}
   if(hasTable(db,'naver_listing_snapshots'))for(const row of db.prepare('SELECT group_json FROM naver_listing_snapshots ORDER BY apartment_id').all()){
     const group=JSON.parse(row.group_json);if(!validListingGroup(group))throw new Error('저장된 매물 스냅샷 검증 실패');
+    if(!allowed(group))continue;
     for(const [id,old] of groups)if(id!==group.favorite.id&&sameApartmentFavorite(old.favorite,group.favorite)&&old.attemptedAt<=group.attemptedAt)groups.delete(id);
     const old=groups.get(group.favorite.id);if(baseline||!old||old.attemptedAt<=group.attemptedAt)groups.set(group.favorite.id,group);
   }
   const collection=readListingCollection(db)||initialSnapshot?.collection;
   if(baseline){
-    const approved=new Map(baseline.payload.targets.map(target=>[target.favorite.id,readNaverMatch(db,target)]));
-    for(const [id,group] of groups){const match=approved.get(id);if(!match||match.state!=='verified'||!match.scopeCurrent||match.complex_no!==group.complexNo)groups.delete(id);}
+    const shared=new Map(),targets=new Map(baseline.payload.targets.map(target=>[target.favorite.id,target]));
+    for(const target of targets.values()){
+      const provider=target.location?.shared_provider,id=target.favorite.id,representative=provider?.representative?.favorite.id;
+      const match=approved.get(id),other=approved.get(representative);
+      if(!provider||match?.active!==1||other?.active!==1||match.state!=='verified'||other.state!=='verified'||!match.scopeCurrent||!other.scopeCurrent||match.complex_no!==provider.complexNo||other.complex_no!==provider.complexNo)continue;
+      const ids=shared.get(provider.complexNo)||new Set();ids.add(id);ids.add(representative);shared.set(provider.complexNo,ids);
+    }
+    for(const [complexNo,ids] of shared){
+      const observations=[...ids].map(id=>groups.get(id)).filter(group=>group?.complexNo===complexNo&&group.collectedAt&&group.coverage==='complete'&&!group.buildingScopeRestricted);
+      const latest=observations.sort((a,b)=>b.collectedAt.localeCompare(a.collectedAt)||b.attemptedAt.localeCompare(a.attemptedAt))[0];
+      if(!latest)continue;
+      for(const id of ids){
+        const old=groups.get(id);if(old&&old.collectedAt>=latest.collectedAt)continue;
+        const attempt=old?.attemptedAt>latest.attemptedAt?old:latest;
+        groups.set(id,{...latest,favorite:targets.get(id).favorite,attemptedAt:attempt.attemptedAt,status:attempt.status,errorCode:attempt.errorCode});
+      }
+    }
   }
   const catalog=housingIdentityCatalog(db);
   const cohortById=new Map(catalog.cohorts.map(cohort=>[cohort.cohort_id,cohort]));
