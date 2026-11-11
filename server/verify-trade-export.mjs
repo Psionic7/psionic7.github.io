@@ -13,6 +13,7 @@ import {housingBindingsMap} from '../src/housing-wire.mjs';
 import {sourceIdentityId} from '../src/housing-identity.mjs';
 import {readApartmentInformationFile} from './apartment-information-files.mjs';
 import {validateIdentityMap,validateIdentitySearch} from '../src/apartment-identity.mjs';
+import {readInstalledBaseline,assertInstalledBaseline} from './apartment-baseline-state.mjs';
 
 const hash=bytes=>createHash('sha256').update(bytes).digest('hex');
 const key=row=>JSON.stringify([row.dong,row.jibun,row.apartment]);
@@ -30,6 +31,8 @@ export function readTradeSnapshot(source,{verifyHistory=true}={}) {
   const db=connect(source,true);
   try {
     db.exec('BEGIN');
+    const baseline=readInstalledBaseline(db);
+    if(baseline)assertInstalledBaseline(db);
     if(Object.values(db.prepare('PRAGMA quick_check').get())[0]!=='ok')fail('원본 DB 무결성 오류');
     const history=verifyHistory?verifyCollectionHistory(db):null;
     if(verifyHistory&&db.prepare("SELECT name FROM sqlite_master WHERE name='collection_runs'").get()){
@@ -47,8 +50,9 @@ export function readTradeSnapshot(source,{verifyHistory=true}={}) {
     const housing=housingBindings.size?packHousingIdentity(housingCatalog,housingBindings,rows):null;
     return {rows,regions:db.prepare('SELECT * FROM regions ORDER BY rowid').all(),roads:db.prepare('SELECT * FROM road_addresses ORDER BY region_code,dong,jibun').all(),publishedAt:db.prepare("SELECT value FROM metadata WHERE key='published_at'").get()?.value,history,
       housing,
-      memberships:hasInventory?db.prepare('SELECT DISTINCT c.apartment_id,i.region_id FROM apartment_complexes c JOIN apartment_buildings b USING(apartment_id) JOIN apartment_building_inventory i USING(building_id) WHERE c.active=1 AND i.active=1').all():[],
-      links:hasLinks?db.prepare("SELECT * FROM apartment_trade_links WHERE status IN ('matched','ambiguous')").all():[]};
+      ...(baseline?{baseline:{generation:baseline.manifest.generation,scope_sha256:baseline.manifest.scope_sha256,connections_sha256:baseline.manifest.connections_sha256}}:{}),
+      memberships:baseline?baseline.payload.memberships:hasInventory?db.prepare('SELECT DISTINCT c.apartment_id,i.region_id FROM apartment_complexes c JOIN apartment_buildings b USING(apartment_id) JOIN apartment_building_inventory i USING(building_id) WHERE c.active=1 AND i.active=1').all():[],
+      links:baseline?baseline.payload.links:hasLinks?db.prepare("SELECT * FROM apartment_trade_links WHERE status IN ('matched','ambiguous')").all():[]};
   } finally {db.close();}
 }
 
@@ -70,6 +74,8 @@ export function verifyTradeExport({target,snapshot,source,requireSearch=false}={
     if(temporary)fs.writeFileSync(temporary,raw,{flag:'wx'});
     const publicFile=temporary||path.join(folder,database.file);
     const expected=snapshot||(source?readTradeSnapshot(source):readTradeSnapshot(publicFile,{verifyHistory:false}));
+    if(expected.baseline&&JSON.stringify(expected.baseline)!==JSON.stringify(manifest.apartment_baseline))fail('작업 DB와 공개 자료의 아파트 기준본 버전 불일치');
+    if(manifest.apartment_baseline&&Object.values(manifest.apartment_baseline).some(value=>typeof value!=='string'||!/^[a-f0-9]{64}$/.test(value)))fail('아파트 기준본 해시 형식 오류');
     publicDb=connect(publicFile,true);
     if(Object.values(publicDb.prepare('PRAGMA integrity_check').get())[0]!=='ok')fail('공개 SQLite 무결성 오류');
     const tables=publicDb.prepare("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name").all().map(row=>row.name);
@@ -91,12 +97,14 @@ export function verifyTradeExport({target,snapshot,source,requireSearch=false}={
     if(housing&&housing.source_fingerprint!==housingSourceFingerprint(expected.rows))fail('주거 연결 원본 스냅샷 불일치');
     if(expected.housing&&JSON.stringify(expected.housing)!==JSON.stringify(housing))fail('주거 연결 작업 DB 배정 불일치');
     const information=manifest.apartment_information?readApartmentInformationFile(path.dirname(folder),manifest,{required:true}):null;
+    if(manifest.apartment_baseline&&(housing?.baseline_sha256!==manifest.apartment_baseline.generation||information?.baseline_sha256!==manifest.apartment_baseline.generation))fail('공통 정보·주거 배정의 아파트 기준본 불일치');
     if(information&&housing){
       const selections=new Map(housingQueryInformation(information,housing).apartments.map(item=>[item.id,item]));
       const fields=['identity_ref','identity_coverage','identity_related_sources','identity_listing_members','identity_reported_buildings','identity_default_sources'];
       if(selections.size!==information.apartments.length||information.apartments.some(item=>!selections.has(item.id)||fields.some(field=>JSON.stringify(item[field])!==JSON.stringify(selections.get(item.id)[field]))))fail('공통 아파트 정보와 주거 배정의 조회 범위 불일치');
     }
     const registry=json(path.join(queryFolder,'manifest.json'));
+    if(JSON.stringify(registry.apartment_baseline||null)!==JSON.stringify(manifest.apartment_baseline||null))fail('월별 조회와 아파트 기준본 버전 불일치');
     if(registry.version!==1)fail('조회 자료 형식 오류');
     if(information&&registry.apartment_information_generation!==information.generation)fail('조회 자료와 공통 아파트 정보 버전 불일치');
     if(!sameSet(groups.keys(),Object.keys(registry.districts)))fail('조회용 지역 누락');
@@ -143,12 +151,13 @@ export function verifyTradeExport({target,snapshot,source,requireSearch=false}={
       if(housing){
         if(registry.search.housing_sha256!==manifest.housing.sha256)fail('통합 검색 주거 연결 버전 불일치');
         for(const item of search)for(const id of item.identity_default_sources||[])matches.set(id,(matches.get(id)||0)+1);
-        for(const rows of publicGroups.values())for(const id of new Set(rows.map(sourceIdentityId))){if(matches.get(id)!==1)fail('통합 검색 원본 단지 누락·중복');searchIdentities++;}
+        for(const rows of publicGroups.values())for(const id of new Set(rows.map(row=>bindings.get(row.id)?.entity_id||sourceIdentityId(row)))){if(matches.get(id)!==1)fail('통합 검색 원본 단지 누락·중복');searchIdentities++;}
       }else{
         for(const item of search)for(const identity of item.master_id?item.trade_keys:[item.key]){const id=item.region_code+'|'+identity;matches.set(id,(matches.get(id)||0)+1);}
         for(const [code,rows] of publicGroups)for(const identity of new Set(rows.map(key))){if(matches.get(code+'|'+identity)!==1)fail(`통합 검색 거래 누락·중복 ${code}`);searchIdentities++;}
       }
       const mapFolder=path.join(path.dirname(folder),'apartment-map'),mapMeta=json(path.join(mapFolder,'manifest.json'));
+      if(JSON.stringify(mapMeta.apartment_baseline||null)!==JSON.stringify(manifest.apartment_baseline||null))fail('지도와 아파트 기준본 버전 불일치');
       const masters=checkedJson(mapFolder,mapMeta.apartments,/^apartments-[a-f0-9]{12}\.json$/),byId=new Map(masters.map(item=>[item.id,item]));
       const scopes=new Set(mapMeta.scope_region_ids||[]),expectedMasters=information?new Set(information.apartments.filter(item=>item.map_visible&&item.area.region_ids.some(id=>scopes.has(id))).map(item=>item.id)):new Set((expected.memberships||[]).filter(row=>scopes.has(row.region_id)).map(row=>row.apartment_id));
       if(information&&mapMeta.version===2){

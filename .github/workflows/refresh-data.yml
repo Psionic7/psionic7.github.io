@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
     inputs:
       collect:
-        description: '실거래·새 주소·지역 전체 아파트 매매 매물 수집 (해제하면 저장 DB로 재배포)'
+        description: '실거래·로컬 승인 단지의 매매 매물 수집 (해제하면 저장 DB로 재배포)'
         type: boolean
         default: true
       recent_months:
@@ -59,7 +59,9 @@ jobs:
         env:
           NAVER_BROWSER_PYTHON: python
           NAVER_CHROME_PATH: /usr/bin/google-chrome
-      - name: Restore encrypted working database
+      - name: Validate local apartment baseline
+        run: pnpm data:baseline:check
+      - name: Restore encrypted collection data and install local apartment baseline
         run: node scripts/automation.mjs restore
         env:
           GITHUB_TOKEN: ${{ github.token }}
@@ -69,7 +71,7 @@ jobs:
         run: node --dns-result-order=ipv4first scripts/automation.mjs repair
         env:
           MOLIT_SERVICE_KEY: ${{ secrets.MOLIT_SERVICE_KEY }}
-      - name: Collect trades, addresses and regional apartment sale listings
+      - name: Collect trades and approved regional apartment sale listings
         if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.collect)
         run: xvfb-run --auto-servernum --server-args='-screen 0 1280x1000x24' node --dns-result-order=ipv4first scripts/automation.mjs collect
         env:
@@ -77,7 +79,6 @@ jobs:
           NAVER_BROWSER_PYTHON: python
           NAVER_CHROME_PATH: /usr/bin/google-chrome
           MOLIT_SERVICE_KEY: ${{ secrets.MOLIT_SERVICE_KEY }}
-          JUSO_ADDRESS_SEARCH_KEY: ${{ secrets.JUSO_ADDRESS_SEARCH_KEY }}
           INPUT_RECENT_MONTHS: ${{ inputs.recent_months }}
       - name: Diagnose public API connectivity on failure
         if: failure()

@@ -3,7 +3,7 @@ import path from 'node:path';
 import {createHash} from 'node:crypto';
 import {atomicWrite,checkedBytes} from './storage.mjs';
 import {housingBindingsMap} from '../src/housing-wire.mjs';
-import {sourceIdentityId} from '../src/housing-identity.mjs';
+import {bindingMatchesSource} from '../src/housing-identity.mjs';
 const digest=bytes=>createHash('sha256').update(bytes).digest('hex');
 const fields=['id','region_code','dong','jibun','apartment','road_address','area_m2','price_man','floor','deal_date','deal_month','cancelled'];
 export function browserPayloads(groups,secrets=[],{housing}={}) {
@@ -15,6 +15,7 @@ export function browserPayloads(groups,secrets=[],{housing}={}) {
       if(!/^\d{5}$/.test(code)||!/^\d{6}$/.test(row.deal_month))throw new Error('Invalid browser data scope');
       const compact=Object.fromEntries(fields.map(key=>[key,row[key]]));
       compact.raw={cdealDay:row.raw?.cdealDay||''};
+      if(row.raw?.aptSeq?.trim())compact.raw.aptSeq=row.raw.aptSeq;
       if(row.identity)compact.identity={...row.identity};
       const key=JSON.stringify([row.dong,row.jibun,row.apartment]);
       const newer=previous=>!previous||previous.deal_date<row.deal_date||(previous.deal_date===row.deal_date&&previous.id<row.id);
@@ -38,7 +39,7 @@ export function writeBrowserPayloads(folder,payloads){
 }
 export function writeBrowserRegistry(folder,manifest,districts,secrets=[],extra={}){
   const sources=Object.fromEntries(Object.entries(districts).map(([code,meta])=>[code,{...meta,source_sha256:manifest.districts[code].sha256}]));
-  atomicWrite(path.join(folder,'manifest.json'),checkedBytes(JSON.stringify({version:1,districts:sources,...(manifest.housing?{housing_sha256:manifest.housing.sha256}:{}),...extra}),secrets));
+  atomicWrite(path.join(folder,'manifest.json'),checkedBytes(JSON.stringify({version:1,districts:sources,...(manifest.housing?{housing_sha256:manifest.housing.sha256}:{}),...(manifest.apartment_baseline?{apartment_baseline:manifest.apartment_baseline}:{}),...extra}),secrets));
 }
 
 export function readHousingPayload(folder,manifest,secrets=[]) {
@@ -49,16 +50,17 @@ export function readHousingPayload(folder,manifest,secrets=[]) {
   const bytes=checkedBytes(fs.readFileSync(path.join(folder,meta.file)),secrets);
   if(digest(bytes)!==meta.sha256||bytes.length!==meta.bytes||!meta.file.endsWith(meta.sha256.slice(0,12)+'.json'))throw Error('주거 연결 체크섬 불일치');
   const payload=JSON.parse(bytes);
+  if(manifest.apartment_baseline&&payload.baseline_sha256!==manifest.apartment_baseline.generation)throw Error('주거 연결과 아파트 기준본 버전 불일치');
   if(payload.source_fingerprint!==meta.source_fingerprint||payload.row_count!==meta.row_count)throw Error('주거 연결 원본 스냅샷 불일치');
   housingBindingsMap(payload);return payload;
 }
 
 const bindingFields=['entity_id','precision','root_id','cohort_id','building_id'];
 export function assertHousingRows(rows,bindings) {
-  for(const row of rows){const expected=bindings.get(row.id);if(!expected||expected.entity_id!==sourceIdentityId(row)||!row.identity||Object.keys(row.identity).length!==bindingFields.length||bindingFields.some(field=>row.identity[field]!==expected[field]))throw Error('주거 연결 조회 배정 누락·불일치');}
+  for(const row of rows){const expected=bindings.get(row.id),fields=expected?.provider_apartment_id?[...bindingFields,'provider_apartment_id']:bindingFields;if(!bindingMatchesSource(row,expected)||!row.identity||Object.keys(row.identity).length!==fields.length||fields.some(field=>row.identity[field]!==expected[field]))throw Error('주거 연결 조회 배정 누락·불일치');}
 }
 export function attachHousingRows(rows,bindings) {
-  return rows.map(row=>{const identity=bindings.get(row.id);if(!identity||identity.entity_id!==sourceIdentityId(row))throw Error('주거 연결 원본 배정 누락·불일치');return {...row,identity};});
+  return rows.map(row=>{const identity=bindings.get(row.id);if(!bindingMatchesSource(row,identity))throw Error('주거 연결 원본 배정 누락·불일치');return {...row,identity};});
 }
 export function checkBrowserData(folder,manifest,secrets=[],{requireSearch=false}={}) {
   const registryFile=path.join(folder,'manifest.json');

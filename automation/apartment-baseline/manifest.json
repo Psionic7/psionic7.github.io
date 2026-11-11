@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "generation": "2231257a459bd8c29b85b48f1faba05d0f4cf4fdbcd3989dac9e4ab49d511a2d",
+  "scope_sha256": "032ca54609fe2b568c62da53a373cff3b8f0da63fe344bfaa4f7ee719e4dc034",
+  "connections_sha256": "60c2878955116d3581fe87b5d6bcd08322a2f6a7155965ba2bcf1aa0b9cea483",
+  "payload": {
+    "file": "baseline-2231257a459b.json.gz",
+    "sha256": "de134914e11fde43b3180e3ed81fd72eb5f4135e7626142dd25421345eb4501b",
+    "bytes": 8923923,
+    "uncompressed_sha256": "2231257a459bd8c29b85b48f1faba05d0f4cf4fdbcd3989dac9e4ab49d511a2d",
+    "uncompressed_bytes": 56180323
+  },
+  "targets": 469,
+  "verifiedTargets": 389
+}

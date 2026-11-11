@@ -17,3 +17,11 @@ test('monthly browser export preserves identities and cancellation dates without
   assert(![...result.payloads.values()].some(bytes=>bytes.includes('unused')));
   fs.appendFileSync(path.join(folder,catalog.months['202610']),' ');assert.throws(()=>checkBrowserData(folder,manifest));
 });
+
+test('compact browser transactions retain the exact official provider apartment ID',()=>{
+ const source={...row,raw:{...row.raw,aptSeq:'12345-000007'}};
+ const result=browserPayloads(new Map([['12345',[source]]]));
+ const catalog=JSON.parse(result.payloads.get(result.districts['12345'].file));
+ const rows=JSON.parse(result.payloads.get(catalog.months['202609']));
+ assert.equal(rows[0].raw.aptSeq,'12345-000007');assert.equal(catalog.catalog[0].raw.aptSeq,'12345-000007');
+});

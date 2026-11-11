@@ -2,7 +2,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {DatabaseSync} from 'node:sqlite';
 import {makeApartmentFavorite} from '../src/apartment-favorites.js';
-import {synchronizeNaverMatches,recordNaverMatch,recordNaverMatchFailure,readNaverMatch,naverMatchScope,naverMatchStats,applyNaverMatchSeed,exportNaverMatchSeed} from '../server/apartment-naver-matches.mjs';
+import {synchronizeNaverMatches,recordNaverMatch,recordNaverMatchFailure,readNaverMatch,naverMatchScope,naverMatchStats,applyNaverMatchSeed,exportNaverMatchSeed,recordNaverSharedMatch,attachNaverSharedScopes,verifyNaverObservation} from '../server/apartment-naver-matches.mjs';
+import {normalizeArticle} from '../server/naver-listings.mjs';
+import {listingGroupForFavorite} from '../src/naver-listings.mjs';
 
 const favorite=makeApartmentFavorite({apartment:'테스트아파트',dong:'정자동',jibun:'1',road_address:'경기도 성남시 분당구 불정로 1',master_id:'hub:a'},{region_code:'41135',region_name:'경기도 성남시 분당구'});
 const target={favorite:{...favorite,identity_coverage:{entity_ids:['source:a'],cohort_ids:['cohort:a'],root_ids:['hub:a']}},location:{anchors:[{latitude:37.36,longitude:127.12,role:'entrance',crs:'EPSG:4326',source:'official'}],roads:[{road_address:favorite.road_address,source:'official'}]}};
@@ -58,4 +60,50 @@ test('initial verified links restore in a fresh working DB only when the officia
  synchronizeNaverMatches(changed,[moved],catalog);assert.equal(applyNaverMatchSeed(changed,[moved],seed),0);
  recordNaverMatchFailure(held,target,'unmatched');assert.equal(applyNaverMatchSeed(held,[target],seed),0);assert.equal(readNaverMatch(held,target).state,'unmatched');
  assert.throws(()=>applyNaverMatchSeed(fresh,[target],{version:2,matches:[]}));
+});
+
+function sharedFixture(t){
+ const representative={...target,favorite:{...target.favorite,identity_ref:{kind:'root',id:'hub:a'},identity_listing_members:[{cohort_id:'cohort:a',whole_cohort:true,building_dongs:['101']}]},location:{...target.location,exclusive_building_dongs:['101']}};
+ const second={...target,favorite:{...target.favorite,id:'hub:b',master_id:'hub:b',jibun:'2',road_address:'경기도 성남시 분당구 다른로 2',identity_ref:{kind:'root',id:'hub:b'},identity_coverage:{entity_ids:['source:b'],cohort_ids:['cohort:b'],root_ids:['hub:b']},identity_listing_members:[{cohort_id:'cohort:b',whole_cohort:true,building_dongs:['201']}]},location:{...target.location,roads:[{road_address:'경기도 성남시 분당구 다른로 2',source:'official'}],exclusive_building_dongs:['201']}};
+ for(const item of [representative,second])item.favorite=makeApartmentFavorite({...item.favorite,identity_coverage:{...item.favorite.identity_coverage,entity_ids:[]}},item.favorite);
+ const group={...observation(),favorite:representative.favorite,complexName:favorite.apartment,tradeType:'A1',status:'ready',errorCode:null,attemptedAt:'2026-11-08T01:00:00.000Z',collectedAt:'2026-11-08T01:00:00.000Z',collectionMethod:'browser',pageCount:1,sourceUrl:'https://fin.land.naver.com/complexes/111',coverage:'complete',articles:['101','201'].map((dong,index)=>normalizeArticle({articleNo:String(26000000001+index),articleName:favorite.apartment,realEstateTypeCode:'APT',tradeTypeCode:'A1',dealOrWarrantPrc:'100,000',area2:84,floorInfo:'3/10',buildingName:dong+'동'}))};
+ const db=dbFixture(t,[representative,second]);recordNaverMatch(db,representative,group);
+ return {db,representative,second,group};
+}
+
+test('an explicitly linked shared complex spans different parcels, retains its raw ads and restores both scopes from a seed',t=>{
+ const {db,representative,second,group}=sharedFixture(t);
+ assert.throws(()=>verifyNaverObservation(second,group),error=>error.code==='address_mismatch');
+ recordNaverSharedMatch(db,second,representative,group);
+ const saved=readNaverMatch(db,second);
+ assert.equal(saved.state,'verified');assert.equal(saved.complex_no,'111');assert.equal(saved.observation.parcel_address,group.observation.parcel_address);
+ assert.deepEqual(saved.observation.shared_scope.building_witnesses,['201']);
+ const scoped=attachNaverSharedScopes(db,[representative,second])[1];
+ assert.equal(verifyNaverObservation(scoped,{...group,articles:[]}).observation.verification_method,'verified_shared_provider_and_building_ads');
+ const groups=[group,{...group,favorite:second.favorite}];
+ assert.deepEqual(listingGroupForFavorite(groups,representative.favorite).articles.map(row=>row.building),['101동']);
+ assert.deepEqual(listingGroupForFavorite(groups,second.favorite).articles.map(row=>row.building),['201동']);assert.equal(group.articles.length,2);
+ const seed=exportNaverMatchSeed(db);seed.matches.reverse();
+ const fresh=dbFixture(t,[representative,second]);assert.equal(applyNaverMatchSeed(fresh,[representative,second],seed),2);
+ assert.equal(readNaverMatch(fresh,second).state,'verified');
+ assert(attachNaverSharedScopes(fresh,[representative,second])[1].location.shared_provider);
+ assert.equal(applyNaverMatchSeed(fresh,[representative,second],seed),0);
+});
+
+test('shared scope approval requires actual exclusive building ads, a current independent representative and an official nearby anchor',t=>{
+ const {db,representative,second,group}=sharedFixture(t);
+ for(const invalid of [{...group,articles:group.articles.slice(0,1)},{...group,coverage:'partial'},{...group,complexNo:'222'}])assert.throws(()=>recordNaverSharedMatch(db,second,representative,invalid));
+ const overlap={...second,location:{...second.location,exclusive_building_dongs:['101']}};
+ assert.throws(()=>recordNaverSharedMatch(db,overlap,representative,group));
+ const distant={...second,location:{...second.location,anchors:[{...second.location.anchors[0],latitude:37.9}]}};
+ assert.throws(()=>recordNaverSharedMatch(db,distant,representative,group));
+ recordNaverSharedMatch(db,second,representative,group);
+ const changed={...representative,favorite:{...representative.favorite,road_address:'경기도 성남시 분당구 다른로 99'}};
+ assert.equal(attachNaverSharedScopes(db,[changed,second])[1].location.shared_provider,undefined);
+ assert.equal(readNaverMatch(db,attachNaverSharedScopes(db,[changed,second])[1]).scopeCurrent,false);
+ const changedTarget={...second,location:{...second.location,exclusive_building_dongs:['202']}};
+ assert.equal(attachNaverSharedScopes(db,[representative,changedTarget])[1].location.shared_provider,undefined);
+ recordNaverMatchFailure(db,representative,'address_mismatch');
+ assert.equal(attachNaverSharedScopes(db,[representative,second])[1].location.shared_provider,undefined);
+ assert.equal(readNaverMatch(db,second).complex_no,'111');
 });

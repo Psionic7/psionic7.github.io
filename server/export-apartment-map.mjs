@@ -5,11 +5,14 @@ import {connect,paths,ROOT,regions,savedIds,secretValues,checkedBytes,atomicWrit
 import {coordinatePoints} from './coordinates.mjs';
 import {masterMapData,masterStats} from './apartment-master.mjs';
 import {publicApartmentInformation,synchronizeHousingIdentity} from './apartment-identity.mjs';
+import {readInstalledBaseline} from './apartment-baseline-state.mjs';
+import {exportBaselineMap} from './apartment-baseline-map.mjs';
 import {osmBoundaryFeatures,matchApartmentBoundaries,mapApartment,OSM_ATTRIBUTION,OSM_LICENSE} from './apartment-boundaries.mjs';
 const hash=bytes=>createHash('sha256').update(bytes).digest('hex');
 export function exportApartmentMap({source=paths.db,target=path.join(ROOT,'public/apartment-map'),favorites=paths.favorites,secretsFile=paths.env,generation}={}) {
   const db=connect(source,generation!==undefined);let apartments=[],boundarySources=[],scopeIds=[],master=null;
   try {
+    if(readInstalledBaseline(db))return exportBaselineMap(db,{target,generation});
     const catalog=regions(db);scopeIds=savedIds(favorites,catalog);
     const coverage=masterStats(db,scopeIds);
     if(coverage.regions.length){

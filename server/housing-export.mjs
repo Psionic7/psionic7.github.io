@@ -21,13 +21,15 @@ export function packHousingIdentity(catalog,bindings,rows) {
     if(ids.has(row.id))throw Error('주거 연결: 원본 거래 ID 중복');
     ids.add(row.id);
     const binding=bindings.get(row.id);
-    if(!binding||binding.entity_id!==sourceIdentityId(row)||!entities.has(binding.entity_id))throw Error('주거 연결: 원본 거래의 단지 배정 누락');
+    const provider=(row.raw??JSON.parse(row.raw_json)).aptSeq?.trim();
+    const linked=provider&&catalog.provider_sources?.[provider]?.includes(binding?.entity_id);
+    if(!binding||binding.entity_id!==sourceIdentityId(row)&&!linked||!entities.has(binding.entity_id))throw Error('주거 연결: 원본 거래의 단지 배정 누락');
     if(!['building','cohort','complex','unresolved'].includes(binding.precision))throw Error('주거 연결: 배정 정밀도 오류');
     if(['building','cohort'].includes(binding.precision)){
       const cohort=cohorts.get(binding.cohort_id);
       if(!cohort||cohort.root_id!==binding.root_id||binding.precision==='building'&&!cohort.building_ids.includes(binding.building_id))throw Error('주거 연결: 건물·구획 참조 오류');
     }
-    const value={entity_id:binding.entity_id,precision:binding.precision,root_id:binding.root_id||null,cohort_id:binding.cohort_id||null,building_id:binding.building_id||null};
+    const value={entity_id:binding.entity_id,precision:binding.precision,root_id:binding.root_id||null,cohort_id:binding.cohort_id||null,building_id:binding.building_id||null,...(binding.entity_id!==sourceIdentityId(row)&&linked?{provider_apartment_id:provider}:{})};
     const key=JSON.stringify(value);
     if(!byValue.has(key)){byValue.set(key,dictionary.length);dictionary.push(value);}
     assignments.push([row.id,byValue.get(key)]);
@@ -36,7 +38,7 @@ export function packHousingIdentity(catalog,bindings,rows) {
   assignments.sort((a,b)=>a[0]-b[0]);
   // Geometry remains in the working DB/map layer; share URLs only need small selections.
   const publicCohorts=catalog.cohorts.map(({location,...item})=>item);
-  return {version:1,entities:catalog.entities,cohorts:publicCohorts,roots:catalog.roots,dictionary,assignments,row_count:rows.length,source_fingerprint:housingSourceFingerprint(rows)};
+  return {version:1,entities:catalog.entities,cohorts:publicCohorts,roots:catalog.roots,dictionary,assignments,row_count:rows.length,source_fingerprint:housingSourceFingerprint(rows),...(catalog.provider_sources?{provider_sources:catalog.provider_sources,baseline_sha256:catalog.baseline_sha256}:{})};
 }
 
 export function housingQueryInformation(base,payload) {

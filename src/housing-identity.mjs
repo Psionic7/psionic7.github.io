@@ -9,6 +9,7 @@ const sourceId = value => {
 };
 
 export const sourceIdentityId = row => JSON.stringify([row.region_code, row.dong, row.jibun || '', row.apartment]);
+export const bindingMatchesSource=(row,binding)=>Boolean(binding&&(binding.entity_id===sourceIdentityId(row)||binding.provider_apartment_id&&binding.provider_apartment_id===row.raw?.aptSeq?.trim()));
 
 export function identityRef(favorite) {
   if (!favorite) return null;

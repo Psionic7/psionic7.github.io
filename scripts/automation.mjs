@@ -13,16 +13,21 @@ import {linkMasterTrades} from '../server/apartment-master.mjs';
 import {collectDailyListings,listingExport} from '../server/daily-naver-listings.mjs';
 import {writeListingSnapshot} from '../server/naver-listings.mjs';
 import {synchronizeHousingIdentity} from '../server/apartment-identity.mjs';
+import {readInstalledBaseline,loadApartmentBaseline,installApartmentBaseline,assertInstalledBaseline} from '../server/apartment-baseline-state.mjs';
 
 export function prepareListingExport(db,{initialSnapshot}={}) {
-  if(db.prepare("SELECT name FROM sqlite_master WHERE name='apartment_complexes'").get()&&db.prepare('SELECT 1 FROM apartment_complexes WHERE active=1 LIMIT 1').get())linkMasterTrades(db);
+  const baseline=readInstalledBaseline(db);
+  if(baseline)assertInstalledBaseline(db);
+  else if(db.prepare("SELECT name FROM sqlite_master WHERE name='apartment_complexes'").get()&&db.prepare('SELECT 1 FROM apartment_complexes WHERE active=1 LIMIT 1').get())linkMasterTrades(db);
   synchronizeHousingIdentity(db,{snapshot:initialSnapshot});
   return listingExport(db,{initialSnapshot});
 }
 
 export async function collectConfigured(db, config, {now, tradeKey = serviceKey(), jusoKey = addressKey(), collector = collectMonth, addressCollector = collectAddresses, listingCollector=collectDailyListings,listingOptions={},onProgress = console.log} = {}) {
+  const baseline=readInstalledBaseline(db);
+  if(baseline)assertInstalledBaseline(db,{config});
   const catalog = regions(db), settings = validateConfig(config, catalog);
-  if (!tradeKey || !jusoKey) throw new Error('실거래 API 키와 도로명주소 API 키를 설정하세요.');
+  if (!tradeKey || !baseline&&!jusoKey) throw new Error('실거래 API 키와 도로명주소 API 키를 설정하세요.');
   const selected = catalog.filter(r => settings.region_ids.includes(r.region_id));
   const plan = refreshPlan(db, settings, now);
   const tasks = collectionTasks(selected, plan.months);
@@ -32,7 +37,7 @@ export async function collectConfigured(db, config, {now, tradeKey = serviceKey(
     count += n;
     onProgress(`${task.name} ${task.month}: ${n}건`);
   }
-  const addresses = await addressCollector(db, jusoKey, {limit: settings.address_limit});
+  const addresses = baseline?{completed:0,source:'local_baseline'}:await addressCollector(db, jusoKey, {limit: settings.address_limit});
   const listings=await listingCollector(db,settings,{...listingOptions,now:now?()=>new Date(now).getTime():()=>Date.now(),onProgress});
   if (plan.history.length) db.prepare('INSERT OR REPLACE INTO metadata VALUES(?,?)').run('historical_refresh_cursor', plan.history.at(-1));
   db.prepare('INSERT OR REPLACE INTO metadata VALUES(?,?)').run('last_refresh', JSON.stringify({finished_at: new Date().toISOString(), recent_months: plan.recent, historical_months: plan.history}));
@@ -51,6 +56,7 @@ export async function collectConfigured(db, config, {now, tradeKey = serviceKey(
 
 export async function runAutomation(action) {
   const config = validateConfig(readJson(path.join(ROOT, CONFIG_PATH)));
+  const baseline=loadApartmentBaseline({config});
   if (action === 'restore') {
     const github = cloudGithub(process.env.GITHUB_TOKEN, process.env.GITHUB_REPOSITORY);
     const raw = decryptState(await github.restore(), process.env.COLLECTION_STATE_KEY);
@@ -58,20 +64,23 @@ export async function runAutomation(action) {
     fs.mkdirSync(path.dirname(paths.db), {recursive: true});
     try {
       atomicWrite(temporary, raw);
-      const db = connect(temporary, true);
-      try {if (Object.values(db.prepare('PRAGMA quick_check').get())[0] !== 'ok') throw new Error('저장된 DB 무결성 확인 실패');}
-      finally {db.close();}
+      const inspection = connect(temporary, true);
+      try {if (Object.values(inspection.prepare('PRAGMA quick_check').get())[0] !== 'ok') throw new Error('저장된 DB 무결성 확인 실패');}
+      finally {inspection.close();}
       // The cloud runner owns its local/ directory; manual setup never restores over the PC DB.
       if (!process.env.GITHUB_ACTIONS && fs.existsSync(paths.db)) throw new Error('기존 로컬 DB를 덮어쓸 수 없습니다. 복원은 GitHub Actions에서 실행하세요.');
+      await initialize({...paths,db:temporary,legacy:path.join(ROOT,'local/no-legacy')});
+      const staging=connect(temporary);
+      try{installApartmentBaseline(staging,baseline,{config});}finally{staging.close();}
       fs.renameSync(temporary, paths.db);
     } finally {if (fs.existsSync(temporary)) fs.unlinkSync(temporary);}
-    await initialize({...paths, legacy: path.join(ROOT, 'local/no-legacy')});
     const db = connect();
     try {saveFavorites(config.region_ids, paths.favorites, regions(db));} finally {db.close();}
     console.log('자동 수집 DB 복원 완료');
   } else if (action === 'repair') {
     const db = connect();
     try {
+      assertInstalledBaseline(db,{expected:baseline,config});
       const result = await repairTradeData(db, serviceKey());
       if (process.env.GITHUB_OUTPUT) fs.appendFileSync(process.env.GITHUB_OUTPUT, `changed=${result.changed}\n`);
       console.log(`원천 재대조: ${result.tasks}개 지역·월`);
@@ -81,6 +90,7 @@ export async function runAutomation(action) {
     if (process.env.INPUT_RECENT_MONTHS) settings.recent_months = Number(process.env.INPUT_RECENT_MONTHS);
     const db = connect();
     try {
+      assertInstalledBaseline(db,{expected:baseline,config});
       const initialFile=path.join(ROOT,'public/listings/snapshot.json');
       const result = await collectConfigured(db, settings,{listingOptions:{initialSnapshot:fs.existsSync(initialFile)?readJson(initialFile):undefined}});
       console.log(`실거래 수집 완료: ${result.tasks}개 지역·월, ${result.rows}건, 새 주소 ${result.addresses.completed}건`);
@@ -95,6 +105,7 @@ export async function runAutomation(action) {
     const db = connect();
     let listings;
     try {
+      assertInstalledBaseline(db,{expected:baseline,config});
       const initialFile=path.join(ROOT,'public/listings/snapshot.json');
       const initialSnapshot=fs.existsSync(initialFile)?readJson(initialFile):undefined;
       listings=prepareListingExport(db,{initialSnapshot});
@@ -106,6 +117,8 @@ export async function runAutomation(action) {
     atomicWrite(path.join(ROOT, 'public/automation-status.json'), JSON.stringify(status) + '\n');
     console.log(`공개 데이터 ${manifest.count}건 추출·누락 검증 완료`);
   } else if (action === 'save') {
+    const inspection=connect(paths.db,true);
+    try{assertInstalledBaseline(inspection,{expected:baseline,config});}finally{inspection.close();}
     const github = cloudGithub(process.env.GITHUB_TOKEN, process.env.GITHUB_REPOSITORY);
     await github.save(encryptState(fs.readFileSync(paths.db), process.env.COLLECTION_STATE_KEY));
     console.log('자동 수집 DB 보관 완료');
@@ -113,5 +126,5 @@ export async function runAutomation(action) {
 }
 if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {
   try {await runAutomation(process.argv[2]);}
-  catch (error) {console.error(/^(데이터 검증 실패:|GitHub|자동 수집|DB |암호화|저장된 DB|기존 로컬|실거래 API|공공 API|API |거래 필드|수집 중|공식 주소|예약 시간|수집 지역)/.test(error.message) ? error.message : '자동 수집 작업 실패. Actions의 실패 단계를 확인하세요.'); process.exitCode = 1;}
+  catch (error) {console.error(/^(아파트 기준본|데이터 검증 실패:|GitHub|자동 수집|DB |암호화|저장된 DB|기존 로컬|실거래 API|공공 API|API |거래 필드|수집 중|공식 주소|예약 시간|수집 지역)/.test(error.message) ? error.message : '자동 수집 작업 실패. Actions의 실패 단계를 확인하세요.'); process.exitCode = 1;}
 }

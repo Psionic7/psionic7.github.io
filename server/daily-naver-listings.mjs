@@ -7,7 +7,9 @@ import {normalizeRoadAddress} from '../src/address-identity.mjs';
 import {listingBuildingMembers} from '../src/housing-identity.mjs';
 import {apartmentInformation,publicApartmentInformation,resolveApartmentIdentity,housingIdentityCatalog} from './apartment-identity.mjs';
 import {rebuildHousingIdentity} from './housing-identity.mjs';
-import {readNaverMatch,verifyNaverObservation} from './apartment-naver-matches.mjs';
+import {readNaverMatch,verifyNaverObservation,attachNaverSharedScopes} from './apartment-naver-matches.mjs';
+import {readInstalledBaseline,baselineScopeHash} from './apartment-baseline-state.mjs';
+import {deriveBaselineHousing} from './apartment-baseline-runtime.mjs';
 
 const hasTable=(db,name)=>Boolean(db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name=?").get(name));
 const missingInventory=message=>{const error=new Error(message);error.code='inventory_unavailable';throw error;};
@@ -22,6 +24,11 @@ function listingScopes(db,config) {
   return scopes;
 }
 export function dailyListingTargets(db,config) {
+  const baseline=readInstalledBaseline(db);
+  if(baseline){
+    if(baselineScopeHash(config)!==baseline.manifest.scope_sha256)throw Error('아파트 기준본과 매물 수집 지역이 다릅니다.');
+    return baseline.payload.targets;
+  }
   const scopes=listingScopes(db,config),byCode=new Map(scopes.map(r=>[r.legal_code,r]));
   const rows=db.prepare('SELECT * FROM apartment_complexes WHERE active=1 ORDER BY legal_code,apartment_id').all().filter(row=>byCode.has(row.legal_code));
   if(!rows.length)missingInventory('매물 수집 대상 아파트 목록이 비어 있습니다.');
@@ -69,7 +76,7 @@ export function dailyListingTargets(db,config) {
   }
   if(targets.length>1000)throw new Error('매물 수집 대상 아파트가 저장 한도 1,000개를 초과했습니다.');
   if(!validApartmentFavorites(targets.map(target=>target.favorite)))throw new Error('매물 수집 대상 아파트 식별자를 확인하세요.');
-  return targets;
+  return attachNaverSharedScopes(db,targets);
 }
 
 function summarize(report) {
@@ -90,13 +97,18 @@ export function readListingCollection(db,day) {
 }
 export function listingExport(db,{initialSnapshot,now=new Date()}={}) {
   const groups=new Map();
+  const baseline=readInstalledBaseline(db);
   if(initialSnapshot){if(!validListingSnapshot(initialSnapshot))throw new Error('기존 매물 스냅샷 검증 실패');for(const group of initialSnapshot.groups)groups.set(group.favorite.id,group);}
   if(hasTable(db,'naver_listing_snapshots'))for(const row of db.prepare('SELECT group_json FROM naver_listing_snapshots ORDER BY apartment_id').all()){
     const group=JSON.parse(row.group_json);if(!validListingGroup(group))throw new Error('저장된 매물 스냅샷 검증 실패');
     for(const [id,old] of groups)if(id!==group.favorite.id&&sameApartmentFavorite(old.favorite,group.favorite)&&old.attemptedAt<=group.attemptedAt)groups.delete(id);
-    const old=groups.get(group.favorite.id);if(!old||old.attemptedAt<=group.attemptedAt)groups.set(group.favorite.id,group);
+    const old=groups.get(group.favorite.id);if(baseline||!old||old.attemptedAt<=group.attemptedAt)groups.set(group.favorite.id,group);
   }
   const collection=readListingCollection(db)||initialSnapshot?.collection;
+  if(baseline){
+    const approved=new Map(baseline.payload.targets.map(target=>[target.favorite.id,readNaverMatch(db,target)]));
+    for(const [id,group] of groups){const match=approved.get(id);if(!match||match.state!=='verified'||!match.scopeCurrent||match.complex_no!==group.complexNo)groups.delete(id);}
+  }
   const catalog=housingIdentityCatalog(db);
   const cohortById=new Map(catalog.cohorts.map(cohort=>[cohort.cohort_id,cohort]));
   for(const [id,group]of groups){const cohort=cohortById.get(group.favorite.identity_ref?.kind==='cohort'?group.favorite.id:null);if(cohort&&!cohort.legal_types.some(type=>['아파트','노인복지주택'].includes(type))&&!cohort.entity_ids.length&&!cohort.partial_entity_ids.length)groups.delete(id);}
@@ -118,12 +130,16 @@ export async function collectDailyListings(db,config,{browserSource=process.env.
   signal?.throwIfAborted();
   if(!['system-chrome','playwright'].includes(browserSource))throw Error('매물 브라우저 소스를 확인하세요.');
   const sourceVersion=browserSource==='system-chrome'?'fin-land-v1':'legacy';
+  const baseline=readInstalledBaseline(db);
   db.exec(NAVER_LISTING_SCHEMA);
   const started=now(),dayKst=kstListingDay(started),regionIds=[...config.region_ids].sort();let targets;
   try{
-    const scopes=listingScopes(db,config);
-    if(!hasTable(db,'apartment_identity'))missingInventory('로컬 확정 아파트 정보가 없습니다.');
-    rebuildHousingIdentity(db,{information:apartmentInformation(db),scopes});
+    if(readInstalledBaseline(db))deriveBaselineHousing(db);
+    else{
+      const scopes=listingScopes(db,config);
+      if(!hasTable(db,'apartment_identity'))missingInventory('로컬 확정 아파트 정보가 없습니다.');
+      rebuildHousingIdentity(db,{information:apartmentInformation(db),scopes});
+    }
     targets=dailyListingTargets(db,config);
   }catch(error){
     if(error.code!=='inventory_unavailable')throw error;
@@ -131,9 +147,9 @@ export async function collectDailyListings(db,config,{browserSource=process.env.
     saveReport(db,report);onProgress(LISTING_ERRORS.inventory_unavailable);return report;
   }
   const saved=force?null:readListingCollection(db,dayKst);
-  const previous=saved?.tradeType===LISTING_TRADE_TYPE&&saved.browserSource===browserSource&&saved.sourceVersion===sourceVersion?saved:null;
+  const previous=saved?.tradeType===LISTING_TRADE_TYPE&&saved.browserSource===browserSource&&saved.sourceVersion===sourceVersion&&(!baseline||saved.baseline_sha256===baseline.manifest.generation)?saved:null;
   const byPrevious=new Map((previous?.results||[]).filter(r=>r.attemptedAt!==null&&(!retryUnresolved||r.status==='ready'||['blocked','rate_limited','unauthorized','site_unavailable'].includes(r.errorCode))).map(r=>[r.favoriteId,r]));
-  let report=summarize({dayKst,tradeType:LISTING_TRADE_TYPE,browserSource,sourceVersion,status:'running',startedAt:previous?.startedAt||new Date(started).toISOString(),finishedAt:null,regionIds,results:targets.map(({favorite})=>({...byPrevious.get(favorite.id),favorite,favoriteId:favorite.id,...(byPrevious.has(favorite.id)?{}:{status:'not_attempted',errorCode:null,attemptedAt:null})}))});
+  let report=summarize({dayKst,tradeType:LISTING_TRADE_TYPE,browserSource,sourceVersion,...(baseline?{baseline_sha256:baseline.manifest.generation}:{}),status:'running',startedAt:previous?.startedAt||new Date(started).toISOString(),finishedAt:null,regionIds,results:targets.map(({favorite})=>({...byPrevious.get(favorite.id),favorite,favoriteId:favorite.id,...(byPrevious.has(favorite.id)?{}:{status:'not_attempted',errorCode:null,attemptedAt:null})}))});
   if(report.results.every(r=>r.attemptedAt!==null)&&previous){
     const finished={...report,finishedAt:previous.finishedAt||new Date(now()).toISOString(),status:report.successCount===report.targetCount?'complete':report.successCount?'partial':'failed'};
     saveReport(db,finished);return {...finished,alreadyCollected:true};

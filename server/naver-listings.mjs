@@ -64,6 +64,16 @@ export function verifyComplexEvidence(payload,favorite,complexNo,location) {
   const evidence=housingLocationEvidence(location,detail);
   const roadConflict=favorite.identity_ref?.kind==='cohort'&&road&&location?.roads?.some(value=>value.source&&normalizeRoadAddress(value.road_address))&&!evidence.road_match;
   const exclusive=new Set(location?.exclusive_building_dongs||[]),buildingWitnesses=[...new Set((Array.isArray(payload.article_building_dongs)?payload.article_building_dongs:[]).map(listingBuildingDong).filter(dong=>exclusive.has(dong)))];
+  const shared=location?.shared_provider;
+  if(shared?.complexNo===complexNo&&region&&address.endsWith(compact(favorite.dong))&&evidence.anchor_corroborated){
+    const representative=shared.representative;
+    const representativeDongs=new Set(representative.location?.exclusive_building_dongs||[]);
+    const witnesses=[...new Set([...buildingWitnesses,...shared.scope.building_witnesses.filter(dong=>exclusive.has(dong))])];
+    if(witnesses.length&&exclusive.size&&representativeDongs.size&&![...exclusive].some(dong=>representativeDongs.has(dong))){
+      verifyComplexEvidence(payload,representative.favorite,complexNo,representative.location);
+      return {complexName:clean(detail.complexName),method:'verified_shared_provider_and_building_ads',buildingWitnesses:witnesses,sharedScope:{...shared.scope,building_witnesses:witnesses}};
+    }
+  }
   if(roadConflict&&!((parcel||region&&address.endsWith(compact(favorite.dong))&&evidence.primary_parcel_match)&&named&&buildingWitnesses.length)){
     const error=new ListingError('address_mismatch');
     error.needsBuildingEvidence=Boolean((parcel||region&&address.endsWith(compact(favorite.dong))&&evidence.primary_parcel_match)&&named&&exclusive.size);

@@ -10,6 +10,7 @@ import {validateIdentityMap} from '../src/apartment-identity.mjs';
 import {writeApartmentInformationFile} from './apartment-information-files.mjs';
 import {browserPayloads,writeBrowserPayloads,writeBrowserRegistry,cleanBrowserPayloads,attachHousingRows} from './browser-export.mjs';
 import {housingBindingsMap} from '../src/housing-wire.mjs';
+import {readInstalledBaseline,assertInstalledBaseline} from './apartment-baseline-state.mjs';
 import {connect,PUBLIC_SCHEMA,TRADE_COLUMNS,REGION_COLUMNS,paths,ROOT,secretValues,checkedBytes,savedIds,atomicWrite} from './storage.mjs';
 export const sha256=data=>createHash('sha256').update(data).digest('hex');
 export function databasePayload(raw,secrets,compressAbove=95*1024*1024) {
@@ -36,7 +37,7 @@ function writeExportData({snapshot,target,favorites,secretsFile,compressAbove}) 
     payloads.set(file,bytes);
     districts[code]={file,count:rows.length,months:[...new Set(rows.map(r=>r.deal_month))].sort(),sha256:digest,dongs:[...new Set(rows.map(r=>r.dong))].sort()};
   }
-  const manifest={version:2,published_at:published,exported_at:new Date().toISOString(),count:trades.length,regions:catalog,districts,favorite_region_ids:savedIds(favorites,catalog),months:[...new Set(trades.map(r=>r.deal_month))].sort(),source:'국토교통부 아파트 매매 실거래가',boundary_catalog_date:'2023-07-29'};
+  const manifest={version:2,published_at:published,exported_at:new Date().toISOString(),count:trades.length,regions:catalog,districts,favorite_region_ids:savedIds(favorites,catalog),months:[...new Set(trades.map(r=>r.deal_month))].sort(),source:'국토교통부 아파트 매매 실거래가',boundary_catalog_date:'2023-07-29',...(snapshot.baseline?{apartment_baseline:snapshot.baseline}:{})};
   if(snapshot.housing){
     const bytes=checkedBytes(JSON.stringify(snapshot.housing),secrets),digest=sha256(bytes),file=`housing-${digest.slice(0,12)}.json`;
     payloads.set(file,bytes);manifest.housing={file,sha256:digest,bytes:bytes.length,row_count:trades.length,source_fingerprint:snapshot.housing.source_fingerprint,sources:Object.fromEntries(Object.entries(districts).map(([code,item])=>[code,item.sha256]))};
@@ -83,12 +84,14 @@ export function exportData({source=paths.db,target=path.join(ROOT,'public/data')
   if(!fs.existsSync(source)||source===path.join(target,'public.sqlite3'))throw new Error('원본 작업 DB와 내보내기 경로를 확인하세요.');
   const identityDb=connect(source);let identities;
   try{
+    const baseline=readInstalledBaseline(identityDb);
+    if(baseline)assertInstalledBaseline(identityDb);
     const listingFile=path.join(path.dirname(target),'listings/snapshot.json');
     const inventory=identityDb.prepare("SELECT 1 FROM sqlite_master WHERE name='apartment_inventory_regions'").get();
     const scannedInventory=Boolean(inventory&&identityDb.prepare("SELECT 1 FROM apartment_inventory_regions WHERE status='scanned' LIMIT 1").get());
     const priorMap=path.join(path.dirname(target),'apartment-map/manifest.json');
-    if(!scannedInventory&&fs.existsSync(priorMap)&&JSON.parse(fs.readFileSync(priorMap,'utf8')).data_mode==='registry_master')throw Error('기존 대장 지도를 보존했습니다. 전체 건축물대장이 포함된 작업 DB에서 공통 정보를 내보내세요.');
-    const synchronize=scannedInventory||identityDb.prepare("SELECT 1 FROM sqlite_master WHERE name='housing_identity_meta'").get()?synchronizeHousingIdentity:synchronizeApartmentIdentity;
+    if(!baseline&&!scannedInventory&&fs.existsSync(priorMap)&&JSON.parse(fs.readFileSync(priorMap,'utf8')).data_mode==='registry_master')throw Error('기존 대장 지도를 보존했습니다. 전체 건축물대장이 포함된 작업 DB에서 공통 정보를 내보내세요.');
+    const synchronize=baseline||scannedInventory||identityDb.prepare("SELECT 1 FROM sqlite_master WHERE name='housing_identity_meta'").get()?synchronizeHousingIdentity:synchronizeApartmentIdentity;
     synchronize(identityDb,{snapshot:fs.existsSync(listingFile)?JSON.parse(fs.readFileSync(listingFile,'utf8')):undefined});
     identities=publicApartmentInformation(identityDb);
   }finally{identityDb.close();}

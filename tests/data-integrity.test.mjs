@@ -6,7 +6,9 @@ import path from 'node:path';
 import {spawnSync} from 'node:child_process';
 import {gunzipSync} from 'node:zlib';
 import {connect,PUBLIC_SCHEMA,LOCAL_SCHEMA} from '../server/storage.mjs';
-import {collectMonth,parsePage,verifyCollectionHistory} from '../server/collector.mjs';
+import {collectMonth,parsePage,verifyCollectionHistory,fetchMolitPage} from '../server/collector.mjs';
+import {checkMolitAccess} from '../scripts/check-molit-access.mjs';
+import {compareMolitMonth} from '../scripts/compare-molit-detailed.mjs';
 import {exportData,databasePayload,sha256} from '../server/export.mjs';
 import {verifyTradeExport,readTradeSnapshot} from '../server/verify-trade-export.mjs';
 import {buildSearchIndex} from '../src/search-index.mjs';
@@ -15,6 +17,24 @@ import {buildPublic} from '../scripts/build.mjs';
 
 const raw={aptNm:'아파트',umdNm:'청운동',jibun:'001-2',dealAmount:'100,000',excluUseAr:'84.5',dealYear:'2026',dealMonth:'01',dealDay:'09',sggCd:'11110',floor:'3',buildYear:'2000',cdealType:'',cdealDay:'',newField:'0001'};
 const xml=(items,total=items.length)=>`<response><header><resultCode>000</resultCode></header><body><items>${items.map(item=>'<item>'+Object.entries(item).map(([k,v])=>`<${k}>${v}</${k}>`).join('')+'</item>').join('')}</items><totalCount>${total}</totalCount></body></response>`;
+const gateway30=key=>`<OpenAPI_ServiceResponse><cmmMsgHeader><errMsg>SERVICE_KEY_IS_NOT_REGISTERED_ERROR</errMsg><returnAuthMsg>${key}</returnAuthMsg><returnReasonCode>30</returnReasonCode></cmmMsgHeader></OpenAPI_ServiceResponse>`;
+
+test('basic access can succeed while detailed service rejects registration, without leaking the key or retrying the denial',async()=>{
+ const key='fixture-secret-0123456789',calls=[];
+ const result=await checkMolitAccess({key,code:'11110',month:'202601',fetcher:async(url,options)=>{
+  const request=new URL(url);assert.equal(request.hostname,'apis.data.go.kr');assert.equal(options.redirect,'error');assert.equal(request.searchParams.get('serviceKey'),key);assert.equal(request.searchParams.get('numOfRows'),'1');calls.push(request.pathname);
+  return request.pathname.includes('AptTradeDev')?new Response(gateway30(key),{status:403}):new Response(xml([raw]));
+ }});
+ assert.equal(calls.length,2);assert.equal(result.results[0].status,'ready');assert.equal(result.results[0].officialIdRows,0);assert.equal(result.detailedIdStatus,'unavailable');
+ const denied=result.results[1];assert.equal(denied.code,'service_key_not_registered');assert.equal(denied.providerCode,'30');assert.equal(denied.httpStatus,403);assert(!JSON.stringify(result).includes(key));
+});
+
+test('gateway errors over HTTP 200 still fail and detailed provider IDs remain source strings',async()=>{
+ const request={service:'detailed',key:'fixture-key-0123456789',code:'11110',month:'202601'};
+ await assert.rejects(fetchMolitPage({...request,fetcher:async()=>new Response(gateway30(request.key))}),error=>error.code==='service_key_not_registered'&&error.httpStatus===200);
+ const response=await fetchMolitPage({...request,fetcher:async()=>new Response(xml([{...raw,aptSeq:'11110-000007'}]))});
+ assert.equal(response.items[0].aptSeq,'11110-000007');assert(response.xml.includes('<aptSeq>11110-000007</aptSeq>'));
+});
 const read=file=>JSON.parse(fs.readFileSync(file));
 const write=(file,value)=>fs.writeFileSync(file,JSON.stringify(value));
 const hashed=(folder,prefix,value)=>{const bytes=Buffer.from(JSON.stringify(value)),hash=sha256(bytes),file=prefix+'-'+hash.slice(0,12)+'.json';fs.writeFileSync(path.join(folder,file),bytes);return{file,sha256:hash,bytes:bytes.length};};
@@ -30,6 +50,38 @@ async function fixture(t,{empty=false}={}) {
   const options={source,target,favorites,secretsFile,compressAbove:0};
   return {root,source,target,queries,options,export:()=>exportData(options),verify:opts=>verifyTradeExport({source,target,...opts})};
 }
+
+test('detailed comparison preserves existing row IDs and holds conflicting IDs, missing IDs and count differences for review',async t=>{
+  const f=await fixture(t,{empty:true});
+  const conflicting={...raw,aptNm:'단지번호 충돌'},missing={...raw,aptNm:'단지번호 없음'},unequal={...raw,aptNm:'건수 불일치'};
+  const cancelled={...raw,cdealType:'O',cdealDay:'26.02.10'};
+  const basicRows=[raw,raw,conflicting,conflicting,missing,unequal,unequal,cancelled];
+  const db=connect(f.source);
+  try {
+    await collectMonth(db,'fixture','11110','202601','서울특별시 종로구',{pause:0,fetcher:async()=>({items:basicRows,total:basicRows.length,xml:xml(basicRows)})});
+  }finally{db.close();}
+  const original=sha256(fs.readFileSync(f.source));
+  const detailedRows=[
+    {...raw,aptSeq:'11110-000007',roadNm:'시험로'},
+    {...raw,aptSeq:'11110-000007',roadNm:'시험로'},
+    {...conflicting,aptSeq:'11110-000008'},
+    {...conflicting,aptSeq:'11110-000009'},
+    missing,
+    {...unequal,aptSeq:'11110-000010'},
+    {...raw,floor:'4',aptSeq:'11110-000007'},
+  ];
+  const pages=[detailedRows.slice(0,4),detailedRows.slice(4)];
+  const result=await compareMolitMonth({database:f.source,key:'fixture',code:'11110',month:'202601',pause:0,fetcher:async url=>{
+    const request=new URL(url);assert(request.pathname.includes('AptTradeDev'));
+    return new Response(xml(pages[Number(request.searchParams.get('pageNo'))-1],detailedRows.length));
+  }});
+  assert.equal(result.comparison.existingRows,8);assert.equal(result.comparison.detailedRows,7);
+  assert.deepEqual(result.comparison.candidates,[{tradeIds:[1,2],detailedRows:[1,2],provider:'molit',provider_apartment_id:'11110-000007'}]);
+  assert.deepEqual(result.comparison.unresolved.map(row=>row.reason),['conflicting_apt_seq','missing_apt_seq','count_mismatch','basic_only','detailed_only']);
+  assert.deepEqual(result.pages.map(page=>parsePage(page.xml).items.length),[4,3]);
+  assert.equal(sha256(fs.readFileSync(f.source)),original);
+});
+
 function updateIndex(f,change) {
   const manifest=read(path.join(f.target,'manifest.json')),registry=read(path.join(f.queries,'manifest.json')),index=read(path.join(f.queries,registry.districts['11110'].file));
   change(index);
@@ -124,6 +176,18 @@ test('same-count JSON replacements fail even after file names and checksums have
   const f=await fixture(t);f.export();const manifest=read(path.join(f.target,'manifest.json')),rows=read(path.join(f.target,manifest.districts['11110'].file));
   rows[0].price_man++;const meta=hashed(f.target,'trades-11110',rows);manifest.districts['11110']={...manifest.districts['11110'],...meta};write(path.join(f.target,'manifest.json'),manifest);
   assert.throws(()=>f.verify(),/작업 DB → JSON.*초과·변경/);
+});
+
+test('official provider IDs survive export and cannot disappear from rehashed browser shards',async t=>{
+ const f=await fixture(t,{empty:true}),db=connect(f.source),item={...raw,aptSeq:'11110-000007'};
+ try{await collectMonth(db,'fixture','11110','202601','종로구',{pause:0,fetcher:async()=>({...parsePage(xml([item])),xml:xml([item]),service:'detailed'})});}finally{db.close();}
+ const manifest=f.export();f.verify();
+ const full=read(path.join(f.target,manifest.districts['11110'].file));assert.equal(full[0].raw.aptSeq,'11110-000007');
+ const registry=read(path.join(f.queries,'manifest.json')),index=read(path.join(f.queries,registry.districts['11110'].file));
+ const rows=read(path.join(f.queries,index.months['202601']));assert.equal(rows[0].raw.aptSeq,'11110-000007');
+ delete rows[0].raw.aptSeq;const month=hashed(f.queries,'month-11110-202601',rows);
+ updateIndex(f,next=>{next.months['202601']=month.file;});
+ assert.throws(()=>f.verify(),/JSON → 월별 조회/);
 });
 
 test('duplicate loss, wrong cancellation dates, floor, area and address fail within otherwise valid month files',async t=>{

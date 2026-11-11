@@ -3,6 +3,8 @@ import {HOUSING_IDENTITY_SCHEMA,HOUSING_IDENTITY_INVALIDATION_SCHEMA} from './ho
 import {normalizeRoadAddress,normalizeParcel} from '../src/address-identity.mjs';
 import {parcel,registryCoordinateCodes} from './building-registry.mjs';
 import {listingBuildingMembers} from '../src/housing-identity.mjs';
+import {deriveBaselineHousing} from './apartment-baseline-runtime.mjs';
+import {readInstalledBaseline} from './apartment-baseline-state.mjs';
 
 const has=(db,name)=>Boolean(db.prepare('SELECT 1 FROM sqlite_master WHERE name=?').get(name));
 const all=(db,name)=>has(db,name)?db.prepare('SELECT * FROM '+name).all():[];
@@ -129,6 +131,7 @@ function favorite(row,ref,coverage,related=[]){
 }
 
 export function rebuildHousingIdentity(db,{information=[],scopes,now=new Date().toISOString()}={}){
+ if(readInstalledBaseline(db))return deriveBaselineHousing(db);
  ensureSchema(db);db.exec('SAVEPOINT housing_identity_refresh');
  try{
   const rows=has(db,'trades')?db.prepare('SELECT id,region_code,dong,jibun,apartment,build_year,raw_json FROM trades ORDER BY id').all():[];
@@ -195,7 +198,7 @@ export function rebuildHousingIdentity(db,{information=[],scopes,now=new Date().
 export function housingIdentityCatalog(db){
  if(!has(db,'housing_identity_meta'))return {version:1,entities:[],cohorts:[],roots:[]};
  const meta=generation(db),entities=db.prepare('SELECT * FROM housing_identity_entities ORDER BY entity_id').all().map(row=>({entity_id:row.entity_id,favorite:JSON.parse(row.favorite_json),state:row.state,method:row.method,cohort_ids:JSON.parse(row.cohort_ids_json),root_ids:JSON.parse(row.root_ids_json),legal_types:JSON.parse(row.legal_types_json),row_count:row.row_count,precision_counts:JSON.parse(row.precision_counts_json)}));
- return {version:1,entities,cohorts:db.prepare('SELECT data_json FROM housing_identity_cohorts ORDER BY cohort_id').all().map(row=>JSON.parse(row.data_json)),roots:meta.roots};
+ return {version:1,entities,cohorts:db.prepare('SELECT data_json FROM housing_identity_cohorts ORDER BY cohort_id').all().map(row=>JSON.parse(row.data_json)),roots:meta.roots,...(meta.provider_sources?{provider_sources:meta.provider_sources,baseline_sha256:meta.baseline_sha256}:{})};
 }
 export function housingTradeBindings(db){
  if(!has(db,'housing_identity_meta'))return new Map();generation(db);

@@ -31,6 +31,12 @@ JUSO_ADDRESS_SEARCH_KEY=<주소정보누리집 주소 검색 승인키>
 
 실제 공공 API 키는 관리자 브라우저에 전달되지 않습니다. 로컬 화면에는 설정 여부만 표시합니다. 로컬 서버는 `127.0.0.1`에만 바인딩하며 Host·Origin·CSRF를 검사하고 외부 사이트의 요청을 거부합니다. 로컬 관리자 API와 원천 조회 화면은 공개 사이트에 배포되지 않습니다. 웹 수집 관리자는 GitHub 권한 확인 후 Actions 실행·예약 설정 변경만 담당합니다.
 
+기본·상세 실거래 API의 키 등록 상태는 `pnpm data:molit:check`로 검사합니다. 상세 서비스가 HTTP 403과 공급자 코드 30을 반환하면 해당 서비스의 활용 승인과 설정한 키를 확인하세요. 승인 후 `pnpm data:molit:compare --region-code 41135 --month 202611`을 실행하면 기존 거래와 상세 원문을 읽기 전용으로 대조해 결과를 `local/molit-detailed/`에 저장합니다. [상세 서비스 접근 검사와 대조 절차](project-notes/molit-official-id-access-2026-11-11.md)를 참조하세요.
+
+운영 월 수집은 상세 API의 공식 단지 ID `aptSeq`를 저장합니다. `pnpm data:molit:collect --region-code 41135 --month 202611`로 지정한 지역·월을 수집할 수 있으며 `--database`로 검증 복사본을 지정합니다. 기존 거래 ID·중복·원문 버전을 보존하고, 현재 거래의 공식 ID는 `molit_trade_identities`에서 조회합니다. 공식 ID는 공개 JSON·SQLite 원문과 월별 브라우저 자료의 `raw.aptSeq`에 보존합니다. [공식 단지 ID 저장 구조와 이관 결과](project-notes/molit-provider-id-storage.md)에 저장·검증 규칙이 있습니다.
+
+GitHub의 아파트 기준은 `pnpm data:baseline:create`로 현재 로컬 확정 DB에서 생성한 `automation/apartment-baseline`입니다. 로컬 정보·지도를 먼저 내보낸 뒤 생성하고 `pnpm data:baseline:check`로 검사합니다. 자동화는 복원한 거래·매물·수집 이력을 보존하면서 이 기준본을 설치하며, 옛 복원 대장으로 연결을 재계산하지 않습니다. 누락·손상·범위·버전 불일치는 수집과 배포를 중단합니다. 로컬 원본 DB는 편집 가능하게 유지하고 기준본을 설치하지 않습니다. [전달 구조·검증·운영 절차](project-notes/local-apartment-baseline.md)를 참조하세요.
+
 ## 지역 전체 아파트 매매 매물의 일일 수집
 
 기존 **매일 한국 시간 01:00** 실거래가 예약 실행에서 저장한 수집 지역의 아파트 **매매 매물만** 수집합니다. 전세·월세는 요청·저장·조회 대상에서 제외합니다. 대상은 `automation/config.json`의 21개 동과 로컬 확정 아파트·구역 정보이며 개인 즐겨찾기와 무관합니다. 이 중 범위가 유효한 활성 확정 네이버 연결만 수집합니다. 연결 미확정은 매물 0건과 구분해 남기며 GitHub에서 자동 검색·승인하지 않습니다.

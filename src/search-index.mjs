@@ -1,6 +1,6 @@
 import {apartmentKey} from './domain.mjs';
 import {makeApartmentFavorite} from './apartment-favorites.js';
-import {sourceIdentityId} from './housing-identity.mjs';
+import {sourceIdentityId,bindingMatchesSource} from './housing-identity.mjs';
 // Trade identities remain searchable even when coordinates or registry links are missing.
 export function buildSearchIndex(groups,regions,masters=[]){
   const links=new Map();
@@ -13,7 +13,8 @@ export function buildSearchIndex(groups,regions,masters=[]){
   for(const [code,rows] of groups){
     const region=regions.find(r=>r.region_code===code);if(!region)continue;
     for(const row of rows){
-      const master=links.get(modern?sourceIdentityId(row):code+'|'+apartmentKey(row));
+      if(modern&&row.identity&&!bindingMatchesSource(row,row.identity))throw Error('원본 단지의 검색 배정이 일치하지 않습니다.');
+      const master=links.get(modern?row.identity?.entity_id||sourceIdentityId(row):code+'|'+apartmentKey(row));
       if(modern&&!master)throw Error('원본 단지의 기본 검색 선택이 없습니다.');
       const favorite=makeApartmentFavorite(master||row,region);
       let item=items.get(favorite.id);

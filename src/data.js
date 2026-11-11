@@ -1,7 +1,7 @@
 import {createJsonCache} from './json-cache.mjs';
 import {validRecentCount,weeklyResultRows} from './weekly/query.mjs';
 import {housingBindingsMap} from './housing-wire.mjs';
-import {sourceIdentityId} from './housing-identity.mjs';
+import {bindingMatchesSource} from './housing-identity.mjs';
 const sizes=new WeakMap();
 export const jsonCharacterSize=value=>sizes.get(value)||0;
 export async function fetchJson(path, fresh = false, integrity = null) {
@@ -33,7 +33,7 @@ export async function verifiedJson(file,sha256){
   return value;
 }
 function validateCompactIdentity(rows){
-  for(const row of rows){const item=row.identity;if(!item||Object.keys(item).length!==5||item.entity_id!==sourceIdentityId(row)||!['building','cohort','complex','unresolved'].includes(item.precision)||!['root_id','cohort_id','building_id'].every(key=>item[key]===null||typeof item[key]==='string')||(['building','cohort'].includes(item.precision)?!item.root_id||!item.cohort_id||item.precision==='building'&&!item.building_id:item.root_id!==null||item.cohort_id!==null||item.building_id!==null))throw Error('주거 연결 조회 배정 누락·불일치');}
+  for(const row of rows){const item=row.identity;if(!bindingMatchesSource(row,item)||Object.keys(item).length!==(item.provider_apartment_id?6:5)||!['building','cohort','complex','unresolved'].includes(item.precision)||!['root_id','cohort_id','building_id'].every(key=>item[key]===null||typeof item[key]==='string')||(['building','cohort'].includes(item.precision)?!item.root_id||!item.cohort_id||item.precision==='building'&&!item.building_id:item.root_id!==null||item.cohort_id!==null||item.building_id!==null))throw Error('주거 연결 조회 배정 누락·불일치');}
   return rows;
 }
 export async function loadDistrict(manifest, code,request={}) {
@@ -86,6 +86,6 @@ export async function loadDistrict(manifest, code,request={}) {
   const [rows,payload]=await Promise.all([verifiedJson(path,district.sha256),verifiedJson('/data/'+housing.file,housing.sha256)]);
   if(payload.source_fingerprint!==housing.source_fingerprint||payload.row_count!==manifest.count)throw Error('주거 연결 원본 스냅샷 불일치');
   const bindings=housingBindingsMap(payload);
-  return rows.map(row=>{const identity=bindings.get(row.id);if(!identity||identity.entity_id!==sourceIdentityId(row))throw Error('주거 연결 원본 배정 누락·불일치');return {...row,identity};});
+  return rows.map(row=>{const identity=bindings.get(row.id);if(!bindingMatchesSource(row,identity))throw Error('주거 연결 원본 배정 누락·불일치');return {...row,identity};});
 }
 loadDistrict.supportsRanges=true;

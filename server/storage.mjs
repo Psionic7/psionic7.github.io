@@ -86,6 +86,9 @@ export async function initialize({db=paths.db,favorites=paths.favorites,env=path
   const connection=connect(db);
   try {
     connection.exec(PUBLIC_SCHEMA+LOCAL_SCHEMA+APARTMENT_MASTER_SCHEMA+NAVER_LISTING_SCHEMA);
+    if(connection.prepare("SELECT name FROM sqlite_master WHERE name='local_apartment_baseline'").get()){
+      savedIds(favorites,regions(connection));return;
+    }
     const boundary=readJson(path.join(ROOT,'admin/assets/dong_boundaries.geojson'));
     const insert=connection.prepare('INSERT OR IGNORE INTO regions VALUES (?,?,?,?,?,?,?)');
     connection.exec('BEGIN');

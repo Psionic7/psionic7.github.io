@@ -3,12 +3,18 @@ import {createHash} from 'node:crypto';
 export const normalizedTradeFields=['region_code','deal_month','deal_date','apartment','dong','jibun','price_man','area_m2','floor','build_year','cancelled'];
 const browserFields=normalizedTradeFields.filter(key=>key!=='build_year');
 const ordered=value=>Object.keys(value).sort().map(key=>[key,value[key]]);
+const sharedRawFields=['aptDong','rgstDate','cdealType','cdealDay','dealingGbn','estateAgentSggNm','slerGbn','buyerGbn','landLeaseholdGbn'];
+export function tradeComparisonDigest(row,{includeEnrichment=true}={}) {
+  const raw=row.raw??JSON.parse(row.raw_json);
+  const fields=sharedRawFields.filter(field=>includeEnrichment||!['aptDong','rgstDate'].includes(field));
+  return tradeDigest({...row,raw:Object.fromEntries(fields.map(field=>[field,raw[field]?.trim()??'']))},{includeId:false});
+}
 export function tradeDigest(row,{includeId=true,compact=false,includeAddress=false}={}) {
   const required=[...(includeId?['id']:[]),...(compact?browserFields:normalizedTradeFields),...(compact||includeAddress?['road_address']:[])];
   if(required.some(key=>!Object.hasOwn(row,key)))throw new Error('데이터 검증 실패: 거래 필수 필드 누락');
   const raw=row.raw??JSON.parse(row.raw_json);
   const values=[...(includeId?[row.id]:[]),...(compact?browserFields:normalizedTradeFields).map(key=>row[key]??null)];
-  values.push(...(compact?[row.road_address||'',raw.cdealDay||'']:[ordered(raw)]));
+  values.push(...(compact?[row.road_address||'',raw.cdealDay||'',raw.aptSeq||'']:[ordered(raw)]));
   if(includeAddress&&!compact)values.push(row.road_address||'');
   return createHash('sha256').update(JSON.stringify(values)).digest('hex');
 }

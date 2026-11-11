@@ -4,12 +4,15 @@ import {createHash} from 'node:crypto';
 import {readApartmentSpatialContext,scopeApartmentSpatialContext} from './apartment-spatial.mjs';
 import {housingQueryInformation} from './housing-export.mjs';
 import {validListingSnapshot} from '../src/naver-listings.mjs';
+import {readInstalledBaseline} from './apartment-baseline-state.mjs';
+import {deriveBaselineHousing,baselineApartmentInformation} from './apartment-baseline-runtime.mjs';
 import {makeApartmentFavorite} from '../src/apartment-favorites.js';
 import {normalizeRoadAddress,normalizeParcel} from '../src/address-identity.mjs';
 import {rebuildHousingIdentity,housingIdentityCatalog,housingTradeBindings,housingIdentityStats} from './housing-identity.mjs';
 export {housingIdentityCatalog,housingTradeBindings,housingIdentityStats};
 export {readNaverMatch,naverMatchStats} from './apartment-naver-matches.mjs';
 export function synchronizeHousingIdentity(db,options={}) {
+  if(readInstalledBaseline(db))return deriveBaselineHousing(db);
   synchronizeApartmentIdentity(db,options);
   let scopes=options.scopes;
   if(scopes===undefined){
@@ -44,6 +47,7 @@ function readRootInformation(db,{activeOnly=true,contexts=readApartmentSpatialCo
 
 export function apartmentInformation(db,{activeOnly=true,kind='root',geometry='summary'}={}) {
   if(!['root','cohort','source','all'].includes(kind)||!['summary','full'].includes(geometry))throw Error('공통 아파트 정보의 조회 범위를 확인하세요.');
+  if(readInstalledBaseline(db))return baselineApartmentInformation(db).apartments.filter(item=>(!activeOnly||item.active!==false)&&(kind==='all'||item.identity_ref.kind===kind)).map(item=>({...item,canonical_name:item.apartment,apartment_id:item.identity_ref.kind==='root'?item.id:item.master_id||null,selection_id:item.id,scope_kind:item.identity_ref.kind}));
   if(kind==='root'){
     const contexts=readApartmentSpatialContext(db,{geometry});
     return readRootInformation(db,{activeOnly,contexts}).map(row=>({...row,...(geometry==='full'?{boundaries:contexts.get(row.apartment_id)?.boundaries}:{})}));
@@ -63,6 +67,7 @@ export function apartmentInformation(db,{activeOnly=true,kind='root',geometry='s
 }
 
 export function synchronizeApartmentIdentity(db,{snapshot,overrides=apartmentAliasOverrides(),apartmentIds,now=new Date().toISOString()}={}) {
+  if(readInstalledBaseline(db))throw Error('로컬 확정 기준본의 아파트 정보는 원격에서 갱신할 수 없습니다.');
   if(!has(db,'apartment_complexes'))return {apartments:0,withPostalCode:0};
   if(snapshot&&!validListingSnapshot(snapshot))throw Error('아파트 정보에 연결할 매물 스냅샷 검증 실패');
   if(!Array.isArray(overrides)||overrides.some(row=>!row||!Array.isArray(row.names)||[row.canonical_name,...row.names].some(name=>typeof name!=='string'||!name.trim()||name.length>500)||!row.source))throw Error('검토한 아파트 별칭 형식을 확인하세요.');
@@ -143,6 +148,7 @@ export function resolveApartmentIdentity(db,input,information=apartmentInformati
 }
 
 export function publicApartmentInformation(db) {
+  if(readInstalledBaseline(db))return baselineApartmentInformation(db);
   const contexts=readApartmentSpatialContext(db),rows=readRootInformation(db,{activeOnly:false,contexts});
   const base={version:1,apartments:rows.map(row=>({...makeApartmentFavorite({apartment:row.canonical_name,dong:row.dong,jibun:row.jibun,road_address:row.road_address,master_id:row.apartment_id,trade_keys:row.trade_keys,identity_ref:{kind:'root',id:row.apartment_id}},row),name_aliases:row.name_aliases,postal_code:row.postal_code,naver_complex_no:row.naver_complex_no,addresses:row.addresses.map(({apartment_id,...address})=>address),sources:row.sources}))};
   const hasGeneration=has(db,'housing_identity_meta')&&db.prepare("SELECT 1 FROM housing_identity_meta WHERE key='generation'").get();
