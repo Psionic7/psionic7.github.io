@@ -11,6 +11,7 @@ on:
       - 'scripts/requirements-naver-browser.txt'
       - 'server/naver-system-chrome.mjs'
       - 'server/naver-listing-source.mjs'
+      - 'server/naver-network-diagnostics.mjs'
 permissions:
   contents: read
 jobs:

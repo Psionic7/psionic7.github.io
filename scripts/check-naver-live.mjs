@@ -20,7 +20,7 @@ const target=baseline.payload.targets.find(target=>{const match=matches.get(targ
 if(!target)throw Error('로컬 기준본에 현재 범위가 유효한 확정 단지 연결이 없습니다.');
 const report={version:2,source:'system-chrome',tradeType:'A1',complexNo:values['complex-no'],baseline_sha256:baseline.manifest.generation,startedAt:new Date().toISOString(),status:'running',results:[]};
 const save=()=>atomicWrite(reportFile,checkedBytes(JSON.stringify(report,null,2)+'\n'));
-save();report.network=await diagnoseNaverConnection();save();
+save();report.network=await diagnoseNaverConnection({complexNo:values['complex-no']});save();
 {
  const mode='known';
  const started=Date.now();let source;

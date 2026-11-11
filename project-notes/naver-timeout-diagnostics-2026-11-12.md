@@ -70,3 +70,22 @@ GitHub `naver-listings-smoke.yml`은 요약 JSON과 `naver-browser/**`를 함께
 최종 명령은 로컬 동결 기준본의 활성 승인과 위치 문맥을 확인한 뒤 다시 실행했다. `naver-diagnostics-approved.json`에서 기준본 세대가 일치했고 같은 단지 34건·1페이지가 8,519ms에 완료됐다. DNS 19ms·TLS 53ms였으며 추적 파일은 `e9b0d8e0-2bee-48f1-bc03-281a1d162bf2.jsonl`이다. 두 번의 실제 성공을 확인했다. 원천 DB와 공개 매물은 변경하지 않았다.
 
 필수 `data:verify`, 원본 대조를 포함한 `build`, `check:publish`, 연결 감사와 `git diff --check`도 통과했다. 이 기록 시점의 변경은 커밋하지 않았다. 프로젝트의 작업별 명시적 커밋·푸시 규칙에 따라, 원격 코드 반영과 새 GitHub 진단 실행은 승인을 기다린다.
+
+## 승인 후 첫 원격 진단
+
+사용자 승인 후 `cd6c338`을 커밋·푸시했다. [원격 진단 실행](https://github.com/Psionic7/psionic7.github.io/actions/runs/43110174893)의 두 운영체제에서 추적 JSONL·요약·실패 화면을 내려받았다. 위치는 `local/naver-timeout-remote/43110174893/`이다.
+
+| 항목 | Ubuntu | Windows |
+| --- | ---: | ---: |
+| DNS 성공 | 562ms | 271ms |
+| Node TLS 1.3 연결 성공 | 374ms | 270ms |
+| Chrome 준비 | 577ms | 875ms |
+| 단지 문서 요청 | 1건 | 1건 |
+| 문서 응답 헤더 | 0건 | 0건 |
+| 매물 API 요청/응답 | 0/0건 | 0/0건 |
+| 멈춘 호출 | `navigation_ack` | `navigation_ack` |
+| 해당 호출 제한 시간 | 20,001ms | 20,000ms |
+
+두 실패 화면은 빈 화면이었다. 브라우저 상태 평가도 2초 안에 반환되지 않았으나 화면 캡처는 저장됐다. 실패 범위는 매물 API·목록 스크롤·아파트 매핑보다 앞선 첫 문서 이동 단계다. HTTP 403·429나 접근 제한 안내를 실제로 관측한 것은 아니므로 IP 차단으로 단정하지 않는다.
+
+DNS/TLS 성공은 HTTP 응답 성공을 의미하지 않는다. 이를 구분하기 위해 같은 DNS IP에서 HTTP/1.1·HTTP/2로 같은 단지 주소의 응답 헤더만 검사하도록 추가했다. 본문·쿠키·전체 헤더는 저장하지 않는다. 로컬에서는 두 방식 모두 `/map`으로의 정상 HTTP 307을 각각 67ms·71ms에 받았다. 추가 원격 실행으로 Node HTTP와 Chrome 문서 이동을 비교한다.
