@@ -12,6 +12,8 @@ on:
       - 'server/naver-system-chrome.mjs'
       - 'server/naver-listing-source.mjs'
       - 'server/naver-network-diagnostics.mjs'
+      - 'server/naver-endpoint-diagnostics.mjs'
+      - 'scripts/diagnose-naver-endpoints.mjs'
 permissions:
   contents: read
 jobs:
@@ -42,6 +44,8 @@ jobs:
         with:
           version: '11.25.0'
       - run: pnpm install --frozen-lockfile
+      - name: Compare public and Naver endpoint responses
+        run: node scripts/diagnose-naver-endpoints.mjs
       - uses: actions/setup-python@v6
         with:
           python-version: '3.12'
@@ -74,6 +78,7 @@ jobs:
           name: naver-live-validation-${{ runner.os }}
           path: |
             local/data-validation/naver-live.json
+            local/data-validation/naver-endpoints.json
             local/data-validation/naver-browser/**
           if-no-files-found: warn
           retention-days: 14
