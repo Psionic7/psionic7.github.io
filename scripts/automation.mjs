@@ -10,7 +10,7 @@ import {cloudGithub} from '../server/cloud-github.mjs';
 import {validateConfig, CONFIG_PATH} from '../automation/config.mjs';
 import {refreshPlan, repairTradeData} from '../server/trade-refresh.mjs';
 import {linkMasterTrades} from '../server/apartment-master.mjs';
-import {collectDailyListings,listingExport} from '../server/daily-naver-listings.mjs';
+import {listingExport} from '../server/daily-naver-listings.mjs';
 import {writeListingSnapshot} from '../server/naver-listings.mjs';
 import {synchronizeHousingIdentity} from '../server/apartment-identity.mjs';
 import {readInstalledBaseline,loadApartmentBaseline,installApartmentBaseline,assertInstalledBaseline} from '../server/apartment-baseline-state.mjs';
@@ -23,7 +23,7 @@ export function prepareListingExport(db,{initialSnapshot}={}) {
   return listingExport(db,{initialSnapshot});
 }
 
-export async function collectConfigured(db, config, {now, tradeKey = serviceKey(), jusoKey = addressKey(), collector = collectMonth, addressCollector = collectAddresses, listingCollector=collectDailyListings,listingOptions={},onProgress = console.log} = {}) {
+export async function collectConfigured(db, config, {now, tradeKey = serviceKey(), jusoKey = addressKey(), collector = collectMonth, addressCollector = collectAddresses, onProgress = console.log} = {}) {
   const baseline=readInstalledBaseline(db);
   if(baseline)assertInstalledBaseline(db,{config});
   const catalog = regions(db), settings = validateConfig(config, catalog);
@@ -38,7 +38,6 @@ export async function collectConfigured(db, config, {now, tradeKey = serviceKey(
     onProgress(`${task.name} ${task.month}: ${n}건`);
   }
   const addresses = baseline?{completed:0,source:'local_baseline'}:await addressCollector(db, jusoKey, {limit: settings.address_limit});
-  const listings=await listingCollector(db,settings,{...listingOptions,now:now?()=>new Date(now).getTime():()=>Date.now(),onProgress});
   if (plan.history.length) db.prepare('INSERT OR REPLACE INTO metadata VALUES(?,?)').run('historical_refresh_cursor', plan.history.at(-1));
   db.prepare('INSERT OR REPLACE INTO metadata VALUES(?,?)').run('last_refresh', JSON.stringify({finished_at: new Date().toISOString(), recent_months: plan.recent, historical_months: plan.history}));
   // Keep three recent source responses for each district/month in cloud state.
@@ -51,7 +50,7 @@ export async function collectConfigured(db, config, {now, tradeKey = serviceKey(
       SELECT id FROM (SELECT id, ROW_NUMBER() OVER (PARTITION BY region_code,deal_month ORDER BY id DESC) AS n FROM collection_runs) WHERE n>3
     );
     COMMIT;`);
-  return {tasks: tasks.length, rows: count, addresses,listings};
+  return {tasks: tasks.length, rows: count, addresses};
 }
 
 export async function runAutomation(action) {
@@ -91,14 +90,8 @@ export async function runAutomation(action) {
     const db = connect();
     try {
       assertInstalledBaseline(db,{expected:baseline,config});
-      const initialFile=path.join(ROOT,'public/listings/snapshot.json');
-      const result = await collectConfigured(db, settings,{listingOptions:{initialSnapshot:fs.existsSync(initialFile)?readJson(initialFile):undefined}});
+      const result = await collectConfigured(db, settings);
       console.log(`실거래 수집 완료: ${result.tasks}개 지역·월, ${result.rows}건, 새 주소 ${result.addresses.completed}건`);
-      const listings=result.listings;
-      atomicWrite(path.join(ROOT,'local/data-validation/listings.json'),JSON.stringify(listings,null,2)+'\n');
-      console.log(`매매 매물 일일 수집: ${listings.dayKst} · 성공 ${listings.successCount}/${listings.targetCount}곳 · 실패 ${listings.failureCount} · 미확정 ${listings.unmatchedCount} · 미시도 ${listings.notAttemptedCount}`);
-      if(listings.status!=='complete')console.log('::warning title=매물 수집 미완료::일부 또는 전체 매물을 확인하지 못했습니다. 이전 자료와 실패 상태를 보존합니다.');
-      if(process.env.GITHUB_STEP_SUMMARY)fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY,`\n### 매매 매물 일일 수집 (${listings.dayKst} KST)\n\n대상 ${listings.targetCount}곳 · 성공 ${listings.successCount} · 실패 ${listings.failureCount} · 미확정 ${listings.unmatchedCount} · 미시도 ${listings.notAttemptedCount}\n\n상태: ${listings.status}${listings.alreadyCollected?' (당일 시도한 단지는 재수집하지 않음)':''}\n`);
     }
     finally {db.close();}
   } else if (action === 'export') {

@@ -100,9 +100,9 @@ test('frozen export and search handle renamed official IDs and new unapproved so
 });
 
 test('cloud collection leaves address and authority collection to the local baseline',async t=>{
- const f=await fixture(t);installApartmentBaseline(f.db,f.baseline);let addresses=0,trades=0,listings=0;
- const result=await collectConfigured(f.db,config,{now:new Date('2026-11-11T00:00:00Z'),tradeKey:'fixture',jusoKey:'',collector:async()=>{trades++;return 1;},addressCollector:async()=>{addresses++;throw Error('주소 재수집 금지');},listingCollector:async()=>{listings++;return {};},onProgress:()=>{}});
- assert.equal(addresses,0);assert(trades>0);assert.equal(listings,1);assert.equal(result.addresses.source,'local_baseline');assertInstalledBaseline(f.db);
+ const f=await fixture(t);installApartmentBaseline(f.db,f.baseline);let addresses=0,trades=0;
+ const result=await collectConfigured(f.db,config,{now:new Date('2026-11-11T00:00:00Z'),tradeKey:'fixture',jusoKey:'',collector:async()=>{trades++;return 1;},addressCollector:async()=>{addresses++;throw Error('주소 재수집 금지');},onProgress:()=>{}});
+ assert.equal(addresses,0);assert(trades>0);assert.equal(Object.hasOwn(result,'listings'),false);assert.equal(result.addresses.source,'local_baseline');assertInstalledBaseline(f.db);
 });
 
 async function listingFixture(t){

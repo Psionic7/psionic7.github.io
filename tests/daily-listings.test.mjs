@@ -201,21 +201,23 @@ test('a reported source can verify its market listings while a conflicting regis
  assert.equal(housingTradeBindings(db).get(1).precision,'unresolved');
 });
 
-test('trade automation runs addresses then listings using saved regions; listing network failure does not discard completed trades',async t=>{
+test('trade automation collects trades and addresses without changing saved listing observations',async t=>{
   const db=fixture(t),order=[];
-  const result=await collectConfigured(db,config,{tradeKey:'trade',jusoKey:'address',now:new Date('2026-11-06T00:00:00Z'),onProgress:()=>{},collector:async()=>{order.push('trade');return 3;},addressCollector:async()=>{order.push('address');return {completed:1};},listingCollector:async(_db,settings)=>{order.push('listings');assert.deepEqual(settings.region_ids,config.region_ids);return {status:'failed'};}});
-  assert.deepEqual(order,['trade','address','listings']);assert.equal(result.rows,3);assert.equal(result.listings.status,'failed');assert(db.prepare("SELECT value FROM metadata WHERE key='last_refresh'").get());
+  await collectDailyListings(db,config,{now:()=>Date.parse('2026-11-05T00:00:00Z'),sourceFactory:async()=>source()});
+  const exportOptions={now:new Date('2026-11-06T00:00:00Z')},before=listingExport(db,exportOptions),beforeCollection=readListingCollection(db);
+  const result=await collectConfigured(db,config,{tradeKey:'trade',jusoKey:'address',now:new Date('2026-11-06T00:00:00Z'),onProgress:()=>{},collector:async()=>{order.push('trade');return 3;},addressCollector:async()=>{order.push('address');return {completed:1};}});
+  assert.deepEqual(order,['trade','address']);assert.equal(result.rows,3);assert.equal(Object.hasOwn(result,'listings'),false);assert(db.prepare("SELECT value FROM metadata WHERE key='last_refresh'").get());
+  assert.deepEqual(listingExport(db,exportOptions),before);assert.deepEqual(readListingCollection(db),beforeCollection);
 });
 
-test('the shared trade job collects sale listings once per Korean day and its saved time matches the daily workflow',async t=>{
-  const db=fixture(t),calls=[],options={tradeKey:'trade',jusoKey:'address',now:new Date('2026-11-06T00:00:00Z'),onProgress:()=>{},collector:async()=>1,addressCollector:async()=>({completed:0}),listingOptions:{sourceFactory:async()=>source({onCollect:target=>calls.push(target.favorite.id)})}};
-  const first=await collectConfigured(db,config,options);assert.equal(first.listings.tradeType,'A1');assert.equal(first.listings.status,'complete');
-  const again=await collectConfigured(db,config,options);assert.equal(again.listings.alreadyCollected,true);assert.deepEqual(calls,['hub:a','hub:b']);
+test('the trade-only cloud job keeps the saved Korean daily schedule',()=>{
   const saved=JSON.parse(fs.readFileSync(new URL('../automation/config.json',import.meta.url),'utf8'));
   const workflow=fs.readFileSync(new URL('../.github/workflows/refresh-data.yml',import.meta.url),'utf8');
   const [hour,minute]=saved.time_kst.split(':').map(Number);
   assert.equal(workflow.match(/- cron: '([^']+)' # collection-schedule/)[1],`${minute} ${(hour+15)%24} * * *`);
   assert.match(workflow,/node --dns-result-order=ipv4first scripts\/automation.mjs collect/);
+  assert.doesNotMatch(workflow,/NAVER_|xvfb|setup-python|playwright|listings:|check-naver/);
+  assert.equal(fs.existsSync(new URL('../.github/workflows/naver-listings-smoke.yml',import.meta.url)),false);
 });
 
 test('new apartments without local approval remain unmatched while existing targets remain untouched',async t=>{

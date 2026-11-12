@@ -6,6 +6,7 @@ import userEvent from '@testing-library/user-event';
 import App from '../src/App.jsx';
 import {makeApartmentFavorite} from '../src/apartment-favorites.js';
 import {readPreferences,savePreferences} from '../src/preferences.js';
+import {listingClient} from '../src/naver-listings-client.js';
 const a={region_id:'dong_41465101',label:'경기도 용인시 수지구 풍덕천동',region_code:'41465',region_name:'경기도 용인시 수지구',dongs:['풍덕천동']};
 const b={region_id:'dong_11110101',label:'서울특별시 종로구 청운동',region_code:'11110',region_name:'서울특별시 종로구',dongs:['청운동']};
 const missing={region_id:'dong_41117101',label:'경기도 수원시 영통구 매탄동',region_code:'41117',region_name:'경기도 수원시 영통구',dongs:['매탄동']};
@@ -23,6 +24,7 @@ it('starts fresh visitors in search and keeps the primary navigation focused on 
  expect(loader).not.toHaveBeenCalled();expect(new URLSearchParams(location.search).get('tab')).toBe('apartments');
 });
 it('loads shared districts once, summarizes both favorite types and deduplicates recent trades without altering queries or favorites',async()=>{
+ const listingLoad=vi.spyOn(listingClient,'load');
  seed();savePreferences('apartmentTransactions',{selected:[apartment],minArea:60,period:{mode:'month',month:'2026-08',start:'2026-08-01',end:'2026-08-31'}});savePreferences('explorer',{weeklyIds:[b.region_id],weeklyPeriod:{mode:'month',month:'2026-08',start:'2026-08-01',end:'2026-08-31'}});
  const loader=vi.fn(async()=>[row(1),row(2,{cancelled:1,raw:{cdealDay:'2026-10-01'}}),row(3,{jibun:'2',apartment:'다른단지'})]);render(<App initialManifest={manifest} districtLoader={loader}/>);await openQueryControls();
  await waitFor(()=>expect(within(summary()).getByText('동 유효 거래').closest('article').textContent).toContain('2건'));
@@ -30,6 +32,7 @@ it('loads shared districts once, summarizes both favorite types and deduplicates
  const trades=screen.getByRole('region',{name:'최근 관심 거래 내역'});expect(within(trades).getAllByRole('row')).toHaveLength(4);expect(within(trades).getByText('해제일 2026-10-01')).toBeTruthy();expect(within(trades).getAllByRole('columnheader')).toHaveLength(7);
  expect(readPreferences('viewer')).toEqual({regions:[a.region_id],apartments:[apartment]});expect(readPreferences('apartmentTransactions').selected).toEqual([apartment]);expect(readPreferences('apartmentTransactions').minArea).toBe(60);expect(readPreferences('explorer').weeklyIds).toEqual([b.region_id]);
  expect(readPreferences('apartmentTransactions').period.month).toBe('2026-08');expect(readPreferences('explorer').weeklyPeriod.month).toBe('2026-08');
+ expect(screen.queryByRole('region',{name:'즐겨찾기 아파트 네이버 매물'})).toBeNull();expect(listingLoad).not.toHaveBeenCalled();
 });
 it('persists recent duration independently, shares it in the URL and gives explicit shared duration priority',async()=>{
  seed();const user=userEvent.setup(),loader=vi.fn(async()=>[row(1),row(2,{deal_date:'2026-09-08'})]);let view=render(<App initialManifest={manifest} districtLoader={loader}/>);await openQueryControls();await screen.findByRole('region',{name:'최근 관심 거래 내역'});

@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
     inputs:
       collect:
-        description: '실거래·로컬 승인 단지의 매매 매물 수집 (해제하면 저장 DB로 재배포)'
+        description: '실거래 수집 (해제하면 저장 DB로 재배포)'
         type: boolean
         default: true
       recent_months:
@@ -38,27 +38,6 @@ jobs:
         with:
           version: '11.25.0'
       - run: pnpm install --frozen-lockfile
-      - uses: actions/setup-python@v6
-        if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.collect)
-        with:
-          python-version: '3.12'
-          cache: pip
-          cache-dependency-path: scripts/requirements-naver-browser.txt
-      - name: Install system Chrome collection dependencies
-        if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.collect)
-        run: |
-          python -m pip install -r scripts/requirements-naver-browser.txt
-          google-chrome --version
-          command -v xvfb-run
-      - name: Install Chromium for daily apartment sale listings
-        if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.collect)
-        run: pnpm exec playwright install --with-deps chromium
-      - name: Test daily sale listing schedule and browser collection
-        if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.collect)
-        run: xvfb-run --auto-servernum --server-args='-screen 0 1280x1000x24' pnpm test:listings
-        env:
-          NAVER_BROWSER_PYTHON: python
-          NAVER_CHROME_PATH: /usr/bin/google-chrome
       - name: Validate local apartment baseline
         run: pnpm data:baseline:check
       - name: Restore encrypted collection data and install local apartment baseline
@@ -71,13 +50,10 @@ jobs:
         run: node --dns-result-order=ipv4first scripts/automation.mjs repair
         env:
           MOLIT_SERVICE_KEY: ${{ secrets.MOLIT_SERVICE_KEY }}
-      - name: Collect trades and approved regional apartment sale listings
+      - name: Collect trades
         if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.collect)
-        run: xvfb-run --auto-servernum --server-args='-screen 0 1280x1000x24' node --dns-result-order=ipv4first scripts/automation.mjs collect
+        run: node --dns-result-order=ipv4first scripts/automation.mjs collect
         env:
-          NAVER_LISTING_SOURCE: system-chrome
-          NAVER_BROWSER_PYTHON: python
-          NAVER_CHROME_PATH: /usr/bin/google-chrome
           MOLIT_SERVICE_KEY: ${{ secrets.MOLIT_SERVICE_KEY }}
           INPUT_RECENT_MONTHS: ${{ inputs.recent_months }}
       - name: Diagnose public API connectivity on failure
