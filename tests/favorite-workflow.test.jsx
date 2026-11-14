@@ -68,7 +68,7 @@ it('shows a map favorite above the collapsed selector and opens older trades wit
  await user.click(screen.getByRole('button',{name:'아파트별 실거래가',exact:true}));
  const shortcuts=screen.getByRole('region',{name:'즐겨찾기 단지'});
  expect(document.getElementById('query-controls').hidden).toBe(true);
- await user.click(within(shortcuts).getByRole('button',{name:/지도 단지.*최근 거래 보기$/}));
+ await user.click(within(shortcuts).getByRole('button',{name:/지도 단지.*거래 조회$/}));
  const table=await screen.findByRole('region',{name:/지도 단지.*최근 거래 내역$/});
  expect(within(table).getByText('20.01.10')).toBeTruthy();expect(within(table).getAllByRole('row')).toHaveLength(2);
  expect(readPreferences('apartmentTransactions')).toMatchObject({minArea:'',maxArea:'',areaBands:[],includeCancelled:false,recentCount:20});
@@ -79,18 +79,42 @@ it('shows a map favorite above the collapsed selector and opens older trades wit
  await screen.findByRole('region',{name:/지도 단지.*최근 거래 내역$/});
 });
 
-it('resets stale filters when opening another saved apartment without leaving the transaction screen',async()=>{
+it('adds another saved apartment without replacing the current selection or comparison filters',async()=>{
  const a=makeApartmentFavorite(row(1),region),b=makeApartmentFavorite(row(2,{apartment:'다음 단지',jibun:'2'}),region);
  state.information=[a,b];savePreferences('viewer',{apartments:[a,b]});
- savePreferences('apartmentTransactions',{selected:[a],maxArea:20,minArea:'',areaBands:[],includeCancelled:true,recentCount:''});
+ savePreferences('apartmentTransactions',{selected:[a],maxArea:100,minArea:60,areaBands:[],includeCancelled:false,recentCount:20});
  history.replaceState(null,'','/?tab=apartments');
  render(<App initialManifest={manifest} districtLoader={async()=>[row(1),row(2,{apartment:'다음 단지',jibun:'2'})]}/>);
- await screen.findByRole('button',{name:/다음 단지.*최근 거래 보기$/});
- fireEvent.click(within(screen.getByRole('region',{name:'즐겨찾기 단지'})).getByRole('button',{name:/다음 단지.*최근 거래 보기$/}));
+ await screen.findByRole('button',{name:/다음 단지.*거래 조회$/});
+ fireEvent.click(within(screen.getByRole('region',{name:'즐겨찾기 단지'})).getByRole('button',{name:/다음 단지.*거래 조회$/}));
  const table=await screen.findByRole('region',{name:/다음 단지.*최근 거래 내역$/});
  expect(within(table).getByText('20.01.10')).toBeTruthy();
- expect(readPreferences('apartmentTransactions')).toMatchObject({maxArea:'',includeCancelled:false,recentCount:20});
+ expect(readPreferences('apartmentTransactions')).toMatchObject({minArea:60,maxArea:100,includeCancelled:false,recentCount:20});
+ expect(readPreferences('apartmentTransactions').selected.map(item=>item.id)).toEqual([a.id,b.id]);
+ expect(screen.getByRole('region',{name:/지도 단지.*최근 거래 내역$/})).toBeTruthy();
+ expect(within(screen.getByRole('region',{name:'즐겨찾기 단지'})).getAllByRole('button',{pressed:true})).toHaveLength(2);
+});
+
+it('selects all favorites, removes just one with the keyboard, and restores the remaining comparison',async()=>{
+ const a=makeApartmentFavorite(row(1),region),b=makeApartmentFavorite(row(2,{apartment:'비교 단지',jibun:'2'}),region);
+ state.information=[a,b];savePreferences('viewer',{apartments:[a,b]});history.replaceState(null,'','/?tab=apartments');
+ const user=userEvent.setup(),load=async()=>[row(1),row(2,{apartment:'비교 단지',jibun:'2'})];
+ const view=render(<App initialManifest={manifest} districtLoader={load}/>);
+ const shortcuts=await screen.findByRole('region',{name:'즐겨찾기 단지'});
+ await user.click(within(shortcuts).getByRole('button',{name:'즐겨찾기 전체 보기'}));
+ await screen.findByRole('region',{name:/비교 단지.*최근 거래 내역$/});
+ expect(readPreferences('apartmentTransactions').selected.map(item=>item.id)).toEqual([a.id,b.id]);
+ expect(new URLSearchParams(location.search).getAll('apt')).toHaveLength(2);
+ const first=within(shortcuts).getByRole('button',{name:/지도 단지.*거래 조회$/});
+ first.focus();await user.keyboard(' ');
+ expect(first.getAttribute('aria-pressed')).toBe('false');
  expect(readPreferences('apartmentTransactions').selected.map(item=>item.id)).toEqual([b.id]);
+ expect(screen.queryByRole('region',{name:/지도 단지.*최근 거래 내역$/})).toBeNull();
+ expect(readPreferences('viewer').apartments.map(item=>item.id)).toEqual([a.id,b.id]);
+ view.unmount();render(<App initialManifest={manifest} districtLoader={load}/>);
+ await screen.findByRole('region',{name:/비교 단지.*최근 거래 내역$/});
+ expect(readPreferences('apartmentTransactions').selected.map(item=>item.id)).toEqual([b.id]);
+ expect(within(screen.getByRole('region',{name:'즐겨찾기 단지'})).getByRole('button',{name:/비교 단지.*거래 조회$/}).getAttribute('aria-pressed')).toBe('true');
 });
 
 it('displays pending and saved states while Chrome grants a delayed favorite lock',async()=>{
