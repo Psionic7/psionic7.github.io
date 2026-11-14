@@ -2,19 +2,20 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {createHash} from 'node:crypto';
 import {gunzipSync} from 'node:zlib';
-import {PUBLIC_SCHEMA,ROOT} from './storage.mjs';
+import {PUBLIC_SCHEMA,MOLIT_SOURCE_SCHEMA,ROOT} from './storage.mjs';
 import {NAVER_LISTING_SCHEMA} from './naver-listing-schema.mjs';
 
 export const BASELINE_DIRECTORY=path.join(ROOT,'automation/apartment-baseline');
 export const BASELINE_COLUMNS={
  regions:['region_id','label','region_code','region_name','dongs_json','latitude','longitude'],
  road_addresses:['region_code','dong','jibun','road_address'],
+ apartment_molit_sources:['provider_apartment_id','source_entity_id','evidence_json','verified_at'],
  apartment_naver_matches:['target_id','scope_hash','favorite_json','state','complex_no','observation_json','evidence_json','first_matched_at','last_verified_at','last_attempted_at','reason','active'],
  apartment_naver_sources:['source_entity_id','target_id','scope_json','registry_state','active'],
 };
 export const baselineHash=value=>createHash('sha256').update(typeof value==='string'||Buffer.isBuffer(value)?value:JSON.stringify(value)).digest('hex');
 export const baselineScopeHash=config=>baselineHash([...config.region_ids].sort());
-export const baselineConnections=payload=>({providers:payload.providers,rules:payload.rules,targets:payload.targets,matches:payload.tables.apartment_naver_matches,sources:payload.tables.apartment_naver_sources});
+export const baselineConnections=payload=>({providers:payload.providers,rules:payload.rules,targets:payload.targets,molit_sources:payload.tables.apartment_molit_sources,matches:payload.tables.apartment_naver_matches,sources:payload.tables.apartment_naver_sources});
 const cache=new WeakMap();
 const exists=(db,name)=>Boolean(db.prepare('SELECT 1 FROM sqlite_master WHERE name=?').get(name));
 const fail=message=>{throw Error('아파트 기준본 검증 실패: '+message);};
@@ -34,6 +35,14 @@ function validatePayload(manifest,payload,config){
   if(JSON.stringify(columns)!==JSON.stringify(table?.columns)||!Array.isArray(table.rows)||table.rows.some(row=>!Array.isArray(row)||row.length!==columns.length))fail('기준 테이블 열 또는 행 오류');
  }
  if(!Array.isArray(payload.targets)||!Array.isArray(payload.information?.apartments)||!Array.isArray(payload.housing?.entities)||!payload.rules||!payload.map||!Array.isArray(payload.memberships)||!Array.isArray(payload.links))fail('기준 카탈로그 또는 수집 대상 누락');
+ const providers={};
+ for(const [id,source,evidence,at] of payload.tables.apartment_molit_sources.rows){
+  let proof,tuple;try{proof=JSON.parse(evidence);tuple=JSON.parse(source);}catch{fail('공식 단지 연결 근거 형식 오류');}
+  if(!Array.isArray(tuple)||tuple.length!==4||tuple.some(value=>typeof value!=='string')||!/^\d{5}$/.test(tuple[0])||typeof id!=='string'||!id.startsWith(tuple[0]+'-')||!payload.rules[source]||!/^[a-f0-9]{64}$/.test(proof?.contract_sha256||'')||!Number.isFinite(Date.parse(at)))fail('공식 단지 연결 범위·근거 오류');
+  providers[id]??=[];if(providers[id].includes(source))fail('공식 단지 연결 중복');providers[id].push(source);
+ }
+ const ordered=value=>Object.entries(value||{}).sort(([a],[b])=>a.localeCompare(b)).map(([id,sources])=>[id,[...sources].sort()]);
+ if(baselineHash(ordered(providers))!==baselineHash(ordered(payload.providers?.molit)))fail('공식 단지 연결표와 조회 공급자 ID 불일치');
  return {manifest,payload};
 }
 
@@ -84,7 +93,7 @@ export function installApartmentBaseline(db,baseline,{config}={}){
  const {manifest,payload}=validatePayload(baseline.manifest,baseline.payload,config);
  db.exec('BEGIN IMMEDIATE');
  try{
-  db.exec(PUBLIC_SCHEMA+NAVER_LISTING_SCHEMA+`CREATE TABLE IF NOT EXISTS local_apartment_baseline(id INTEGER PRIMARY KEY CHECK(id=1),generation TEXT NOT NULL,manifest_json TEXT NOT NULL,payload_json TEXT NOT NULL)`);
+  db.exec(PUBLIC_SCHEMA+MOLIT_SOURCE_SCHEMA+NAVER_LISTING_SCHEMA+`CREATE TABLE IF NOT EXISTS local_apartment_baseline(id INTEGER PRIMARY KEY CHECK(id=1),generation TEXT NOT NULL,manifest_json TEXT NOT NULL,payload_json TEXT NOT NULL)`);
   protect(db,false);
   for(const name of Object.keys(BASELINE_COLUMNS).reverse())db.exec('DELETE FROM '+name);
   for(const [name,{columns,rows}] of Object.entries(payload.tables)){

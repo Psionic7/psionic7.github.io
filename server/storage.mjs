@@ -11,6 +11,9 @@ export const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '
 export const paths = {db:path.join(ROOT,'local/my_real_estate.sqlite3'), favorites:path.join(ROOT,'local/collection_regions.json'), env:path.join(ROOT,'.env')};
 export const TRADE_COLUMNS = ['id','region_code','deal_month','deal_date','apartment','dong','jibun','price_man','area_m2','floor','build_year','cancelled','raw_json'];
 export const REGION_COLUMNS = ['region_id','label','region_code','region_name','dongs_json','latitude','longitude'];
+export const MOLIT_SOURCE_SCHEMA = `CREATE TABLE IF NOT EXISTS apartment_molit_sources (
+provider_apartment_id TEXT NOT NULL,source_entity_id TEXT NOT NULL,evidence_json TEXT NOT NULL,verified_at TEXT NOT NULL,
+PRIMARY KEY(provider_apartment_id,source_entity_id));`;
 export const PUBLIC_SCHEMA = `CREATE TABLE IF NOT EXISTS trades (id INTEGER PRIMARY KEY,region_code TEXT NOT NULL,deal_month TEXT NOT NULL,deal_date TEXT NOT NULL,apartment TEXT NOT NULL,dong TEXT NOT NULL,jibun TEXT NOT NULL,price_man INTEGER NOT NULL,area_m2 REAL NOT NULL,floor INTEGER,build_year INTEGER,cancelled INTEGER NOT NULL,raw_json TEXT NOT NULL);
 CREATE INDEX IF NOT EXISTS trades_region_month ON trades(region_code,deal_month);
 CREATE INDEX IF NOT EXISTS trades_parcel ON trades(region_code,dong,jibun);
@@ -31,7 +34,7 @@ CREATE TABLE IF NOT EXISTS coordinate_lookups (
   status TEXT NOT NULL CHECK(status IN ('exact','unmatched','ambiguous','invalid','missing_codes')),
   fetched_at TEXT NOT NULL,PRIMARY KEY(region_code,dong,jibun));
 CREATE TABLE IF NOT EXISTS apartment_boundary_sources (id TEXT PRIMARY KEY,response_json TEXT NOT NULL,fetched_at TEXT NOT NULL);
-CREATE TABLE IF NOT EXISTS api_pages (run_id INTEGER NOT NULL,page_no INTEGER NOT NULL,response_xml BLOB NOT NULL,PRIMARY KEY(run_id,page_no),FOREIGN KEY(run_id) REFERENCES collection_runs(id));`;
+CREATE TABLE IF NOT EXISTS api_pages (run_id INTEGER NOT NULL,page_no INTEGER NOT NULL,response_xml BLOB NOT NULL,PRIMARY KEY(run_id,page_no),FOREIGN KEY(run_id) REFERENCES collection_runs(id));`+MOLIT_SOURCE_SCHEMA;
 export function atomicWrite(filename, data) {
   fs.mkdirSync(path.dirname(filename),{recursive:true});
   const temporary = path.join(path.dirname(filename),`.write-${randomUUID()}.tmp`);

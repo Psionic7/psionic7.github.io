@@ -21,6 +21,7 @@ import {exportData} from '../server/export.mjs';
 import {verifyTradeExport} from '../server/verify-trade-export.mjs';
 import {collectMonth,parsePage} from '../server/collector.mjs';
 import {collectConfigured} from '../scripts/automation.mjs';
+import {planMolitSourceConnections,applyMolitSourceConnections} from '../server/molit-source-connections.mjs';
 
 const config={version:1,time_kst:'01:00',recent_months:1,address_limit:1000,region_ids:['dong_11110101']};
 const raw={aptNm:'검증단지',aptSeq:'11110-7',aptDong:'101',umdNm:'청운동',jibun:'1',dealAmount:'10,000',excluUseAr:'84',floor:'3',buildYear:'2000',dealYear:'2026',dealMonth:'11',dealDay:'01'};
@@ -39,6 +40,7 @@ async function fixture(t){
  db.prepare('INSERT INTO regions VALUES(?,?,?,?,?,?,?)').run(config.region_ids[0],'청운동','11110','서울특별시 종로구','["청운동"]',37.5,127);
  await collect(db,[raw]);
  const row=db.prepare('SELECT * FROM trades').get(),id=sourceIdentityId(row),favorite=makeApartmentFavorite({...row,identity_ref:{kind:'source',id}},{...row,region_name:'서울특별시 종로구'});
+ applyMolitSourceConnections(db,planMolitSourceConnections(db,[]));
  const housing={version:1,entities:[{entity_id:id,favorite,state:'insufficient',method:'local_review',cohort_ids:[],root_ids:[],legal_types:[],row_count:0,precision_counts:{building:0,cohort:0,complex:0,unresolved:0}}],cohorts:[],roots:[]};
  const apartments=housingQueryInformation({apartments:[]},housing).apartments.map(item=>({...item,selection_id:item.id,scope_kind:'source',root_ids:[],active:true,residential_status:'unresolved',map_visible:false,map_member_refs:[],location:{status:'missing',precision:'unknown',latitude:null,longitude:null,anchors:[]},area:{identity_ref:item.identity_ref,geometry_scope:null,region_ids:[],parcels:[],boundary_refs:[],boundary_ids:[],bbox:null,zoning_refs:[]}}));
  const information={version:1,schema_version:2,generation:baselineHash(apartments),apartments};
@@ -57,6 +59,7 @@ test('baseline installation preserves market observations and history, is repeat
  deriveBaselineHousing(f.db);installApartmentBaseline(f.db,f.baseline,{config});deriveBaselineHousing(f.db);assertInstalledBaseline(f.db,{expected:f.baseline,config});assert.deepEqual(snapshot(),before);
  assert.throws(()=>f.db.exec("UPDATE regions SET label='변조'"),/로컬 확정/);
  assert.throws(()=>f.db.exec('DELETE FROM regions'),/로컬 확정/);
+ assert.throws(()=>f.db.exec('DELETE FROM apartment_molit_sources'),/로컬 확정/);
  await initialize({db:f.source,favorites:path.join(f.root,'absent.json'),env:path.join(f.root,'absent.env'),legacy:path.join(f.root,'absent')});
  f.db.exec('DROP TRIGGER baseline_readonly_regions_update');f.db.exec("UPDATE regions SET label='변조'");assert.throws(()=>assertInstalledBaseline(f.db),/로컬 확정 값 변경/);
 });
@@ -67,6 +70,7 @@ test('missing, mixed, damaged or out-of-scope baseline is rejected before author
  fs.appendFileSync(path.join(f.directory,f.baseline.manifest.payload.file),'damage');assert.throws(()=>loadApartmentBaseline({directory:f.directory}),/해시 불일치/);
  fs.unlinkSync(path.join(f.directory,f.baseline.manifest.payload.file));assert.throws(()=>loadApartmentBaseline({directory:f.directory}),/파일 누락/);
  const bad=structuredClone(f.baseline.payload);bad.providers.molit={};assert.throws(()=>installApartmentBaseline(f.db,{payload:bad,manifest:f.baseline.manifest}),/해시 불일치/);
+ const inconsistent=structuredClone(f.baseline.payload);inconsistent.providers.molit['11110-new']=[f.id];assert.throws(()=>installApartmentBaseline(f.db,envelope(inconsistent)),/공식 단지 연결표/);
  installApartmentBaseline(f.db,f.baseline);
  const invalid=structuredClone(f.baseline.payload);invalid.tables.regions.rows.push(invalid.tables.regions.rows[0]);
  assert.throws(()=>installApartmentBaseline(f.db,envelope(invalid)),/UNIQUE/);assertInstalledBaseline(f.db,{expected:f.baseline});
@@ -79,6 +83,9 @@ test('official ID controls source selection; unseen building or year never inher
  assert.equal(baselineTradeBinding(f.baseline.payload,row({aptDong:'999'})).precision,'unresolved');
  assert.equal(baselineTradeBinding(f.baseline.payload,row({buildYear:'2001'},{build_year:2001})).precision,'unresolved');
  assert.equal(baselineTradeBinding(f.baseline.payload,row({aptSeq:'11110-unapproved'})).precision,'unresolved');
+ assert.equal(baselineTradeBinding(f.baseline.payload,row({jibun:'2'},{jibun:'2'})).precision,'unresolved');
+ const conflicting=structuredClone(f.baseline.payload),otherId=sourceIdentityId({...f.row,apartment:'다른 승인 단지'});conflicting.rules[otherId]=structuredClone(conflicting.rules[f.id]);
+ assert.equal(baselineTradeBinding(conflicting,row({aptNm:'다른 승인 단지'},{apartment:'다른 승인 단지'})).precision,'unresolved');
  const renamed=row({aptNm:'새 표기'},{apartment:'새 표기'});assert.equal(baselineTradeBinding(f.baseline.payload,renamed).entity_id,f.id);
  installApartmentBaseline(f.db,f.baseline);await collect(f.db,[raw,{...raw,aptNm:'새 표기'},{...raw,aptNm:'미승인 단지',aptSeq:'11110-999',jibun:'999'}]);deriveBaselineHousing(f.db);
  const rows=f.db.prepare('SELECT * FROM trades').all(),packed=packHousingIdentity(housingIdentityCatalog(f.db),housingTradeBindings(f.db),rows);
@@ -97,6 +104,28 @@ test('frozen export and search handle renamed official IDs and new unapproved so
  assert.equal(verifyTradeExport({source:f.source,target,requireSearch:true}).rows,3);
  const file=path.join(publicRoot,'apartment-map/manifest.json'),meta=JSON.parse(fs.readFileSync(file));meta.apartment_baseline.generation='0'.repeat(64);fs.writeFileSync(file,JSON.stringify(meta));
  assert.throws(()=>verifyTradeExport({source:f.source,target,requireSearch:true}),/지도와 아파트 기준본/);
+});
+
+test('unapproved official ID enrichment cannot publish a loss of existing query coverage',async t=>{
+ const f=await fixture(t);installApartmentBaseline(f.db,f.baseline);
+ const target=path.join(f.root,'public/data'),options={source:f.source,target,favorites:path.join(f.root,'none.json'),secretsFile:path.join(f.root,'none.env')};
+ exportData(options);const before=fs.readFileSync(path.join(target,'manifest.json'));
+ await collect(f.db,[{...raw,aptSeq:'11110-unapproved'}]);
+ assert.throws(()=>exportData(options),error=>error.code==='molit_source_coverage'&&error.report.regressions[0].rows===1);
+ assert.deepEqual(fs.readFileSync(path.join(target,'manifest.json')),before);
+});
+
+test('a known provider reported outside its local parcel scope also blocks publication',async t=>{
+ const f=await fixture(t);installApartmentBaseline(f.db,f.baseline);await collect(f.db,[{...raw,jibun:'2'}]);
+ const options={source:f.source,target:path.join(f.root,'public/data'),favorites:path.join(f.root,'none.json'),secretsFile:path.join(f.root,'none.env')};
+ assert.throws(()=>exportData(options),error=>error.code==='molit_source_coverage'&&error.report.regressions[0].reason==='provider_scope_conflict');
+});
+
+test('an older derived binding cache is rebuilt even when the approved baseline generation is unchanged',async t=>{
+ const f=await fixture(t);installApartmentBaseline(f.db,f.baseline);deriveBaselineHousing(f.db);
+ f.db.prepare("UPDATE housing_identity_bindings SET precision='unresolved' WHERE trade_id=?").run(f.row.id);
+ f.db.exec("UPDATE housing_identity_meta SET value=json_remove(value,'$.binding_version') WHERE key='generation'");
+ deriveBaselineHousing(f.db);assert.equal(housingTradeBindings(f.db).get(f.row.id).precision,'complex');
 });
 
 test('cloud collection leaves address and authority collection to the local baseline',async t=>{
@@ -148,6 +177,6 @@ test('daily attempts resume only under the same local baseline generation withou
  const options={now:()=>Date.parse(f.group.attemptedAt),sourceFactory:async()=>({close:async()=>{},resolve:async()=>{throw Error('수집 중 연결 재검색 금지');},collect:async()=>{collects++;return f.group;}})};
  assert.equal((await collectDailyListings(f.db,config,options)).successCount,1);
  assert.equal((await collectDailyListings(f.db,config,options)).alreadyCollected,true);assert.equal(collects,1);
- const payload=structuredClone(f.baseline.payload);payload.providers.molit['11110-8']=[f.id];installApartmentBaseline(f.db,envelope(payload));
+ const payload=structuredClone(f.baseline.payload);payload.tables.apartment_molit_sources.rows[0][3]='2026-11-12T00:00:00Z';installApartmentBaseline(f.db,envelope(payload));
  assert.equal((await collectDailyListings(f.db,config,options)).successCount,1);assert.equal(collects,2);assertInstalledBaseline(f.db);
 });

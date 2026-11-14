@@ -5,15 +5,23 @@ import {sourceIdentityId} from '../src/housing-identity.mjs';
 import {makeApartmentFavorite} from '../src/apartment-favorites.js';
 import {listingBuildingDong} from '../src/naver-listings.mjs';
 import {tradeDigest} from './trade-integrity.mjs';
+import {normalizeParcel} from '../src/address-identity.mjs';
 
 const unresolved={precision:'unresolved',root_id:null,cohort_id:null,building_id:null};
+const BINDING_VERSION=2;
 export const baselinePattern=row=>JSON.stringify([listingBuildingDong(JSON.parse(row.raw_json).aptDong),row.build_year]);
 const stats=meta=>({version:1,row_count:meta.row_count,entity_count:meta.entity_count,cohort_count:meta.cohort_count,precision_counts:meta.precision_counts,source_fingerprint:meta.source_fingerprint,baseline_sha256:meta.baseline_sha256});
 
-export function baselineTradeBinding(payload,row){
+export function resolveBaselineSource(payload,row){
  const reported=sourceIdentityId(row),providerId=JSON.parse(row.raw_json).aptSeq?.trim();
  const approved=providerId?payload.providers.molit[providerId]||[]:[reported];
- const source=approved.includes(reported)?reported:approved.length===1?approved[0]:null;
+ const sameParcel=approved.filter(id=>{const [code,dong,jibun]=JSON.parse(id);return code===row.region_code&&dong.trim()===row.dong.trim()&&normalizeParcel(jibun)===normalizeParcel(row.jibun);});
+ const source=approved.includes(reported)?reported:!payload.rules[reported]&&sameParcel.length===1?sameParcel[0]:null;
+ return {reported,providerId,source,scopeConflict:Boolean(providerId&&approved.length&&!source)};
+}
+
+export function baselineTradeBinding(payload,row){
+ const {reported,source}=resolveBaselineSource(payload,row);
  const rule=source&&payload.rules[source];
  if(!rule||JSON.parse(source)[0]!==row.region_code)return {entity_id:reported,...unresolved};
  const exact=rule.exceptions?.[tradeDigest(row,{includeId:false})];
@@ -25,7 +33,7 @@ export function deriveBaselineHousing(db){
  if(!baseline)return null;
  const hasMeta=db.prepare("SELECT 1 FROM sqlite_master WHERE name='housing_identity_meta'").get();
  const saved=hasMeta&&db.prepare("SELECT value FROM housing_identity_meta WHERE key='generation'").get();
- if(saved){const meta=JSON.parse(saved.value);if(meta.baseline_sha256===baseline.manifest.generation)return stats(meta);}
+ if(saved){const meta=JSON.parse(saved.value);if(meta.baseline_sha256===baseline.manifest.generation&&meta.binding_version===BINDING_VERSION)return stats(meta);}
  db.exec(HOUSING_IDENTITY_SCHEMA+HOUSING_IDENTITY_INVALIDATION_SCHEMA);
  const rows=db.prepare('SELECT * FROM trades ORDER BY id').all(),payload=baseline.payload;
  const entities=new Map(payload.housing.entities.map(entity=>[entity.entity_id,{...structuredClone(entity),row_count:0,precision_counts:{building:0,cohort:0,complex:0,unresolved:0}}]));
@@ -44,7 +52,7 @@ export function deriveBaselineHousing(db){
  }
  const precision_counts={building:0,cohort:0,complex:0,unresolved:0};
  for(const binding of bindings)precision_counts[binding.precision]++;
- const meta={version:1,row_count:rows.length,entity_count:entities.size,cohort_count:payload.housing.cohorts.length,roots:payload.housing.roots,source_fingerprint:housingSourceFingerprint(rows),generated_at:new Date().toISOString(),baseline_sha256:baseline.manifest.generation,provider_sources:payload.providers.molit,precision_counts};
+ const meta={version:1,binding_version:BINDING_VERSION,row_count:rows.length,entity_count:entities.size,cohort_count:payload.housing.cohorts.length,roots:payload.housing.roots,source_fingerprint:housingSourceFingerprint(rows),generated_at:new Date().toISOString(),baseline_sha256:baseline.manifest.generation,provider_sources:payload.providers.molit,precision_counts};
  db.exec('SAVEPOINT baseline_housing');
  try{
   db.exec('DELETE FROM housing_identity_bindings; DELETE FROM housing_identity_entities; DELETE FROM housing_identity_cohorts; DELETE FROM housing_identity_members');

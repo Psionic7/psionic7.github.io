@@ -10,6 +10,7 @@ import {baselinePattern,baselineTradeBinding} from './apartment-baseline-runtime
 import {sourceIdentityId} from '../src/housing-identity.mjs';
 import {tradeDigest} from './trade-integrity.mjs';
 import {validateApartmentInformation,validateIdentityMap} from '../src/apartment-identity.mjs';
+import {approvedMolitProviders} from './molit-source-connections.mjs';
 
 const fields=['precision','root_id','cohort_id','building_id'];
 const shape=binding=>Object.fromEntries(fields.map(field=>[field,binding[field]]));
@@ -35,14 +36,14 @@ export function createApartmentBaseline(db,{config,publicRoot=path.join(ROOT,'pu
  for(const entity of housing.entities){
   rules[entity.entity_id]={default:{...unresolved},patterns:{},exceptions:{}};
  }
- const rows=db.prepare('SELECT * FROM trades ORDER BY id').all(),patterns=new Map(),providers={molit:{}};
+ const rows=db.prepare('SELECT * FROM trades ORDER BY id').all(),patterns=new Map(),providers={molit:approvedMolitProviders(db)};
  for(const row of rows){
   const binding=bindings.get(row.id),entity=sourceIdentityId(row);
   if(!binding||binding.entity_id!==entity||!rules[entity])throw Error('로컬 거래 배정이 누락됐습니다. 공통 정보를 재구성하세요.');
   const key=JSON.stringify([entity,baselinePattern(row)]),value=shape(binding);
   if(!patterns.has(key))patterns.set(key,new Map());patterns.get(key).set(JSON.stringify(value),value);
   const provider=JSON.parse(row.raw_json).aptSeq?.trim();
-  if(provider){providers.molit[provider]??=[];if(!providers.molit[provider].includes(entity))providers.molit[provider].push(entity);}
+  if(provider&&!providers.molit[provider]?.includes(entity))throw Error('공식 실거래 단지 ID를 로컬에서 먼저 연결하세요: pnpm data:molit:link --apply');
  }
  for(const [key,values] of patterns){const [entity,pattern]=JSON.parse(key);if(values.size===1)rules[entity].patterns[pattern]=[...values.values()][0];}
  for(const row of rows){
@@ -57,5 +58,6 @@ export function createApartmentBaseline(db,{config,publicRoot=path.join(ROOT,'pu
  const file='baseline-'+generation.slice(0,12)+'.json.gz';
  const manifest={version:1,generation,scope_sha256:baselineScopeHash(config),connections_sha256:baselineHash(baselineConnections(payload)),payload:{file,sha256:baselineHash(packed),bytes:packed.length,uncompressed_sha256:generation,uncompressed_bytes:bytes.length},targets:targets.length,verifiedTargets:targets.filter(target=>readNaverMatch(db,target).state==='verified').length};
  atomicWrite(path.join(directory,file),packed);atomicWrite(path.join(directory,'manifest.json'),JSON.stringify(manifest,null,2)+'\n');
+ for(const name of fs.readdirSync(directory))if(/^baseline-[a-f0-9]{12}\.json\.gz$/.test(name)&&name!==file)fs.unlinkSync(path.join(directory,name));
  return manifest;
 }

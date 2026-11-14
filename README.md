@@ -35,6 +35,10 @@ JUSO_ADDRESS_SEARCH_KEY=<주소정보누리집 주소 검색 승인키>
 
 운영 월 수집은 상세 API의 공식 단지 ID `aptSeq`를 저장합니다. `pnpm data:molit:collect --region-code 41135 --month 202611`로 지정한 지역·월을 수집할 수 있으며 `--database`로 검증 복사본을 지정합니다. 기존 거래 ID·중복·원문 버전을 보존하고, 현재 거래의 공식 ID는 `molit_trade_identities`에서 조회합니다. 공식 ID는 공개 JSON·SQLite 원문과 월별 브라우저 자료의 `raw.aptSeq`에 보존합니다. [공식 단지 ID 저장 구조와 이관 결과](project-notes/molit-provider-id-storage.md)에 저장·검증 규칙이 있습니다.
 
+공식 단지 ID의 로컬 승인 연결은 `apartment_molit_sources`에서 관리합니다. `pnpm data:molit:link --observations <검증한 관측 폴더의 data/manifest.json>`은 원천 파일의 해시·지역·건수·정규화 값과 로컬의 동일 계약을 대조합니다. 검토 결과에 충돌이나 근거 없는 연결이 없는지 확인하고 `--apply`로 적용합니다. 거래 원문과 기존 거래 ID는 변경하지 않습니다. 이후 공개 자료를 내보내고 `pnpm data:baseline:create`로 새 연결을 전달합니다. GitHub는 승인표를 읽으며 새 번호를 자동 승인하지 않습니다.
+
+배포 전 `data:molit:coverage`와 공식 내보내기는 ID 보강으로 기존 단지 조회가 사라지는 경우 실패합니다. 미확정 관측은 원천에 보존합니다. 날짜·층·면적·가격이 같은 계약의 기존 조회 범위를 임의의 이름 유사도로 복구하지 않습니다. 삼성1차와 다른 단지의 조회 복구, 보존 검사와 실행 명령은 [공식 단지 연결 복구 기록](project-notes/molit-source-connection-repair-2026-11-14.md)에 있습니다.
+
 GitHub의 아파트 기준은 `pnpm data:baseline:create`로 현재 로컬 확정 DB에서 생성한 `automation/apartment-baseline`입니다. 로컬 정보·지도를 먼저 내보낸 뒤 생성하고 `pnpm data:baseline:check`로 검사합니다. 자동화는 복원한 거래·매물·수집 이력을 보존하면서 이 기준본을 설치하며, 옛 복원 대장으로 연결을 재계산하지 않습니다. 누락·손상·범위·버전 불일치는 수집과 배포를 중단합니다. 로컬 원본 DB는 편집 가능하게 유지하고 기준본을 설치하지 않습니다. [전달 구조·검증·운영 절차](project-notes/local-apartment-baseline.md)를 참조하세요.
 
 ## 네이버 매물 수집·표시 중단

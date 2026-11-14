@@ -11,6 +11,7 @@ import {writeApartmentInformationFile} from './apartment-information-files.mjs';
 import {browserPayloads,writeBrowserPayloads,writeBrowserRegistry,cleanBrowserPayloads,attachHousingRows} from './browser-export.mjs';
 import {housingBindingsMap} from '../src/housing-wire.mjs';
 import {readInstalledBaseline,assertInstalledBaseline} from './apartment-baseline-state.mjs';
+import {assertMolitSourceCoverage} from './molit-source-coverage.mjs';
 import {connect,PUBLIC_SCHEMA,TRADE_COLUMNS,REGION_COLUMNS,paths,ROOT,secretValues,checkedBytes,savedIds,atomicWrite} from './storage.mjs';
 export const sha256=data=>createHash('sha256').update(data).digest('hex');
 export function databasePayload(raw,secrets,compressAbove=95*1024*1024) {
@@ -85,7 +86,7 @@ export function exportData({source=paths.db,target=path.join(ROOT,'public/data')
   const identityDb=connect(source);let identities;
   try{
     const baseline=readInstalledBaseline(identityDb);
-    if(baseline)assertInstalledBaseline(identityDb);
+    if(baseline){assertInstalledBaseline(identityDb);assertMolitSourceCoverage(identityDb);}
     const listingFile=path.join(path.dirname(target),'listings/snapshot.json');
     const inventory=identityDb.prepare("SELECT 1 FROM sqlite_master WHERE name='apartment_inventory_regions'").get();
     const scannedInventory=Boolean(inventory&&identityDb.prepare("SELECT 1 FROM apartment_inventory_regions WHERE status='scanned' LIMIT 1").get());
