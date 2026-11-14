@@ -48,3 +48,14 @@ test('approval is atomic if a local witness changes and is forbidden on an insta
  db.exec('UPDATE trades SET price_man=120000 WHERE id=2');assert.throws(()=>applyMolitSourceConnections(db,plan),/근거가 달라/);assert.deepEqual(approvedMolitProviders(db),{});
  db.exec('CREATE TABLE local_apartment_baseline(id INTEGER)');assert.throws(()=>planMolitSourceConnections(db,[]),/로컬 원본/);assert.throws(()=>applyMolitSourceConnections(db,plan),/로컬 원본/);
 });
+
+test('a later batch cannot add a conflicting source to an already approved provider',t=>{
+ const db=fixture(t);applyMolitSourceConnections(db,planMolitSourceConnections(db,[observed()]));
+ const other=observed({jibun:'694',dealAmount:'130,000'});
+ db.prepare('INSERT INTO trades VALUES('+Array(13).fill('?').join(',')+')').run(2,...normalizedTradeFields.map(key=>other[key]),JSON.stringify({...other.raw,aptSeq:''}));
+ const before=db.prepare('SELECT * FROM apartment_molit_sources').all();
+ const plan=planMolitSourceConnections(db,[other]);
+ assert.equal(plan.connections.length,0);assert.equal(plan.held.length,1);assert.equal(plan.held[0].reason,'ambiguous_source');
+ assert.deepEqual(new Set(plan.held[0].sources),new Set([sourceIdentityId(observed()),sourceIdentityId(other)]));
+ applyMolitSourceConnections(db,plan);assert.deepEqual(db.prepare('SELECT * FROM apartment_molit_sources').all(),before);
+});

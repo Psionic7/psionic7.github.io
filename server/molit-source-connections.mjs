@@ -36,7 +36,10 @@ export function planMolitSourceConnections(db,observations,{sourceHash='local-so
   const sources=byProvider.get(id);if(!sources.has(source))sources.set(source,[]);sources.get(source).push(row);
   if(!bySource.has(source))bySource.set(source,new Set());bySource.get(source).add(id);
  }
- for(const [id,sources] of Object.entries(known))for(const source of sources){if(!bySource.has(source))bySource.set(source,new Set());bySource.get(source).add(id);}
+ for(const [id,sources] of Object.entries(known))for(const source of sources){
+  if(!bySource.has(source))bySource.set(source,new Set());bySource.get(source).add(id);
+  const observed=byProvider.get(id);if(observed&&!observed.has(source))observed.set(source,[]);
+ }
  const connections=[],held=[];
  for(const [id,sources] of [...byProvider].sort(([a],[b])=>a.localeCompare(b))){
   const entries=[...sources],source=entries[0]?.[0];
