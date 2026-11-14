@@ -48,6 +48,15 @@ it('keeps delete-all final when a previously requested favorite is waiting for t
   expect(readPreferences('viewer').regions).toEqual([]);
 });
 
+it('does not report a failed favorite removal as removed, and can retry the same action',()=>{
+ const view=renderHook(useFavorites);act(()=>view.result.current[1](toggle));
+ const write=vi.spyOn(Storage.prototype,'setItem').mockImplementation(()=>{throw new DOMException('Storage is blocked','SecurityError');});
+ let result;act(()=>{result=view.result.current[1](toggle);});
+ expect(result).toBe(false);expect(view.result.current[0]).toEqual([id]);expect(readPreferences('viewer').regions).toEqual([id]);
+ write.mockRestore();act(()=>{result=view.result.current[1](toggle);});
+ expect(result).toBe(true);expect(view.result.current[0]).toEqual([]);expect(readPreferences('viewer').regions).toEqual([]);
+});
+
 it('does not duplicate a selection when an old root and its current address are both saved',()=>{
   const region={region_code:'41465',region_name:'경기도 용인시 수지구'};
   const base={apartment:'단지',dong:'풍덕천동',jibun:'1',road_address:'경기도 용인시 수지구 도로 1',master_id:'hub:audit'};

@@ -126,3 +126,34 @@ it('displays pending and saved states while Chrome grants a delayed favorite loc
  const saved=screen.getByRole('button',{name:/지도 단지.*즐겨찾기 해제$/});
  expect(saved.disabled).toBe(false);expect(saved.textContent).toBe('즐겨찾기 저장됨');expect(readPreferences('viewer').apartments).toHaveLength(1);
 });
+
+it('keeps a failed favorite unsaved and lets the next click retry after storage recovers',async()=>{
+ state.mapApartment=makeApartmentFavorite(row(1),region);history.replaceState(null,'','/?tab=map');
+ render(<App initialManifest={manifest} districtLoader={loader}/>);
+ const user=userEvent.setup(),add=await screen.findByRole('button',{name:/지도 단지.*즐겨찾기 추가$/});
+ const write=vi.spyOn(Storage.prototype,'setItem').mockImplementation(()=>{throw new DOMException('Storage is full','QuotaExceededError');});
+ await user.click(add);
+ expect(add.textContent).toContain('저장 실패');expect(add.getAttribute('aria-pressed')).toBe('false');
+ expect(readPreferences('viewer').apartments).toEqual([]);
+ write.mockRestore();await user.click(add);
+ expect(add.getAttribute('aria-pressed')).toBe('true');expect(add.textContent).toBe('즐겨찾기 저장됨');
+ expect(readPreferences('viewer').apartments.map(item=>item.id)).toEqual([state.mapApartment.id]);
+});
+
+it('restores multi-selection and its filters when going back and forward without changing saved favorites',async()=>{
+ const a=makeApartmentFavorite(row(1),region),b=makeApartmentFavorite(row(2,{apartment:'비교 단지',jibun:'2'}),region);
+ state.information=[a,b];savePreferences('viewer',{apartments:[a,b]});
+ savePreferences('apartmentTransactions',{selected:[a],minArea:60,maxArea:100,recentCount:20,includeCancelled:false,areaBands:[]});
+ history.replaceState(null,'','/?tab=apartments');const user=userEvent.setup();
+ render(<App initialManifest={manifest} districtLoader={async()=>[row(1),row(2,{apartment:'비교 단지',jibun:'2'})]}/>);
+ const shortcuts=await screen.findByRole('region',{name:'즐겨찾기 단지'});
+ await user.click(within(shortcuts).getByRole('button',{name:/비교 단지.*거래 조회$/}));
+ await waitFor(()=>expect(readPreferences('apartmentTransactions').selected.map(item=>item.id)).toEqual([a.id,b.id]));
+ act(()=>history.back());
+ await waitFor(()=>expect(readPreferences('apartmentTransactions').selected.map(item=>item.id)).toEqual([a.id]));
+ expect(readPreferences('apartmentTransactions')).toMatchObject({minArea:60,maxArea:100,recentCount:20});
+ act(()=>history.forward());
+ await waitFor(()=>expect(readPreferences('apartmentTransactions').selected.map(item=>item.id)).toEqual([a.id,b.id]));
+ expect(readPreferences('apartmentTransactions')).toMatchObject({minArea:60,maxArea:100,recentCount:20});
+ expect(readPreferences('viewer').apartments.map(item=>item.id)).toEqual([a.id,b.id]);
+});

@@ -140,6 +140,10 @@ export function useStoredState(scope,field,fallback,validate,initialValue) {
       const previous=!unsaved.current&&validator.current(saved)?saved:current.current;
       const next=typeof update==='function'?update(previous):update;
       if(!validator.current(next))return false;
+      if(scope==='viewer'){
+        if(!savePreferences(scope,{...readPreferences(scope),[field]:next}))return false;
+        current.current=next;setValue(next);return true;
+      }
       current.current=next;setValue(next);
       unsaved.current=!savePreferences(scope,{...readPreferences(scope),[field]:next});
       return !unsaved.current;
